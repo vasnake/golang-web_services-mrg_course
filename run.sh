@@ -1,7 +1,7 @@
 #!/bin/bash
 
 dir=week_01
-fname=vars_2.go
+fname=strings.go
 
 __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pushd ${__dir}/${dir}
