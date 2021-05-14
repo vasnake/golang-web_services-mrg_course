@@ -1,7 +1,7 @@
 #!/bin/bash
 
 dir=week_01
-fname=types.go
+fname=pointers.go
 
 __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pushd ${__dir}/${dir}
