@@ -15,6 +15,8 @@ https://cloud.mail.ru/public/pc7H/6Vx4txWWr
 - array
 - slice_1
 - slice_2
+- map
 
 ### TODO
-- map
+- control
+- loop

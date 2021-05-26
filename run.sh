@@ -1,7 +1,7 @@
 #!/bin/bash
 
 dir=week_01
-fname=slice_2.go
+fname=map.go
 
 __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pushd ${__dir}/${dir}
