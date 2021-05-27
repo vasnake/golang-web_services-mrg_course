@@ -17,6 +17,10 @@ https://cloud.mail.ru/public/pc7H/6Vx4txWWr
 - slice_2
 - map
 - control
+- loop
 
 ### TODO
-- loop
+- functions
+- firstclass
+- defer
+- recover
