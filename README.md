@@ -18,9 +18,9 @@ https://cloud.mail.ru/public/pc7H/6Vx4txWWr
 - map
 - control
 - loop
+- functions
 
 ### TODO
-- functions
 - firstclass
 - defer
 - recover

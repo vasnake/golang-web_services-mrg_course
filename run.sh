@@ -1,7 +1,7 @@
 #!/bin/bash
 
 dir=week_01
-fname=loop.go
+fname=functions.go
 
 __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pushd ${__dir}/${dir}
