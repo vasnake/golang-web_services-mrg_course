@@ -24,3 +24,6 @@ https://cloud.mail.ru/public/pc7H/6Vx4txWWr
 - firstclass
 - defer
 - recover
+
+## Info
+- [If a map isn’t a reference variable, what is it?](https://dave.cheney.net/2017/04/30/if-a-map-isnt-a-reference-variable-what-is-it)
