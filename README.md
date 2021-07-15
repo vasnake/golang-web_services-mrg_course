@@ -37,3 +37,11 @@ https://cloud.mail.ru/public/pc7H/6Vx4txWWr
 
 ## Info
 - [If a map isn’t a reference variable, what is it?](https://dave.cheney.net/2017/04/30/if-a-map-isnt-a-reference-variable-what-is-it)
+
+---
+
+Developed using JetBrains GoLand IDE
+[![JetBrains GoLand](./icon-goland.svg)](https://jb.gg/OpenSource)
+
+With thanks to JetBrains and their support for the open source communities
+[![JetBrains Open Source Support](./jetbrains-variant-3.svg)](https://jb.gg/OpenSource)
