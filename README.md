@@ -1,11 +1,11 @@
 # golang-web_services-mrg_course
-My take on golang course from MRG
-
-Go Course, код, домашки, литература
-https://cloud.mail.ru/public/pc7H/6Vx4txWWr
+Golang course from MRG
 
 ## week 1
-Введение в Golang
+Введение в Golang.
+[Код, домашки, литература](./week_01/materials.zip)
+https://cloud.mail.ru/public/pc7H/6Vx4txWWr
+
 - hello_world
 - vars_1
 - vars_2
@@ -43,5 +43,5 @@ https://cloud.mail.ru/public/pc7H/6Vx4txWWr
 Developed using JetBrains GoLand IDE
 [![JetBrains GoLand](./icon-goland.svg)](https://jb.gg/OpenSource)
 
-With thanks to JetBrains and their support for the open source communities
+With thanks to JetBrains and their support for open source communities
 [![JetBrains Open Source Support](./jetbrains-variant-3.svg)](https://jb.gg/OpenSource)
