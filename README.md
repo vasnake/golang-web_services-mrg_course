@@ -1,28 +1,26 @@
 # golang-web_services-mrg_course
-Golang course from MRG
+Golang course from MRG: Разработка веб-сервисов на Golang
 
-## week 1
+## part 1, week 1
 Введение в Golang.
 [Код, домашки, литература](./week_01/materials.zip)
 https://cloud.mail.ru/public/pc7H/6Vx4txWWr
 
-- hello_world
-- vars_1
-- vars_2
-- strings
-- const
-- types
-- pointers
-- array
-- slice_1
-- slice_2
-- map
-- control
-- loop
-- functions
+Зачем нужен еще один языка программирования?
+Эффективность:
+многопроцессорные системы (легкие потоки, асинхронность);
+простой и понятный язык, читабельный, простая и быстрая сборка, с четким стилем.
+
+Для realtime не подходит (сборка мусора), но всё остальное OK.
+
+- Первая программа: play.golang.com, hello_world
+- Переменные, базовые типы данных: vars_1, vars_2, strings, const, types, pointers
+- Переменные, составные типы данных: array, slice_1, slice_2, map
+- Управляющие конструкции: control, loop
+- Основы функций: functions
 
 ### TODO
-- firstclass
+- Функция как объект первого класса, анонимные функции: firstclass
 - defer
 - recover
 
