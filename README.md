@@ -18,11 +18,9 @@ https://cloud.mail.ru/public/pc7H/6Vx4txWWr
 - Переменные, составные типы данных: array, slice_1, slice_2, map
 - Управляющие конструкции: control, loop
 - Основы функций: functions
-
-### TODO
 - Функция как объект первого класса, анонимные функции: firstclass
-- defer
-- recover
+### TODO
+- Отложенное выполнение и обработка паники: defer, recover
 
 ## week 2
 Асинхронная работа
