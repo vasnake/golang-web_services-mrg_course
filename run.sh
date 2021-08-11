@@ -9,5 +9,5 @@ pushd ${__dir}/${dir}
 gofmt -w $fname || exit
 go run $fname || exit
 
-@echo "Test run OK"
+echo "Test run OK"
 popd
