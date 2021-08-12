@@ -1,0 +1,25 @@
+GOPATH
+
+~/go> tree
+|____bin
+|____pkg
+|____src
+| |____github.com
+...
+
+~/go> du -h -d 1 ~/go
+ 54M	/Users/v.fedulov/go/bin
+131M	/Users/v.fedulov/go/pkg
+185M	/Users/v.fedulov/go/
+
+visibility
+|---person
+|   |---person.go
+|   |---func.go
+|---main.go
+
+one directory = one package
+
+GOPATH, Модули и пакеты, workspaces & projects
+
+???
