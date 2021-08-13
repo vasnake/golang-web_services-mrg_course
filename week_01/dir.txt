@@ -22,4 +22,7 @@ one directory = one package
 
 GOPATH, Модули и пакеты, workspaces & projects
 
+https://stackoverflow.com/questions/52123627/how-do-i-resolve-cannot-find-module-for-path-x-importing-a-local-go-module
+https://stackoverflow.com/questions/52328952/how-to-use-a-module-that-is-outside-of-gopath-in-another-module
+
 ???
