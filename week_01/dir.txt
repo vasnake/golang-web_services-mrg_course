@@ -18,11 +18,19 @@ visibility
 |   |---func.go
 |---main.go
 
-one directory = one package
+one directory = one package, большие пакеты, маленькие не надо
 
 GOPATH, Модули и пакеты, workspaces & projects
 
 https://stackoverflow.com/questions/52123627/how-do-i-resolve-cannot-find-module-for-path-x-importing-a-local-go-module
 https://stackoverflow.com/questions/52328952/how-to-use-a-module-that-is-outside-of-gopath-in-another-module
 
-???
+> If you don't want to use Go modules, you don't need to. As of Go v1.13, by default, go modules are used.
+> Therefore, you need to tell explicitly if you don't want to do this.
+> GO111MODULE=off go run main.go
+
+```sh
+pushd golang-web_services-mrg_course/week_01
+gofmt -w visibility/main.go
+GO111MODULE=off go run visibility/main.go
+```

@@ -6,9 +6,9 @@ var (
 )
 
 type Person struct {
-	ID     int
+	ID     int // public
 	Name   string
-	secret string
+	secret string // private
 }
 
 func (p *Person) SetSecret(newSecret string) {
