@@ -2,7 +2,7 @@
 
 dir=week_01
 #fname=visibility/main.go
-fname=empty_2.go
+fname=embed.go
 
 __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pushd ${__dir}/${dir}
