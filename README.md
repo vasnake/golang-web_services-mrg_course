@@ -27,8 +27,9 @@ https://cloud.mail.ru/public/pc7H/6Vx4txWWr
 - Пустой интерфейс: empty_1, empty_2
 - Композиция интерфейсов: embed
 - Написание программы уникализации (ПУ): uniq, data_map.txt
+- Написание тестов для ПУ: unique/unique, unique/unique_test
+
 ### TODO
-- Написание тестов для ПУ:
 
 ## week 2
 Асинхронная работа
