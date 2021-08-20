@@ -13,6 +13,7 @@ pushd ${__dir}/${dir}
 gofmt -w $fname || exit
 #go run $fname || exit
 #GO111MODULE=off go run $fname || exit
+
 #GO111MODULE=off cat data_map.txt | go run $fname || exit
 #GO111MODULE=off cat data_map.txt | sort | go run $fname || exit
 GO111MODULE=off go test -v ./unique || exit
