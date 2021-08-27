@@ -2,7 +2,7 @@
 
 dir=week_02
 #fname=visibility/main.go
-fname=goroutines.go
+fname=chan_1.go
 
 __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pushd ${__dir}/${dir}
