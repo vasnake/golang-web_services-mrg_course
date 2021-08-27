@@ -1,8 +1,8 @@
-# golang-web_services-mrg_course
-Golang course from MRG: Разработка веб-сервисов на Golang
+# go-web_services-mrg_course
+Go language course from MRG: Разработка веб-сервисов на Go
 
 ## part 1, week 1
-Введение в Golang.
+Введение в Go.
 [Код, домашки, литература](./week_01/materials.zip)
 https://cloud.mail.ru/public/pc7H/6Vx4txWWr
 
