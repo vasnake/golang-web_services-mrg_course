@@ -1,8 +1,8 @@
 #!/bin/bash
 
-dir=week_01
+dir=week_02
 #fname=visibility/main.go
-fname=uniq.go
+fname=goroutines.go
 
 __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pushd ${__dir}/${dir}
@@ -12,11 +12,11 @@ pushd ${__dir}/${dir}
 
 gofmt -w $fname || exit
 #go run $fname || exit
-#GO111MODULE=off go run $fname || exit
+GO111MODULE=off go run $fname || exit
 
 #GO111MODULE=off cat data_map.txt | go run $fname || exit
 #GO111MODULE=off cat data_map.txt | sort | go run $fname || exit
-GO111MODULE=off go test -v ./unique || exit
+#GO111MODULE=off go test -v ./unique || exit
 
 echo "Test run OK"
 popd
