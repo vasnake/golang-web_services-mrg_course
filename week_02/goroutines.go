@@ -10,10 +10,12 @@ const (
 	goroutinesNum = 5
 )
 
-func doSomeWork(in int) {
+func doSomeWork(goNum int) {
 	for j := 0; j < iterationsNum; j++ {
-		fmt.Printf(formatWork(in, j))
-		// return to scheduler, allow to switch to other tasks; break own time-slice
+		// could be blocked by inner infinite loop
+		fmt.Printf(formatWork(goNum, j))
+
+		// return to scheduler, allow to switch to other tasks; break my own time-slice
 		//runtime.Gosched()
 		//time.Sleep(time.Millisecond)
 	}
@@ -33,14 +35,14 @@ func main() {
 	fmt.Scanln()
 }
 
-func formatWork(in, j int) string {
+func formatWork(goNum, iterNum int) string {
 	return fmt.Sprintln(
-		strings.Repeat("  ", in),
+		strings.Repeat("  ", goNum),
 		"█",
-		strings.Repeat("  ", goroutinesNum-in),
-		"th",
-		in,
-		"iter",
-		j,
-		strings.Repeat("■", j))
+		strings.Repeat("  ", goroutinesNum-goNum),
+		"goroutine:",
+		goNum,
+		"iter:",
+		iterNum,
+		strings.Repeat("■", iterNum))
 }
