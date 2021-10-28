@@ -2,7 +2,7 @@
 
 dir=week_02
 #fname=visibility/main.go
-fname=select_3.go
+fname=afterfunc.go
 
 __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pushd ${__dir}/${dir}
