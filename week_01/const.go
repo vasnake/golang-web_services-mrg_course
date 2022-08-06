@@ -37,4 +37,5 @@ func main() {
 	var bigY int64 = 2021
 	var smallY uint16 = 2021
 	fmt.Println("untyped const: ", smallY+year, bigY+year) // 4042, 4042
+
 }

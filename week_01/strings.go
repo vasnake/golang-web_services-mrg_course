@@ -30,4 +30,5 @@ func main() {
 	bytes := []byte(utfStr)                                        //  [208 175 208 171 208 167 209 132 208 185 208 148 208 182 208 174 195 139 209 138 208 173 209 137 208 159]
 	symbols := string(bytes[24:])                                  // П
 	fmt.Println("bytes<->string: ", bytes, symbols)
+
 }

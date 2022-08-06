@@ -22,4 +22,5 @@ func main() {
 	c = d                                       // c ref to anon
 	*c = 14                                     // anon = 14, a = 12
 	println("a, c, *c, d, *d", a, c, *c, d, *d) // 12 0xc000046770 14 0xc000046770 14
+
 }

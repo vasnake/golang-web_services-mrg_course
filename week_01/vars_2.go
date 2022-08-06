@@ -9,7 +9,7 @@ func main() {
 	var uInt uint = 1 << 63          // unsigned, same as int
 	fmt.Println("ints: ", platformInt, autoInt, bigInt, uInt)
 
-	var pi float32 = 3.14 // 32 or 64
+	var pi float32 = 3.14 // explicit 32 or 64
 	var e float64 = 2.718
 	var _pi = 3.14          // platform dependent float
 	var flotDefault float32 // zero default

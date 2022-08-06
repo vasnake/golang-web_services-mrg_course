@@ -9,4 +9,5 @@ func main() {
 	//uid = idx // denied
 	uid = UserID(idx) // simple cast
 	println("idx, uid: ", idx, uid)
+
 }
