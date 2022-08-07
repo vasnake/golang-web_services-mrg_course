@@ -6,7 +6,7 @@ import "fmt"
 // multi-parameter definition
 // named return var
 // return tuple
-// return named vars as tuple // beware default values for uninitialized vars
+// return named vars as tuple // beware default values of uninitialized vars
 // unpacked list of parameters, triple-dot notation
 
 func sqrt(in int) int {
@@ -49,4 +49,7 @@ func sum(in ...int) (res int) {
 
 func main() {
 	println("10: ", sum(1, 2, 3, 4))
+
+	xs := []int{1, 2, 3, 4}
+	println("10: ", sum(xs...))
 }

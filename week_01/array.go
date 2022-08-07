@@ -19,4 +19,5 @@ func main() {
 
 	// compile time panic
 	//a3[size + 1] = 42
+
 }

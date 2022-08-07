@@ -33,4 +33,5 @@ func main() {
 	delete(user, "lastName")
 	fmt.Printf("map %#v, len: %#v\n", user, len(user))
 	// map map[string]string{"name":"Bart"}, len: 1
+
 }

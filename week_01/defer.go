@@ -25,4 +25,5 @@ func main() {
 	fmt.Println("Working ...")
 	time.Sleep(3 * time.Second)
 	fmt.Println("now deferred ...")
+
 }

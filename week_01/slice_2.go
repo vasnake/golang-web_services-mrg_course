@@ -13,6 +13,7 @@ func main() {
 	sl1 := buf[1:4]
 	sl2 := buf[:2]
 	sl3 := buf[2:]
+
 	fmt.Printf("sl1 %#v, len: %#v, cap: %#v \n", sl1, len(sl1), cap(sl1))
 	fmt.Printf("sl2 %#v, len: %#v, cap: %#v \n", sl2, len(sl2), cap(sl2))
 	fmt.Printf("sl3 %#v, len: %#v, cap: %#v \n", sl3, len(sl3), cap(sl3))
@@ -48,4 +49,5 @@ func main() {
 	copy(buf[1:3], []int{5, 6})
 	fmt.Printf("buf %#v, len: %#v, cap: %#v \n", buf, len(buf), cap(buf))
 	// buf []int{1, 5, 6, 4}, len: 4, cap: 4
+
 }

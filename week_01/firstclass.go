@@ -27,9 +27,9 @@ func main() {
 	printer("ref to function saved in var")
 
 	// define func type
-	type stringPrinterType func(string2 string)
+	type stringPrinterType func(msg string)
 
-	// define function which take a callback
+	// define function which take a callback and call it
 	worker := func(callback stringPrinterType) {
 		callback("callback called by worker")
 	}
@@ -43,4 +43,5 @@ func main() {
 	}
 	successLogger := prefixer("SUCCESS")
 	successLogger("should be marked as success")
+
 }

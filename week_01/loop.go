@@ -53,4 +53,5 @@ func main() {
 	for pos, symb := range myStr {
 		println("byte pos:", pos, ", rune as int32:", symb, ", rune as str:", string(symb))
 	}
+
 }

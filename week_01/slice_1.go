@@ -4,13 +4,16 @@ import "fmt"
 
 // slice = buffer, (length, capacity)
 func main() {
+
 	// creation, make function, default values
-	var buf0 []int                  // like array, but w/o size, len:0, cap:0
-	buf1 := []int{}                 // empty enumeration using literal
-	buf2 := []int{42}               // one elem, len:1, cap:1
-	buf3 := make([]int, 0)          // len:0, cap:0
-	buf4 := make([]int, 5)          // len:5, cap:5
-	buf5 := make([]int, 5, 10)      // len:5, cap:10
+	var buf0 []int    // like array, but w/o size, len:0, cap:0
+	buf1 := []int{}   // empty enumeration using literal
+	buf2 := []int{42} // one elem, len:1, cap:1
+
+	buf3 := make([]int, 0)     // len:0, cap:0
+	buf4 := make([]int, 5)     // len:5, cap:5
+	buf5 := make([]int, 5, 10) // len:5, cap:10
+
 	fmt.Printf("buf0 %#v \n", buf0) //buf0 []int(nil)
 	fmt.Printf("buf1 %#v \n", buf1) //buf1 []int{}
 	fmt.Printf("buf2 %#v \n", buf2) //buf2 []int{42}
@@ -36,4 +39,5 @@ func main() {
 
 	// get len, cap from slice
 	fmt.Printf("buf len: %#v, cap: %#v \n", len(buf), cap(buf)) // buf len: 6, cap: 8
+
 }

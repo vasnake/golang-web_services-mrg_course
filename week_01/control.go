@@ -1,6 +1,7 @@
 package main
 
 func main() {
+
 	myMap := map[string]string{"name": "Bender"}
 
 	// simple if, only bool
@@ -77,4 +78,6 @@ Loop:
 			println("k, v:", k, v)
 		}
 	}
+	// Loop
+
 }
