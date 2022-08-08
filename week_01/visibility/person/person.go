@@ -6,8 +6,8 @@ var (
 )
 
 type Person struct {
-	ID     int // public
-	Name   string
+	ID     int    // public
+	Name   string // public
 	secret string // private
 }
 

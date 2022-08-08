@@ -12,15 +12,16 @@ type Person struct {
 	Name    string
 	Address string
 }
+
 type Account struct {
 	Id     int
 	Name   string
 	No     uint64
-	Person // Account id, name
+	Person // id, name, Address
 }
 
 func (p Person) CantSetName(newName string) {
-	// read only method, pass-by-value
+	// N.B. read only method, pass-by-value, you don't need this behaviour in setter
 	p.Name = newName
 }
 
@@ -49,7 +50,8 @@ func (s *MySlice) Append(v int) *MySlice {
 }
 
 func main() {
-	p := Person{Id: 1, Name: "Foo"}
+
+	p := Person{Id: 1, Name: "Foo"} // Address = ""
 
 	p.CantSetName("Bar")
 	fmt.Printf("person: %#v\n", p) // person: main.Person{Id:1, Name:"Foo"}
@@ -65,7 +67,7 @@ func main() {
 	pRef.SetName("Quix")
 	fmt.Printf("person: %#v\n", pRef) // person: &main.Person{Id:0, Name:"Quix"} // N.B. `&` symbol
 
-	// nested structures, outer structure have all methods defined for inner structure
+	// nested structures (composed), outer structure have all methods defined for inner structure
 	acc := Account{}
 	acc.SetName("Qux")
 	fmt.Printf("account: %#v\n", acc)

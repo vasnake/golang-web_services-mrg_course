@@ -19,7 +19,6 @@ func panicButton() {
 
 	fmt.Println("working ...")
 	panic("some shit happened!")
-	// return
 }
 
 func main() {
