@@ -5,9 +5,9 @@ import (
 )
 
 func main() {
-	in := make(chan int, 1) // rw channel
+	in := make(chan int, 1) // rw channel, buffered
 
-	go func(out chan<- int) { // wo channel
+	go func(out chan<- int) { // write-only channel
 		for i := 0; i <= 10; i++ {
 			fmt.Println("before writing", i)
 			out <- i

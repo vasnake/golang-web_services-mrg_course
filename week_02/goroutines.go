@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	// "runtime"
 )
 
 const (
@@ -16,12 +17,13 @@ func doSomeWork(goNum int) {
 		fmt.Printf(formatWork(goNum, j))
 
 		// return to scheduler, allow to switch to other tasks; break my own time-slice
-		//runtime.Gosched()
+		// runtime.Gosched()
 		//time.Sleep(time.Millisecond)
 	}
 }
 
 func main() {
+
 	for i := 0; i < goroutinesNum; i++ {
 
 		// sequential calls

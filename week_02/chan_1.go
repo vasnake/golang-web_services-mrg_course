@@ -6,6 +6,7 @@ import (
 )
 
 func main() {
+
 	ch1 := make(chan int) // unbuffered channel, all put values must be taken from chan, or else: deadlock
 	//ch1 := make(chan int, 1) // buffered channel, buffer size = 1 allow to put 1 unread message to chan.
 
