@@ -23,9 +23,10 @@ func (w *WalletNice) String() string {
 func main() {
 	w := &Wallet{Cash: 100}
 	// printf accepts any empty interface
-	// empty interface don't impose any limitations, it's just tuple (type, value)
-	fmt.Printf("repr: %#v\n", w)                               // &main.Wallet{Cash:100}
-	fmt.Printf("Stringer String: %s\n", w)                     // &{%!s(int=100)}
+	// empty interface don't impose any limitations, it's just a tuple (type, value)
+	fmt.Printf("repr: %#v\n", w)           // &main.Wallet{Cash:100}
+	fmt.Printf("Stringer String: %s\n", w) // &{%!s(int=100)}
+
 	fmt.Printf("Stringer String: %s\n", &WalletNice{Cash: 99}) // Wallet with 99 currency points
 
 }

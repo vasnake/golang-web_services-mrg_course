@@ -3,7 +3,7 @@ package main
 import "fmt"
 
 func Buy(p Payer) {
-	// if you want to check type of the object or use custom logic, type switch
+	// if you want to check type of the object or use custom logic, match object type
 	switch p.(type) {
 	case *Wallet:
 		fmt.Println("cash")
@@ -21,5 +21,7 @@ func Buy(p Payer) {
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Printf("You paid with %T\n", p)
+
 }

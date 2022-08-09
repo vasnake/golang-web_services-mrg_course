@@ -55,6 +55,7 @@ func Buy(p Payer) {
 
 func main() {
 	// buy with any kind of payable object
+
 	w := &Wallet{Cash: 100}
 	Buy(w)
 
@@ -64,4 +65,5 @@ func main() {
 
 	p = w
 	Buy(p)
+
 }

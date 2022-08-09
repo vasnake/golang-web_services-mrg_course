@@ -36,6 +36,7 @@ func Buy(in interface{}) {
 		fmt.Printf("Paying error, %T %v\n", p, err)
 		return
 	}
+
 	fmt.Printf("You paid with %T\n", p)
 }
 

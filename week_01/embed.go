@@ -5,6 +5,7 @@ import "fmt"
 type Payer interface {
 	Pay(int) error
 }
+
 type Ringer interface {
 	Ring(string) error
 }
@@ -23,6 +24,7 @@ func PayAndRing(phone NFCPhone) {
 		fmt.Printf("paying error %v\n", err)
 		return
 	}
+
 	fmt.Printf("payed via %T\n", phone)
 
 	err = phone.Ring("me")
@@ -30,6 +32,7 @@ func PayAndRing(phone NFCPhone) {
 		fmt.Printf("ringing error %v\n", err)
 		return
 	}
+
 }
 
 func main() {

@@ -10,6 +10,7 @@ import (
 func sortedInputUnique(input io.Reader, output io.Writer) error {
 	in := bufio.NewScanner(input)
 	var prev string
+
 	for in.Scan() {
 		txt := in.Text()
 		fmt.Printf("input line: `%s`", txt)

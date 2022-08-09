@@ -29,6 +29,7 @@ func sortedInputUnique() {
 	// GO111MODULE=off cat data_map.txt | sort | go run uniq || exit
 	in := bufio.NewScanner(os.Stdin)
 	var prev string
+
 	for in.Scan() {
 		txt := in.Text()
 		fmt.Printf("input line: `%s`", txt)
