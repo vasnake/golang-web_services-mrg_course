@@ -18,4 +18,5 @@ func main() {
 	default: // w/o default you will get deadlock
 		fmt.Println("have no ready channels")
 	}
+
 }

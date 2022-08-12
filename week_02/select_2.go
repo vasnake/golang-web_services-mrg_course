@@ -19,8 +19,9 @@ LOOP: // select channel in loop
 			fmt.Println("got chan1 val", v1)
 		case v2 := <-ch2:
 			fmt.Println("got chan2 val", v2)
-		default: // in no ready channels
+		default: // if no channels are ready
 			break LOOP
 		}
 	}
+
 }

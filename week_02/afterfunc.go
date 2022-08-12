@@ -14,5 +14,5 @@ func main() {
 
 	println("Press enter when ready ...")
 	fmt.Scanln()
-	timer.Stop()
+	timer.Stop() // if you press a button before timer is ready, you won't see a hello
 }
