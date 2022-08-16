@@ -493,17 +493,23 @@ Unmarshal в пустой интерфейс.
 
 ### Кодогенерация -- программа пишет программу
 
-unpack, marshaller, codegen
+- [unpack](week_03/unpack.go)
+- [marshaller](week_03/marshaller.go)
+- [codegen](week_03/codegen.go)
 
 К структуре добавлен метод `Unpack`, сгенерированный кодогенератором.
 Метод реализует восстановление структуры из бинарных данных, созданных через perl `pack`.
-Кодогенератор анализирует структуру (пользуясь гошным AST), считанную из файла с исходником, и для всех её полей создает код восстановления поля из слайса байт.
+Кодогенератор анализирует гошную структуру (пользуясь гошным AST), считанную из файла с исходником,
+и, для всех её полей, создает код восстановления поля из слайса байт.
 
 Кодогенерация полезна, когда некогда в рантайме тратить время на анализ и рефлексию. Профилирование покажет насколько падает скорость ...
 
 ### Система бенчмарков Go
 
-unpack_test, json_test, string_test, prealloc_test
+- [unpack_test](week_03/unpack_test.go)
+- [json_test](week_03/json_test.go)
+- [string_test](week_03/string_test.go)
+- [prealloc_test](week_03/prealloc_test.go)
 
 Бенчмарки в `testing.B`, `func BenchmarkFooBar( ... ) { ... }`, `go test -bench ...`
 
@@ -531,7 +537,7 @@ unpack_test, json_test, string_test, prealloc_test
 
 ### sync.Pool
 
-pool_test
+- [pool_test](week_03/pool_test.go)
 
 Хотим не выделять память каждый раз, хотим использовать пул преаллоцированной памяти. Для скорости.
 
@@ -547,7 +553,8 @@ pool_test
 
 ### XML
 
-main, xml_test
+- [main](week_03/xml_main.go)
+- [xml_test](week_03/xml_test.go)
 
 Поточная обработка данных, на примере xml. `encoding/xml`.
 `xml.NewDecoder(bytes.NewReader(data)).Token()` читаем по токенам, обрабатываем.
