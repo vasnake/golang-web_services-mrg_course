@@ -98,12 +98,77 @@ Tradeoff: speed/power
 - [validation](week_05/validation.go)
 
 Нет стандартного способа валидации, всё проекто-зависимо.
-Есть пакеты `asaskevich/govalidator`, `gorilla/schema`, ...
+Есть пакеты `asaskevich/govalidator`, `gorilla/schema`, другие.
 Это работает на рефлексии. Если надо, чтобы валидация работала быстрее, делайте кодогенератор или пишите руками.
 
-### Фреймворки 1
-### Фреймворки 2
+### Фреймворки 1 (Beego)
+
+https://beego.me/ фреймворк
+
+`bee new web_bp; cd web_bp; bee run`
+`bee api user; cd user; bee run -gendoc=true -downdoc=true`
+
+Можно сгенерировать сайт, можно сгенерировать API c документацией Swagger.
+Много компонент, для быстрого старта очень неплохо.
+Ближе к Django.
+
+### Фреймворки 2 (gin)
+
+- [main](week_05/main.go)
+
+`gin-gonic/gin` фреймворк.
+Быстрый и функциональный, простой. Генераторов (как в Beego) нет.
+Ближе к Flask.
+
 ### Логирование
+
+- [logging_main](week_05/logging_main.go)
+
+Несколько подходов к логированию.
+Стандартный логгер `log`, `zap` - структурированные логи, `logrus` - делает вид, что структурированный.
+
+`logrus` имеет много коннекторов, для отсылки логов в разные приемники. Медленный.
+`zap` на порядок быстрее.
+
 ### Веб-сокеты
+
+- [websockets_main](week_05/websockets_main.go) [websockets_index.html](week_05/websockets_index.html)
+
+`gorilla/websockets`, при заходе на нужный урл открывается асинхронный канал на вебсокете.
+
 ### Шаблонизация
+
+- [template_main](week_05/template_main.go) [template_base.html](week_05/template_base.html) [template_index.html](week_05/template_index.html)
+
+Стандартный шаблонизатор медленный, на рефлексии.
+Шаблонизатор `Hero`, прекомпиляция в код Go.
+Программа (шаблон) содержит не текстовые вставки в коде а наоборот, вставки кода в текст.
+
+`go:generate hero -source=./template/` -- комментарий-маркер для команды `go generate`.
+Недостаток: шаблон по горячему не перезапустишь. Надо пересобирать программу.
+
+При выводе шаблона используется буфер (выделение/освобождение памяти), надо использовать pool для переиспользования ресурсов.
+
 ### Управление зависимостями
+
+- [dependencies_main](week_05/dependencies_main.go)
+
+`go get ...` неудобно, нет автоматики. Нужен менеджер (dep, glide, gb).
+
+`dep init` регистрирует зависимости проекта со всеми версиями.
+`vendor` directory с кодом зависимостей.
+Все зависимости надо качать себе. Всё равно всё собирается в статический бинарник.
+
+```s
+# https://github.com/golang/dep
+dep init
+dep ensure
+dep ensure -add github.com/foo/bar
+dep status
+dep ensure -update
+```
+
+## part 2, week 2 (06)
+
+SQL, NoSQL
+[Код, домашки, литература](week_06/materials.zip) https://cloud.mail.ru/public/56Cd/zsGtH4Qo6
