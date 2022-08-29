@@ -201,7 +201,7 @@ SQL, NoSQL
 
 Используйте плейсхолдеры, не подставляйте параметры руками.
 
-### Key-Value 1 (тегированнй кеш)
+### Key-Value 1 (тегированнй кеш, memcache)
 
 - [memcache](week_06/memcache.go)
 - [main](week_06/tcache_main.go) [cache](week_06/tcache_cache.go)
@@ -212,6 +212,24 @@ Package `gomemcache/memcache`.
 поэтому можно обоснованно обновлять кеш, зная эти данные.
 Разбор (учебного) универсального решения на тегированном кеше.
 
-### Key-Value 2
-### Прочие системы 1
-### Прочие системы 2
+### Key-Value 2 (redis)
+
+- [main](week_06/redis_main.go) [session](week_06/redis_session.go)
+
+Использование `redigo/redis` для хранения сессий пользователей веб-сайта.
+id сессии лежит в куке, данные сессии лежат в redis.
+Учебный пример для демонстрации основных операций.
+
+### Прочие системы 1 (Rabbit MQ)
+
+- [form](week_06/rabbit_form.go) [resize_worker](week_06/rabbit_resize_worker.go)
+
+Очереди, Pub/Sub, RabbitMQ `streadway/amqp`.
+Демо веб-сервиса создания превьюшек для картинок, в async офлайн-воркере.
+
+
+### Прочие системы 2 (MongoDB)
+
+- [main](week_06/mongodb_main.go)
+
+Хранилище документов в монго `mgo "gopkg.in/mgo.v2"`, демо.
