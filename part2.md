@@ -5,7 +5,7 @@
 - week 3, Микросервисы
 - week 4, Сервис в работе
 
-## part 2, week 1
+## part 2, week 1 (05)
 
 Анатомия веб-сервиса
 [Код, домашки, литература](week_05/materials.zip) https://cloud.mail.ru/public/bjWY/TfQTzVMer
@@ -233,3 +233,21 @@ id сессии лежит в куке, данные сессии лежат в 
 - [main](week_06/mongodb_main.go)
 
 Хранилище документов в монго `mgo "gopkg.in/mgo.v2"`, демо.
+
+## part 2, week 3 (07)
+
+Микросервисы
+[Код, домашки, литература](week_07/materials.zip) https://cloud.mail.ru/public/GyVL/2YfhX2unF
+
+### Что такое микросервис - 1
+
+### Что такое микросервис - 2
+### Делаем микросервис руками - 1
+### Делаем микросервис руками - 2
+### protobuf and gRPC - 1
+### protobuf and gRPC - 2
+### protobuf and gRPC - 3
+### protobuf and gRPC - 4
+### protobuf and gRPC - 5
+### Дополнительные темы - 1
+### Дополнительные темы - 2
