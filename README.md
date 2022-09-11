@@ -6,6 +6,10 @@ Golang course from MRG
     [part1](part1.md)
 - [Разработка веб-сервисов на Go: Часть 2](https://study.vk.team/learning/course/672)
     [part2](part2.md)
+- [Разработка веб-сервисов на Golang: Часть 3](https://study.vk.team/learning/course/673)
+    [part3](part3.md)
+- [Разработка веб-сервисов на Golang: Часть 4](https://study.vk.team/learning/course/674)
+    [part4](part4.md)
 
 # Info, links
 
