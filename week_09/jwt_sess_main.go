@@ -41,8 +41,8 @@ func main() {
 
 	// added session manager, interface for different implementations support
 	// sm := NewSessionsDB(db)
-	// sm := NewSessionsJWT("golangcourseSessionSecret")
-	sm := NewSessionsJWTVer("golangcourseSessionSecret", db)
+	// sm := NewSessionsJWT("golangcourseSessionSecret") // secret for JWT sign/verify procedures
+	sm := NewSessionsJWTVer("golangcourseSessionSecret", db) // db with user profile, versioned
 
 	// sessions in user handlers
 	u := &UserHandler{
