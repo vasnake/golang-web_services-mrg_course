@@ -8,6 +8,7 @@ import (
 	"github.com/shurcooL/httpfs/html/vfstemplate"
 )
 
+// added unified storage interface, support disk or bin-resources
 func NewTemplates(assets http.FileSystem) *template.Template {
 	tmpl := template.New("")
 
