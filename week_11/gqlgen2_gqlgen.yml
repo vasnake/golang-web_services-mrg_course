@@ -1,0 +1,24 @@
+# .gqlgen.yml example
+#
+# Refer to https://gqlgen.com/config/
+# for detailed .gqlgen.yml documentation.
+
+schema:
+- schema.graphql
+exec:
+  filename: generated.go
+model:
+  filename: models_gen.go
+resolver:
+  filename: resolver.go
+  type: Resolver
+
+# resolver for user must be generated (in DB no user field in photo record)
+models:
+  Photo:
+    model: gqlgen2.Photo
+    fields:
+      user:
+        resolver: true
+
+autobind: []
