@@ -1,0 +1,29 @@
+schema:
+- schema.graphql
+exec:
+  filename: graphql_generated.go
+model:
+  filename: graphql_models_gen.go
+resolver:
+  filename: graphql_resolver.go
+  type: Resolver
+
+models:
+  Photo:
+    model: coursera/3p/photolist/100_gqlgen.Photo
+    fields:
+      user:
+        resolver: true
+  User:
+    model: coursera/3p/photolist/100_gqlgen.User
+    fields:
+      photos:
+        resolver: true
+      followed:
+        resolver: true
+      followedUsers:
+        resolver: true
+      recomendedUsers:
+        resolver: true
+
+autobind: []
