@@ -1,0 +1,25 @@
+COMMIT?=$(shell git rev-parse --short HEAD)
+BUILD_TIME?=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
+
+.PHONY: build
+build:
+	@echo "-- building binary"
+	go build \
+		-ldflags "-X main.buildHash=${COMMIT} -X main.buildTime=${BUILD_TIME}" \
+		-o ./bin/photolist \
+		./cmd/photolist
+
+.PHONY: assets
+assets:
+	@echo "-- generatiog assets"
+	go run pkg/assets/assets_gen.go
+
+.PHONY: gqlgen
+gqlgen:
+	@echo "-- generatiog graphql files"
+	go run github.com/99designs/gqlgen -c ./configs/gqlgen.yml
+
+.PHONY: dev
+dev:
+	@echo "-- starting air wrapper"
+	air -c ./configs/air.conf

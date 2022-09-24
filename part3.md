@@ -755,9 +755,96 @@ UserLoaderMiddleware.
 
 next: как разобрать получившуюся кашу из файлов кода в проекте?
 
-### Организация пакетов в приложении - 1
-### Организация пакетов в приложении - 2
-### Организация пакетов в приложении - 3
+### Организация пакетов в приложении - 1 (photolist 101_structure)
+
+- [struct_all_files.txt](week_11/101_structure_struct_all_files.txt)
+
+Сейчас все свалено в кучу. Оно работает, это ок. Если проект маленький, то сложить все модули в один корневой пакет -- норм.
+
+Можно было бы разбить на MVC пакеты, но это не слишком удобно и хорошо. В Go не фанатеют по MVC.
+
+По одному модулю в пакете вообще не надо.
+
+Пакет утилз это свалка, не делайте его. Делайте говорящее имя пакету, разбейте его на специфические пакеты.
+
+See https://github.com/golang-standards/project-layout
+
+Интересное:
+- Пакет `internal` защищен компилятором, приватный код проекта.
+- Пакет `pkg` это общий код проекта, библиотеки. Можно весь код, кроме main туда положить, при желании.
+- Пакет `vendor` для складывания зависимостей, которые не хочется качать при каждой сборке.
+- `cmd` для файлов `main.go`, в отличие от `pkg`
+
+Как выглядит photolist в таком раскладе
+- Makefile
+- Readme.md
+- api/schema.graphql
+- bin/photolist # собранный бинарь
+- cmd/photolist/main.go
+- configs/air.conf, gqlgen.yml
+- deployments
+- pkg
+    /assets/assets.go, ...
+    /graphql/graphql_generates.go, ...
+    /index/index.go
+    /photos/handlers.go, ...
+    ...
+    /utils
+        /httputils/httputils.go
+        /randutils/randutils.go
+
+Практически весь код проекта лежит в `pkg`.
+
+Проект разбит по сущностям, не по функциям.
+DDD, Domain Driven Design. Часто применяется в Go.
+
+При раскладывании файлов префиксы в именах файлов можно убрать, чтобы не получалось `session/session_db.go`
+
+Что насчет импортов и циклических зависимостей?
+
+### Организация пакетов в приложении - 2 (cycle deps)
+
+- [import_cycle.txt](week_11/101_structure_import_cycle.txt)
+- [layers_1.txt](week_11/101_structure_layers_1.txt)
+- [layers_2.txt](week_11/101_structure_layers_2.txt)
+
+Цикличные зависимости недопустимы.
+
+Автор получил цикл через photos-session-user-session.
+
+Было
+
+`type Session struct` in session_common.go
+`type SessionManager interface` держит ссылку на `User`.
+Ибо данные сессии это UserID из БД.
+
+`UserHandler` in user.go держит ссылку на `SessionManager`.
+
+Стало
+
+Расшить это можно используя абстрактный интерфейс, от которого зависеть будет нижний слой а верхний будет давать его реализацию.
+
+In session_common.go declare `type UserInterface interface` with methods `GetID(), GetVer()`.
+Так сессия уже не зависит от реализации юзера и не импортирует пакет `user`.
+
+Альтернативный подход: отдельный пакет с http_handler, в котором и users и session и photos и index;
+модуль юзерс держит реализацию и сесии и юзера.
+
+### Организация пакетов в приложении - 3 (Makefile)
+
+- [Makefile](week_11/101_structure_Makefile)
+
+Рассказал в общих чертах о складыании команд сборки, тестирования, etc в мейкфайл.
+
+`make build`
+
+```s
+# виртуальное дерево зависимостей, не реальные файлы а "поддельные" (реальные файлы сломают make или make сломает реальные файлы).
+# фони дает билд, билд дает ассеты, ...
+.PHONY: buld
+build: assets
+    go build ...
+```
 
 ## part 3, week 4 (12)
 

@@ -1,0 +1,7 @@
+import cycle not allowed
+package coursera/3p/photolist/101_structure/cmd/photolist
+        imports coursera/3p/photolist/101_structure/pkg/graphql
+        imports coursera/3p/photolist/101_structure/pkg/photos
+        imports coursera/3p/photolist/101_structure/pkg/session
+        imports coursera/3p/photolist/101_structure/pkg/user
+        imports coursera/3p/photolist/101_structure/pkg/session
