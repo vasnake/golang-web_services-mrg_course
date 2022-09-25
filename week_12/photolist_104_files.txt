@@ -1,0 +1,11 @@
+>  alias tree="find . -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g'"
+
+part3_week4/photolist/104_acl/cmd
+>  tree
+
+|____auth
+| |____main.go
+|____photolist
+| |____main.go
+|____photoauth
+| |____main.go

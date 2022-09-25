@@ -941,13 +941,190 @@ docker-compose:
 
 `make docker_compose` -> `docker-compose -f ./deployments/docker-compose.yml up`
 
-### Хранение файлов в S3 - 1
-### Хранение файлов в S3 - 2
-### Хранение файлов в S3 - 3
-### Хранение файлов в S3 - 4
-### Хранение файлов в S3 - 5
-### Конфигурирование приложения - 1
-### Конфигурирование приложения - 2
+### Хранение файлов в S3 - 1 (Simple Storage Service, minio)
+
+- [photolist 102/graphql_resolver](week_12/photolist_102_graphql_resolver.go) UploadPhoto: SaveFile, MakeThumbnails
+- [s3/aws](week_12/s3_aws.go)
+- [s3/minio](week_12/s3_minio.go)
+
+Как улучшить систему хранения файлов. Локальный хост не годится для масштабирования.
+Ничего удобнее S3 пока не придумали.
+
+Программа-демо создания бакета "photolist" и выполнения основных операций с файлами.
+`github.com/aws/aws-sdk-go/aws`
+
+При разработке используется локальный сервис - имитации S3, `min.io`.
+Проблема MinIO: для успешного восстановления при сбоях надо ReplFactor4 (4 диска). Будьте осторожны!
+
+Есть библиотека `minio/minio-go` если хочется ограничиться именно minio, там есть полезняшки, которых нет в S3.
+
+Есть веб-интерфейс http://127.0.0.1:9000/minio/
+
+### Хранение файлов в S3 - 2 (files direct web access)
+
+- [s3/minio](week_12/s3_minio.go) policy
+- [s3/aws policy](week_12/s3_aws.go) policy
+- [s3/docker-compose](week_12/s3_docker-compose.yaml) minio
+- [s3/configs/nginx.conf](week_12/s3_configs_nginx.conf) images
+
+Как получать доступ через веб. Зачем? Чтобы клиент мог получить файлы напрямую, сразу из хранилища.
+Через nginx, чтобы как-то прикрыть хранилище.
+
+Надо открыть доступ к папке для анонимуса.
+Делается это через задание политики, `SetBucketPolicy`, `PutBucketPolicy`.
+
+Минио сервис поднимается через композ докера, вместе с nginx.
+Там же прописаны ключи ACCESS, SECRET, что плохо (надо их прокидывать из vault), но для дева сойдет.
+
+В nginx прописан прокси на хранилище файлов.
+
+Это было демо на технологии хранения файлов в S3.
+Теперь пора все это интегрировать в аппу photolist.
+
+### Хранение файлов в S3 - 3 (photolist S3 integration)
+
+photolist_103/
+- [blobstorage/fs](week_12/photolist_103_blobstorage_fs.go)
+- [blobstorage/s3](week_12/photolist_103_blobstorage_s3.go)
+- [photos/handlers](week_12/photolist_103_photos_handlers.go)
+- [photos/utils](week_12/photolist_103_photos_utils.go)
+- [graphql/graphql_resolver](week_12/photolist_103_graphql_resolver.go)
+- [configs/nginx.conf](week_12/photolist_103_configs_nginx.conf)
+- [deploiments/docker-compose.yml](week_12/photolist_103_deploiments_docker-compose.yml)
+
+Интеграция проекта с хранилищем S3.
+Пользователю изменения видны только в формате url при просмотре файла.
+
+Новая реализация интерфейса хранилища, `FSStorage`. Даже не новая реализация а новый интерфейс.
+Новый пакет `blobstorage` с дефолтной реализацией интерфейса (диск локалхост).
+
+Реализация интерфейса для S3.
+Сессия там не из аппы а из S3, NB!
+В методе `Put` теперь записываются метаданные файла (user-id).
+Нет метода `Read` ибо чтение файлов будет напрямую клиентом через HTTP из хранилища (через nginx).
+
+В хендлерах поменялся код записи файла и MakeThumbnails.
+Генерация имени файла, теперь uuid. Потеряли дедупликацию по именам (md5), зато защитились от удаления файла сразу для всех пользователей.
+Кардинально поменялся код MakeThumbnails, теперь все на буферах и высокоуровневых абстрактных интерфейсах.
+
+В резолвере UploadPhoto, как и в тамбнейлах, для буфера байт надо сделать обертку Reader, чтобы байты можно было передавать в методы хранилища.
+`bytes.NewReaded(buff.Bytes())`
+
+В конфиге прокси изменения связаны с поддержкой user-id в урлах и избыточными заголовками S3.
+
+В композе осталась одна точка входа: порт 8080:80 nginx. Порты аппы наружу не прокидываются.
+
+Аппа стала масштабируемой, можно аппу запускать на нескольких контейнерах.
+
+Далее: откроем тайну user-id в урлах картинок.
+
+### Хранение файлов в S3 - 4 (user-id в урлах картинок)
+
+photolist/104_acl
+- [configs/nginx.conf](week_12/photolist_104_configs_nginx.conf)
+- [cmd/main](week_12/photolist_104_cmd_main.go)
+- [user/user_handlers](week_12/photolist_104_user_handlers.go)
+
+Хотим сделать приватные альбомы, разграничивать доступ по UserID.
+Это было бы сделать легко, если бы отдачей картинок занималась аппа.
+Но мы сделали отдачу картинок напрямую из хранилища.
+
+nginx спешит на помощь.
+Модуль `ngx_http_auth_request_module` https://nginx.org/en/docs/http/ngx_http_auth_request_module.html
+
+Наша аппа дает апи авторизации доступа к картинке, но не обязана качать картинку.
+
+- `auth_request /auth`
+- `location = /auth { proxy_pass http://photolist:8080/api ... }`
+
+`http.HandleFunc("/api/v1/internal/images/auth" ...)`
+
+`InternalImagesAuth(...)`
+
+Next: Никто не мешает вынести обработку такой авторизации на отдельный сервис.
+
+### Хранение файлов в S3 - 5 (files auth service)
+
+photolist/104_acl
+- [configs/nginx.conf](week_12/photolist_104_configs_nginx.conf)
+- [files.txt](week_12/photolist_104_files.txt)
+- [Makefile](week_12/photolist_104_Makefile)
+- [deployments/docker-compose.yml](week_12/photolist_104_deployments_docker-compose.yml)
+- [cmd/photoauth/main](week_12/photolist_104_cmd_photoauth_main.go)
+
+Как вынести авторизацию на доступ к картинкам в отдельный сервис.
+
+`proxy_pass http://photoauth:8080...`
+
+`cmd/photoauth/main.go` Теперь в директории `cmd` лежат две аппы (main пакеты).
+
+`go build ... ./cmd/photoauth`
+
+`photoauth: ... depends_on: ... photolist` NB собирается в том-же образе, что и photolist. Хотя, надо бы в отдельном образе.
+Запуск только после сборки и запуска photolist.
+
+Next: теперь пришла пора сделать проброс конфига коннекта к БД, ибо уже два сервиса нуждаются в одной БД.
+
+### Конфигурирование приложения - 1 (viper Config)
+
+photolist/104
+- [cmd/photolist/main](week_12/photolist_104_cmd_photolist_main.go)
+- [config/cfg ](week_12/photolist_104_config_cfg.go)`type Config struct { ... } ... func Read(...)`
+- [configs/photolist.yaml](week_12/photolist_104_configs_photolist.yaml)
+- [deployments/docker-compose.yml](week_12/photolist_104_deployments_docker-compose.yml)
+- [configs/common.env](week_12/photolist_104_configs_common.env)
+- [configs/photoauth.env](week_12/photolist_104_configs_photoauth.env)
+
+Уже два сервиса используют одну БД. Нужно как-то пробрасывать конфиг, задаваемый в одном месте.
+Нужна система управления конфигурацией.
+
+Юиблиотека `spf13/viper` https://github.com/spf13/viper
+`cfg := &config.Config{} ...`
+Демо получение настроект из файла и переменных окружения.
+
+Конфиги будут у нас лежать в yml файлах и переменных окружения.
+Все параметры вынесены в конфиг. Никакого хардкода.
+
+Файлы конфигов проброшены через volumes докера, что дает возможность менять конфиги без пересборки контейнера.
+Переменные окружения задаются через файлы `env_file: - ../configs/common.env`
+https://docs.docker.com/compose/environment-variables/#the-env_file-configuration-option
+
+Особо: у вайпера (на момент съемок видео) есть бага, из-за которой не парсится `example.env2`, поэтому приходится делать
+`v1.GetString("example.env2")`
+
+Next: создать еще один микросервис, чтобы получить проблемы и решать их, получая знания.
+
+### Конфигурирование приложения - 2 (отдельный сервис авторизации, grpc)
+
+photolist/104
+- [cmd/photoauth/main.go](week_12/photolist_104_cmd_photoauth_main.go)
+- [api/auth.proto](week_12/photolist_104_api_auth.proto)
+- [go.mod](week_12/photolist_104_go.mod)
+- [cmd/auth/main](week_12/photolist_104_cmd_auth_main.go)
+- [session/auth](week_12/photolist_104_session_auth.go)
+- [session/session_grpc](week_12/photolist_104_session_grpc.go)
+- [deployments/docker-compose.yml](week_12/photolist_104_deployments_docker-compose.yml) сервис `auth`
+
+Вынес сервис авторизации, grpc API. Для демонстрации некоторых концепций. В небольших проектах такое решение это явный overkill.
+
+В коде клиента авторизации, создание менеджера сессий `sm, err := session.NewSessionGRPC(...)` реализованного как отдельный сервис.
+
+API сервиса описано в proto файле.
+Немного шаманства с переименованием модуля `grpc`.  Импортируется он по одному пути а фактически находится по другому.
+Кодогенератор grpc сгенерил заглушки.
+
+Возвращаемый параметр как модель сущности в БД. Для нано-сервиса это ОК, но для сложных случаев надо рассаживать API и модели БД.
+В общем случае это разные структуры данных.
+
+Реализация интерфейса менеджера сессий. Тут он рассадил структуры API и реализации, повысив модульность.
+
+Проблемы: слой grpc и слой хендлеров использования сервиса grpc не соответствуют по контексту:
+e.g. grpc хочет request.context а в хендлере его нет. Интерфейс SessionManager не предусматривает прокидывание контекстов,
+нужных для выполнения grpc запросов к сервису авторизации.
+Архитектура нуждается в рефакторинге.
+
+Next: как порешать такие проблемы микросервисов.
+
 ### Трейсинг запросов - 1
 ### Трейсинг запросов - 2
 ### Трейсинг запросов - 3
