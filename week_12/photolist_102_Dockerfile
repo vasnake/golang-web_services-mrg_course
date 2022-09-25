@@ -1,0 +1,10 @@
+FROM golang:1.13
+
+WORKDIR /go/src/photolist
+COPY . /go/src/photolist
+RUN go mod download
+RUN make build
+
+EXPOSE 8080/tcp
+
+CMD [ "/go/src/photolist/bin/photolist" ]

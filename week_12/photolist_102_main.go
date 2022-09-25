@@ -34,6 +34,7 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	// основные настройки к базе
+	// NB dsn that wors in docker is different from dsn for baremetal host, TODO: move to config
 	// dsn := "root:love@tcp(127.0.0.1:3306)/photolist?charset=utf8&interpolateParams=true"
 	dsn := "root:love@tcp(host.docker.internal:3306)/photolist?charset=utf8&interpolateParams=true"
 	db, err := sql.Open("mysql", dsn)

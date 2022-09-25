@@ -1,0 +1,20 @@
+version: '3.1'
+services:
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8090:8080
+  dbMysql:
+    image: mysql:8.0.17
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    ports:
+      - 3306:3306
+    volumes:
+      # .: -> . -> relative to directory with compose file
+      - .:/docker-entrypoint-initdb.d
+      - ../tmp/mysql:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "love"
+      MYSQL_DATABASE: photolist

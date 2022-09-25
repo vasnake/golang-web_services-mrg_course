@@ -886,36 +886,61 @@ build: assets
 
 ### Сборка docker-контейнера - 2 (102_build docker)
 
-TODO
+- [Dockerfile](week_12/photolist_102_Dockerfile)
+- [.dockerignore](week_12/photolist_102_.dockerignore)
+- [Makefile](week_12/photolist_102_Makefile)
+- [Dockerfile.Multistage](week_12/photolist_102_Dockerfile.Multistage)
+- [main](week_12/photolist_102_main.go)
 
-- Dockerfile
-- .dockerignore
-- Makefile
-- Dockerfile.Multistage
-- main
-
-Linux CGROUPS, NAMESPACES: изоляция процесса
+Linux CGROUPS, NAMESPACES: изоляция процесса, технологии под капотом докер.
 
 Сборка и запуск в одном контейнере.
 Копирование папки с учётом игнорируемых файлов.
 
-`make docker` сборка образа. При сборке обломался на команде `git ...` ибо в образе такого бинаря нет.
+`make docker` сборка образа. При сборке обломался на команде `git ...` ибо в образе такого бинаря нет (об этом позже).
 Сборка образа заканчивается запуском аппы (нет), ибо последняя команда в Dockerfile это `CMD ...`.
 Сборка заканчивается созданием образа.
 
 `make docker_run` запуск контейнера, с пробросом порта tcp. Запускается аппа, через `CMD ...` в Dockerfile.
 
-Размер образов: всё плохо `docker images`.
-979 мегабайт на бинарь аппы. Родительский образ, зависимости, исходники, ...
+Размер образов: всё плохо, см. `docker images`.
+979 мегабайт на бинарь аппы (образ). Родительский образ, зависимости, исходники, ...
 
 Собираем в одном образе, деплоим в другом образе.
+https://github.com/proxeter/go-service-template/blob/master/deployments/docker/Dockerfile
 Многошаговая сборка `make docker_multistage` на выходе дает маленький образ, только ОС и аппа.
 100 мегабайт.
 
 NB: в программе поменялся коннект к БД, `dsn`. Сеть докера внесла коррективы.
 Очевидно, коннект надо пробрасывать как параметр снаружи. Как и другие параметры.
 
-### Сборка docker-контейнера - 3
+### Сборка docker-контейнера - 3 (docker compose)
+
+- [adminer.dc.yaml](week_12/photolist_102_dev_adminer.dc.yaml)
+- [docker-compose.yml](week_12/photolist_102_deploiments_docker-compose.yml)
+- [db_init.sql](week_12/photolist_102_dev_db_init.sql)
+- [nginx.conf](week_12/photolist_102_configs_nginx.conf)
+
+Docker compose полезная утилита, запуск нескольких контейнеров в связи друг-с-другом.
+Более-менее сложные аппы требуют наличия разных сервисов: БД, мониторинг, конфиг, ...
+Эти сервисы могут быть в контейнерах и удобно запускать пачку контейнеров одной командой.
+Как и конфигурить в одном файле.
+Также, compose может использовать swarm, что может быть удобно тем, кто не хочет k8s.
+
+adminer.dc.yaml, иллюстрация простого композа, файл compose для запуска adminer и mysql (из директории dev).
+При старте mysql запускается инит базы из db_init.sql (не раскрыта связка docker-entrypoint-initdb.d и db_init.sql).
+Устанавливаются переменные среды: пароль и имя БД.
+NB пути в конфиге указаны относительно положения yml файла конфига!
+
+docker-compose:
+- photolist c предварительной сборкой, линкован по сети с контейнером mysql; зависит от mysql.
+    Команда для запуска через скрипт `wait-for-it.sh`, для запуска аппы после появления БД.
+- mysql, так-же как и в adminer.dc.yaml;
+- nginx просто прокидывает запросы на photolist;
+- adminer.
+
+`make docker_compose` -> `docker-compose -f ./deployments/docker-compose.yml up`
+
 ### Хранение файлов в S3 - 1
 ### Хранение файлов в S3 - 2
 ### Хранение файлов в S3 - 3
