@@ -1,6 +1,8 @@
-# Разработка веб-сервисов на Go. Часть 1:
+[Go course from MRG by Романов Василий](README.md)
 
-- week 1, Введение в Golang
+# Разработка веб-сервисов на Go. Часть 1
+
+- week 1, Введение в Go
 - week 2, Асинхронная работа
 - week 3, Работа с динамическими данными и производительность
 - week 4, Основы HTTP
@@ -680,3 +682,34 @@ Unmarshal в пустой интерфейс.
 
 - `BotFather`: зарегить в телеграм.
 - `ngrok.io` как прокси для вывода бота в интернет. Можете заюзать heroku или другие облачные решения для запуска сервисов.
+
+# links, info
+
+Материалы для дополнительного чтения на английском:
+
+* https://go.dev/ref/spec - спецификация по языку
+* https://go.dev/ref/mem - модель памяти го. на начальном этапе не надо, но знать полезно
+* https://go.dev/doc/code - How to Write Go Code
+* https://pkg.go.dev/cmd/go - Пакеты, cmd/go
+* https://go.dev/blog/strings - Strings, bytes, runes and characters in Go
+* https://go.dev/blog/slices - Arrays, slices (and strings): The mechanics of 'append'
+* https://go.dev/blog/slices-intro - Go Slices: usage and internals
+* https://github.com/golang/go/wiki - вики го на гитхабе. очень много полезной информации
+* https://go.dev/blog/maps - Go maps in action
+* https://go.dev/blog/organizing-go-code - Organizing Go code
+* https://go.dev/doc/effective_go - основной сборник тайного знания, сюда вы будуте обращатсья в первое время часто
+* https://github.com/golang/go/wiki/CodeReviewComments - как ревьювить (и писать код). обязательно к прочтению
+* https://divan.dev/posts/avoid_gotchas/ - материал аналогичный 50 оттенков го
+* https://research.swtch.com/interfaces - Go Data Structures: Interfaces (Russ Cox)
+* https://research.swtch.com/godata - Go Data Structures (Russ Cox)
+* https://jordanorelli.com/post/42369331748/function-types-in-go-golang - Function Types in Go (golang)
+* https://www.devdungeon.com/content/working-files-go - работа с файлами
+* https://www.golangprograms.com - много how-to касательно базовых вещей в go
+* https://yourbasic.org/golang/ - ещё большой набор how-to где можно получить углублённую информацию по всем базовым вещам.
+    очень полезны https://yourbasic.org/golang/blueprint/
+* https://go101.org/article/101.html - e-book, похожий на предыдущий сайт с кучей информации по основам и основным местам
+* https://github.com/Workiva/go-datastructures - A collection of useful, performant, and threadsafe Go datastructures
+* https://github.com/enocom/gopher-reading-list - большая подборка статей по многим темам ( не только данной лекции )
+* https://youtu.be/MzTcsI6tn-0 - как организовать код / Ashley McNamara + Brian Ketelsen. Go best practices
+* https://medium.com/@benbjohnson/standard-package-layout-7cdbc8391fc1 - статья на предыдущую тему / Standard Package Layout
+* https://dave.cheney.net/practical-go/presentations/qcon-china.html - Practical Go: Real world advice for writing maintainable Go programs / Dave Cheney dave@cheney.net Version 12c316-Dirty, 2019-04-24

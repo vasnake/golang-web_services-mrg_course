@@ -1,15 +1,15 @@
 # go-web_services-mrg_course
 
-Golang course from MRG
+[Golang course from MRG by Романов Василий](README.md)
 
-- [Разработка веб-сервисов на Golang, Часть 1](https://study.vk.team/learning/play/671)
+- [Разработка веб-сервисов на Go, Часть 1](https://study.vk.team/learning/play/671)
     [part1](part1.md)
 - [Разработка веб-сервисов на Go: Часть 2](https://study.vk.team/learning/course/672)
     [part2](part2.md)
-- [Разработка веб-сервисов на Golang: Часть 3](https://study.vk.team/learning/course/673)
+- [Разработка веб-сервисов на Go: Часть 3](https://study.vk.team/learning/course/673)
     [part3](part3.md)
-- [Разработка веб-сервисов на Golang: Часть 4](https://study.vk.team/learning/course/674)
-    [part4](part4.md) не существует?
+- [Разработка веб-сервисов на Go: Часть 4](https://study.vk.team/learning/course/674)
+    part4 не существует?
 
 # Info, links
 
@@ -18,3 +18,5 @@ Golang course from MRG
 - http://www.usingcsp.com/cspbook.pdf
 - CSP vs Actor model
 - [If a map isn’t a reference variable, what is it?](https://dave.cheney.net/2017/04/30/if-a-map-isnt-a-reference-variable-what-is-it)
+- [Implementing a bignum calculator with Rob Pike](https://youtu.be/PXoG0WX0r_E)
+- [Lexical Scanning in Go - Rob Pike](https://www.youtube.com/watch?v=HxaD_trXwRE)

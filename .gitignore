@@ -19,3 +19,8 @@
 
 # macos
 .DS_Store
+
+# temp dirs
+t/
+tmp/
+temp/
