@@ -4,14 +4,14 @@
 # program to run
 
 dir=week_01
-fname=vars_2.go
+fname=hello_world.go
+# fname=vars_2.go
 
 # dir=week_02
 # fname=visibility/main.go # package!
 # fname=afterfunc.go
 
 # run
-
 __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pushd ${__dir}/${dir}
 

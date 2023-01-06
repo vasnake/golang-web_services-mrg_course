@@ -1,0 +1,15 @@
+
+// https://github.com/golang/tools/blob/master/gopls/doc/workspace.md#multiple-modules
+// The easiest way to work on multiple modules in Go 1.18 and later is therefore to create a go.work file
+// containing the modules you wish to work on,
+// and set your workspace root to the directory containing the go.work file.
+
+// https://code.visualstudio.com/docs/editor/multi-root-workspaces
+// go help work
+// cd $WORK
+// go work init
+// go work use ./tools/ ./tools/gopls/
+
+go 1.19
+
+use ./hello_world

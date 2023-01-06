@@ -12,15 +12,37 @@
 Введение в Go.
 [Код, домашки, литература](week_01/materials.zip) https://cloud.mail.ru/public/pc7H/6Vx4txWWr
 
-Зачем нужен еще один языка программирования?
-Эффективность (работы стажёров в Гугл): компиляции, выполнения, разработки.
-Утилизация многопроцессорных систем (легкие потоки, асинхронность);
+Зачем нужен еще один язык программирования?
+Go-team хотела (for backend) язык C/C++ но без их недостатков, плюс эффективная утилизация многопроцессорных систем.
+Эффективность (работы программеров в Гугл): компиляции, выполнения, разработки. Зависимости, рантайм, garbage-collection.
+Утилизация многопроцессорных систем (легкие потоки, асинхронность, CSP);
 Простой и понятный язык, читабельный, простая и быстрая сборка, с четким стилем.
 Сборка в статический бинарник, решение проблемы dll-hell.
 
 Для realtime, embedding не подходит (в наличии сборка мусора), но всё остальное OK.
 
+- https://go.dev/doc/install
+- https://go.googlesource.com/vscode-go/+/refs/heads/release.theia/README.md
+- https://code.visualstudio.com/docs/languages/go
+- https://github.com/golang/vscode-go/blob/master/docs/tools.md
+- https://learn.microsoft.com/en-us/azure/developer/go/configure-visual-studio-code
+
 ### Первая программа
+
+Чтобы vscode заставить работать с golps и модулями, надо понимать:
+- Что такое и как работать с: `vscode workspace`, `workspace root dirs`.
+- Минимальный набор файлов аппы (модуля): `prj/go.work`, `prj/app/go.mod`, `prj/app/main.go`.
+- Команды для генерации такого бойлерплейта
+```s
+# https://github.com/golang/tools/blob/master/gopls/doc/workspace.md#multiple-modules
+# https://code.visualstudio.com/docs/editor/multi-root-workspaces
+export app_dir=~/go_sandbox_project/hello_world && mkdir -p $app_dir && pushd $app_dir
+touch main.go
+go mod init hello_world
+pushd ..
+go work init
+go work use ./hello_world/
+```
 
 - https://play.golang.com/
 - [run](run.sh)
@@ -34,7 +56,7 @@ go run hello_world.go
 runtime.main_main·f: function main is undeclared in the main package
 ```
 
-Как удобно в Scala, всё есть expression. Но в Golang не так, увы.
+I: Как удобно в Scala, всё есть expression. Но в Golang не так, увы.
 
 Используй `camelCase` для имён. Публичные обьекты называй с большой буквы `Println`.
 
