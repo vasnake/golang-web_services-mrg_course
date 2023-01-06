@@ -27,6 +27,8 @@ Go-team хотела (for backend) язык C/C++ но без их недост�
 - https://github.com/golang/vscode-go/blob/master/docs/tools.md
 - https://learn.microsoft.com/en-us/azure/developer/go/configure-visual-studio-code
 
+GOENV? GOMOD?
+
 ### Первая программа
 
 Чтобы vscode заставить работать с golps и модулями, надо понимать:
