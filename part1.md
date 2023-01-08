@@ -19,7 +19,7 @@ Go-team хотела (for backend) язык C/C++ но без их недост�
 Простой и понятный язык, читабельный, простая и быстрая сборка, с четким стилем.
 Сборка в статический бинарник, решение проблемы dll-hell.
 
-Для realtime, embedding не подходит (в наличии сборка мусора), но всё остальное OK.
+Не подходит для realtime, embedding (в наличии сборка мусора), но всё остальное OK.
 
 - https://go.dev/doc/install
 - https://go.googlesource.com/vscode-go/+/refs/heads/release.theia/README.md
@@ -34,19 +34,6 @@ GOMOD - путь к файлу `go.mod`, руками лучше не трога
 
 Смысл всего упомянутого будет кристально ясен после просмотра серии YT-видео, объясняющих почему, откуда и зачем Go,
 от Go-Team и конкретно Rob Pike.
-
-### https://go.dev/ref/spec
-
-> Programs are constructed from packages, whose properties allow efficient management of dependencies.
-
-> Go programs are constructed by linking together packages.
-A package in turn is constructed from one or more source files that together declare
-constants, types, variables and functions belonging to the package and which are accessible in all files of the same package.
-Those elements may be exported and used in another package. ...
-An implementation may require that all source files for a package inhabit the same directory
-
-> A module is a collection of Go packages stored in a file tree with a `go.mod` file at its root.
-The go.mod file defines the module’s module path..., and its dependency requirements, ...
 
 ### Первая программа
 
@@ -64,6 +51,7 @@ pushd ..
 go work init
 go work use ./hello_world/
 ```
+[snb/hello_world](./sandbox/hello_world/main.go):
 В общем, мои грабли оказались таковы: в vscode у меня воркспейс был из одной рут-директории `desktop`,
 создание проекта и модуля в `desktop/sandbox/hello_world` привело к ругани gopls.
 Пришлось перенести сэндбокс в дерево вне `desktop` и подключить этот сэндбокс к vscode воркспейс как отдельный корень.
@@ -84,6 +72,30 @@ runtime.main_main·f: function main is undeclared in the main package
 I: Как удобно в Scala, всё есть expression. Но в Golang не так, увы.
 
 Используй `camelCase` для имён. Публичные обьекты называй с большой буквы `Println`.
+
+### https://go.dev/ref/spec
+
+```s
+pushd sandbox
+mkdir -p spec && pushd ./spec
+touch main.go
+go mod init spec
+go mod tidy
+popd
+go work use ./spec/
+```
+[spec playground](./sandbox/spec/main.go)
+
+> Programs are constructed from packages, whose properties allow efficient management of dependencies.
+
+> Go programs are constructed by linking together packages.
+A package in turn is constructed from one or more source files that together declare
+constants, types, variables and functions belonging to the package and which are accessible in all files of the same package.
+Those elements may be exported and used in another package. ...
+An implementation may require that all source files for a package inhabit the same directory
+
+> A module is a collection of Go packages stored in a file tree with a `go.mod` file at its root.
+The go.mod file defines the module’s module path..., and its dependency requirements, ...
 
 ### Переменные, базовые типы данных
 

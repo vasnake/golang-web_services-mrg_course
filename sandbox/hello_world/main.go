@@ -15,6 +15,5 @@ import "fmt"
 
 func main() {
 	name := "Gofer"
-	fmt.Println("Hello World! Yours truly,", name, 0_123 == 0o123, 072.40, 0x1p-2)
-	// Hello World! Yours truly, Gofer true 72.4 0.25
+	fmt.Println("Hello World! Yours truly,", name)
 }

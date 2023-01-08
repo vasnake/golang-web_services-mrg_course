@@ -1,4 +1,3 @@
-
 // https://github.com/golang/tools/blob/master/gopls/doc/workspace.md#multiple-modules
 // The easiest way to work on multiple modules in Go 1.18 and later is therefore to create a go.work file
 // containing the modules you wish to work on,
@@ -12,4 +11,7 @@
 
 go 1.19
 
-use ./hello_world
+use (
+	./hello_world
+	./spec
+)
