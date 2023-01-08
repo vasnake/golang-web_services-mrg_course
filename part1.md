@@ -27,12 +27,31 @@ Go-team хотела (for backend) язык C/C++ но без их недост�
 - https://github.com/golang/vscode-go/blob/master/docs/tools.md
 - https://learn.microsoft.com/en-us/azure/developer/go/configure-visual-studio-code
 
-GOENV? GOMOD?
+```s
+GOENV - файл с определениями переменных окружения.
+GOMOD - путь к файлу `go.mod`, руками лучше не трогать.
+```
+
+Смысл всего упомянутого будет кристально ясен после просмотра серии YT-видео, объясняющих почему, откуда и зачем Go,
+от Go-Team и конкретно Rob Pike.
+
+### https://go.dev/ref/spec
+
+> Programs are constructed from packages, whose properties allow efficient management of dependencies.
+
+> Go programs are constructed by linking together packages.
+A package in turn is constructed from one or more source files that together declare
+constants, types, variables and functions belonging to the package and which are accessible in all files of the same package.
+Those elements may be exported and used in another package. ...
+An implementation may require that all source files for a package inhabit the same directory
+
+> A module is a collection of Go packages stored in a file tree with a `go.mod` file at its root.
+The go.mod file defines the module’s module path..., and its dependency requirements, ...
 
 ### Первая программа
 
 Чтобы vscode заставить работать с golps и модулями, надо понимать:
-- Что такое и как работать с: `vscode workspace`, `workspace root dirs`.
+- Что такое и как работать с: `vscode workspace`, `workspace root dirs`, `Multi-root Workspaces`.
 - Минимальный набор файлов аппы (модуля): `prj/go.work`, `prj/app/go.mod`, `prj/app/main.go`.
 - Команды для генерации такого бойлерплейта
 ```s
@@ -45,6 +64,10 @@ pushd ..
 go work init
 go work use ./hello_world/
 ```
+В общем, мои грабли оказались таковы: в vscode у меня воркспейс был из одной рут-директории `desktop`,
+создание проекта и модуля в `desktop/sandbox/hello_world` привело к ругани gopls.
+Пришлось перенести сэндбокс в дерево вне `desktop` и подключить этот сэндбокс к vscode воркспейс как отдельный корень.
+После чего gopls всосал `go.work` в корне сэндбокс и оттуда прочухал модуль `hello_world`.
 
 - https://play.golang.com/
 - [run](run.sh)
