@@ -9,6 +9,8 @@ func main() {
 	imaginary()
 	rune()
 	stringLiterals()
+	constants()
+	variables()
 }
 
 func integers() {
@@ -63,6 +65,49 @@ func stringLiterals() {
 		"\xFF \377",
 		"ÿ \u00FF \U000000FF \xc3\xbf", // N.B. little `u` and big `U`
 	)
+}
+
+func constants() {
+	show("Constants ...")
+	const t = true
+	const f bool = 1 == 0
+	show("Boolean: ", t, f)
+
+	const (
+		r1 = '\xFF'
+		r2 = '\u00FF'
+	)
+	show("Rune: ", r1, r2)
+
+	const i1, i2, i3 = uint(iota), 987654321012345678, len("fooÿ")
+	show("Integer: ", i1, i2, i3)
+
+	const f1, f2, f3 = 0.1e1, 0xF.Fp-1 * 5.3, -0.0
+	show("Float: ", f1, f2, f3)
+
+	const c1, c2 = 1.2i, 3i / 5i
+	show("Complex: ", c1, c2)
+
+	const s1, s2 = "foo", `\r\n`
+	show("Srting: ", s1, s2)
+}
+
+func variables() {
+	show("Variables ...")
+	// A variable is a storage location for holding a value
+	// A variable declaration or, ... the signature of a function declaration or function literal
+	// reserves storage for a named variable.
+	// Calling the built-in function `new`` or taking the address of a composite literal
+	// allocates storage for a variable at run time. Such an anonymous variable is referred to via a (possibly implicit) pointer indirection.
+	var a int
+	var b int = 42
+	var c = func(x int) (int, error) { return 42, nil }
+	d := "xz"
+
+	type Point3D struct{ x, y, z float64 }
+	origin := Point3D{} // composite literal
+
+	show("Values: ", a, b, c, d, origin)
 }
 
 func show(msg string, xs ...any) {
