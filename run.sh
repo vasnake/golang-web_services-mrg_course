@@ -3,7 +3,8 @@
 
 # program to run
 
-app_name=hello_world
+# app_name=hello_world
+app_name=spec
 # dir=week_01
 # fname=hello_world.go
 # fname=vars_2.go
