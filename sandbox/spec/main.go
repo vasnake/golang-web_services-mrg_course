@@ -7,7 +7,7 @@ func main() {
 	integers()
 	floats()
 	imaginary()
-	rune()
+	runeLiterals()
 	stringLiterals()
 	constants()
 	variables()
@@ -38,7 +38,7 @@ func imaginary() {
 	show("Float: ", 1.i, 01.0e0i, 1.1e-1i)
 }
 
-func rune() {
+func runeLiterals() {
 	// Unicode code point, int32
 	show("Rune literals ...")
 	show("Characters: ", 'x', '\n', '0', 'a', '\'')
@@ -173,10 +173,21 @@ func types() {
 		// predeclared constants true and false
 		var t bool = true
 		var f bool
-		show("Boolean types ...", t, f, false)
+		show("Boolean types: ", t, f, false)
+	}
+
+	var numericTypes = func() {
+		show("Numeric types ...")
+		show("Integer: ", uint8(0xFF), uint16(0xFFFF), uint32(0xFFFFFFFF), uint64(0xFFFFFFFFFFFFFFFF), int8(-0xFF>>1))
+		show("Implementation specific integers:", uint(0xFFFFFFFFFFFFFFFF), int(0xFFFFFFFFFFFFFFFF>>1), uintptr(0xFFFFFFFFFFFFFFFF))
+		show("Floats: ", float32(1e03), float64(1e308))
+		show("Complex: ", complex64(1.2i), complex128(2.1i))
+		show("Byte: ", byte(0xFF))
+		show("Rune: ", '\xFF', rune(0xFF))
 	}
 
 	booleanTypes()
+	numericTypes()
 }
 
 func show(msg string, xs ...any) {
