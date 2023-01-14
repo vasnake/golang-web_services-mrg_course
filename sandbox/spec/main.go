@@ -11,6 +11,7 @@ func main() {
 	stringLiterals()
 	constants()
 	variables()
+	types()
 }
 
 func integers() {
@@ -69,6 +70,7 @@ func stringLiterals() {
 
 func constants() {
 	show("Constants ...")
+
 	const t = true
 	const f bool = 1 == 0
 	show("Boolean: ", t, f)
@@ -89,7 +91,7 @@ func constants() {
 	show("Complex: ", c1, c2)
 
 	const s1, s2 = "foo", `\r\n`
-	show("Srting: ", s1, s2)
+	show("String: ", s1, s2)
 }
 
 func variables() {
@@ -98,16 +100,83 @@ func variables() {
 	// A variable declaration or, ... the signature of a function declaration or function literal
 	// reserves storage for a named variable.
 	// Calling the built-in function `new`` or taking the address of a composite literal
-	// allocates storage for a variable at run time. Such an anonymous variable is referred to via a (possibly implicit) pointer indirection.
+	// allocates storage for a variable at run time.
+	// Such an anonymous variable is referred to via a (possibly implicit) pointer indirection.
 	var a int
 	var b int = 42
 	var c = func(x int) (int, error) { return 42, nil }
 	d := "xz"
 
 	type Point3D struct{ x, y, z float64 }
-	origin := Point3D{} // composite literal
+	origin := &Point3D{} // composite literal
 
-	show("Values: ", a, b, c, d, origin)
+	show("Values: ", a, b, c, d, origin, *origin)
+
+	// The static type (or just type) of a variable is the type given in its declaration,
+	// the type provided in the new call or composite literal,
+	// or the type of an element of a structured variable.
+
+	// Variables of interface type also have a distinct dynamic type,
+	// which is the (non-interface) type of the value assigned to the variable at run time
+	// (unless the value is the predeclared identifier nil, which has no type).
+	// The dynamic type may vary during execution
+	// but values stored in interface variables are always assignable to the static type of the variable.
+
+	type T struct{ a, b byte }
+	var v *T          // v has value nil, static type *T
+	var x interface{} // x is nil and has static type interface{}
+	show("Dynamic type 1: ", x, v)
+	x = 42 // x has value 42 and dynamic type int
+	show("Dynamic type 2: ", x)
+	x = v // x has value (*T)(nil) and dynamic type *T
+	show("Dynamic type 3: ", x)
+
+}
+
+func types() {
+	// A type determines a set of values together with operations and methods specific to those values
+	show("Types ...")
+	var a any
+	var b bool
+	var c byte
+	// var d comparable
+	var e complex64
+	var f complex128
+	var g error
+	var h float32
+	var i float64
+	var j int
+	var k int8
+	var l int16
+	var m int32
+	var n int64
+	// var o rune
+	var p string
+	var q uint
+	var r uint8
+	var s uint16
+	var t uint32
+	var u uint64
+	var v uintptr
+	show("Predeclared type names: ", a, b, c, e, f, g, h, i, j, k, l, m, n, p, q, r, s, t, u, v)
+
+	// Composite types — array, struct, pointer, function, interface, slice, map, and channel types — may be constructed using type literals.
+	type T struct{ a, b byte }
+	show("Composite type: ", T{})
+
+	// Predeclared types, defined types, and type parameters are called named types.
+	// An alias denotes a named type if the type given in the alias declaration is a named type.
+	type twoBytes = T
+	show("Alias type: ", twoBytes{})
+
+	var booleanTypes = func() {
+		// predeclared constants true and false
+		var t bool = true
+		var f bool
+		show("Boolean types ...", t, f, false)
+	}
+
+	booleanTypes()
 }
 
 func show(msg string, xs ...any) {
