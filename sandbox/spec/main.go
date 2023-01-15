@@ -150,7 +150,7 @@ func types() {
 	var l int16
 	var m int32
 	var n int64
-	// var o rune
+	var o rune
 	var p string
 	var q uint
 	var r uint8
@@ -158,7 +158,7 @@ func types() {
 	var t uint32
 	var u uint64
 	var v uintptr
-	show("Predeclared type names: ", a, b, c, e, f, g, h, i, j, k, l, m, n, p, q, r, s, t, u, v)
+	show("Predeclared type names: ", a, b, c, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v)
 
 	// Composite types — array, struct, pointer, function, interface, slice, map, and channel types — may be constructed using type literals.
 	type T struct{ a, b byte }
@@ -177,6 +177,7 @@ func types() {
 	}
 
 	var numericTypes = func() {
+		// The predeclared architecture-independent numeric type
 		show("Numeric types ...")
 		show("Integer: ", uint8(0xFF), uint16(0xFFFF), uint32(0xFFFFFFFF), uint64(0xFFFFFFFFFFFFFFFF), int8(-0xFF>>1))
 		show("Implementation specific integers:", uint(0xFFFFFFFFFFFFFFFF), int(0xFFFFFFFFFFFFFFFF>>1), uintptr(0xFFFFFFFFFFFFFFFF))
@@ -186,8 +187,72 @@ func types() {
 		show("Rune: ", '\xFF', rune(0xFF))
 	}
 
+	var stringTypes = func() {
+		// A string value is a (possibly empty) sequence of bytes.
+		// The number of bytes is called the length of the string and is never negative.
+		// Strings are immutable
+		show("String types ...")
+		var a string = ""
+		show("strings: ", a, "йцукен", len("йцукен"))
+
+		var bs string = "йцукен"
+		for i, b := range bs { // enumerate runes
+			show("string runes: fist byte idx, first byte, rune: ", i, bs[i], b)
+		}
+
+		for i := 0; i < len(bs); i++ { // enumerate bytes
+			show("string bytes: ", i, bs[i])
+		}
+	}
+
+	var arrayTypes = func() {
+		// The length is part of the array's type; it must evaluate to a non-negative constant representable by a value of type int
+		show("Array types ...")
+		var as [3]rune
+		var bs [2]struct{ x, y byte }
+		show("arrays: ", as, bs)
+
+		for i, b := range bs {
+			show("array element: ", i, b)
+		}
+		for i := 0; i < len(bs); i++ {
+			show("array elements: ", i, bs[i], bs[i].x-bs[i].y)
+		}
+	}
+
+	var sliceTypes = func() {
+		// A slice is a descriptor for a contiguous segment of an underlying array
+		// The value of an uninitialized slice is nil.
+		// A slice therefore shares storage with its array and with other slices of the same array;
+		// The capacity of a slice a can be discovered using the built-in function cap(a).
+		// A slice created with make always allocates a new, hidden array
+		// with slices of slices (or arrays of slices), the inner lengths may vary dynamically.
+		// Moreover, the inner slices must be initialized individually.
+		show("Slice types ...")
+		type T = struct{ x, y byte }
+		var as []T = make([]T, 2, 4)
+		show("slice: ", as)
+		show("new slices: ", new([16]byte)[7:9], make([]byte, 2))
+
+		bs := [3]byte{1, 2, 3}
+		show("array slices: ", bs[0:1], bs[1:2], bs[2:3], bs[0:3], bs[:])
+		show("slice capacity: ", cap(bs[0:1]), cap(bs[2:3]))
+
+		var cs [2][3]int
+		show("slices 2D: ", cs[:], cs[1][:])
+	}
+
+	structTypes := func() {
+		show("Struct types ...")
+	}
+
 	booleanTypes()
 	numericTypes()
+	stringTypes()
+	arrayTypes()
+	sliceTypes()
+	structTypes()
+
 }
 
 func show(msg string, xs ...any) {
