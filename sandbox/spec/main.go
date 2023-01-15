@@ -1,6 +1,8 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func main() {
 	show("Sveiki!")
@@ -259,8 +261,8 @@ func types() {
 			A
 			B         // B.[x,y,a] are promoted to C
 			_ int64   // padding
-			c float64 `your tag here`
-			x int64   `` // empty tag = no tag
+			c float64 `your:"tag here"` // concatenation of optionally space-separated key:"value" pairs.
+			x int64   ``                // empty tag = no tag
 		}
 		type D = struct {
 			microsec  uint64 `protobuf:"1"`
