@@ -243,7 +243,34 @@ func types() {
 	}
 
 	structTypes := func() {
+		// A struct is a sequence of named elements, called fields, each of which has a name and a type
+		// Field names may be specified explicitly (IdentifierList) or implicitly (EmbeddedField)
+		// A field declared with a type but no explicit field name is called an embedded field
+		// Promoted fields act like ordinary fields of a struct except that they cannot be used
+		// as field names in composite literals of the struct.
+		// The tags are made visible through a reflection interface and take part in type identity for structs but are otherwise ignored.
 		show("Struct types ...")
+		type A = struct{}
+		type B = struct {
+			x, y byte
+			a    *[]A
+		}
+		type C = struct {
+			A
+			B         // B.[x,y,a] are promoted to C
+			_ int64   // padding
+			c float64 `your tag here`
+			x int64   `` // empty tag = no tag
+		}
+		type D = struct {
+			microsec  uint64 `protobuf:"1"`
+			serverIP6 uint64 `protobuf:"2"`
+		}
+		show("structs: ", A{}, B{}, C{}, D{})
+		show("empty struct: ", A{})
+		show("struct with 3 fields: ", B{})
+		show("struct with embedded fields A,B and padding 64bit and tagged fields: ", C{})
+		show("properly tagged struct: ", D{})
 	}
 
 	booleanTypes()
