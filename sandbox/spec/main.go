@@ -269,8 +269,18 @@ func types() {
 		show("structs: ", A{}, B{}, C{}, D{})
 		show("empty struct: ", A{})
 		show("struct with 3 fields: ", B{})
-		show("struct with embedded fields A,B and padding 64bit and tagged fields: ", C{})
+		show("struct with embedded fields A,B (promoted B.*), and padding 64bit, and tagged fields: ", C{}, C{}.B.y)
 		show("properly tagged struct: ", D{})
+	}
+
+	pointerTypes := func() {
+		// set of all pointers to variables of a given type, called the base type of the pointer.
+		// The value of an uninitialized pointer is nil.
+		show("Pointer types ...")
+		type Point = struct{ x, y byte }
+		var a *Point = new(Point)
+		var b *[4]int
+		show("pointers: ", a, b)
 	}
 
 	booleanTypes()
@@ -279,6 +289,7 @@ func types() {
 	arrayTypes()
 	sliceTypes()
 	structTypes()
+	pointerTypes()
 
 }
 
