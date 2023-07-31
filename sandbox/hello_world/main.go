@@ -32,24 +32,29 @@ func main() {
 	answer := 42
 	StdOut("Hello World! Yours truly", name)
 	StdErr("Answer is", answer)
-	// fmt.Fprintf(os.Stderr, "number of foo: %d", nFoo)
+
+	cmdLineArgs := os.Args
+	for i, arg := range cmdLineArgs {
+		StdOut(arg)
+		StdErr("Argument", i, arg)
+	}
 }
 
 // StdOut print line to stdout
 func StdOut(msg string, xs ...any) {
-	var line = MakeLine("OUT: "+msg, xs)
+	line := MakeLine("OUT: "+msg, xs)
 	PrintLine(line, os.Stdout)
 }
 
 // StdErr print line to stderr
 func StdErr(msg string, xs ...any) {
-	var line = MakeLine("ERR: "+msg, xs)
+	line := MakeLine("ERR: "+msg, xs)
 	PrintLine(line, os.Stderr)
 }
 
 // MakeLine adds to msg all xs values
 func MakeLine(msg string, xs []any) string {
-	var line string = msg
+	line := msg
 	for _, x := range xs {
 		line += fmt.Sprintf(", %T(%v)", x, x) // %#v
 	}
