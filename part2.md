@@ -1,6 +1,7 @@
-[Go course from MRG by Романов Василий](README.md)
-
 # Разработка веб-сервисов на Go. Часть 2
+
+[Go course, MRG, Романов Василий](README.md)
+[Разработка веб-сервисов на Go: Часть 2](https://study.vk.team/learning/course/672)
 
 - week 1, Анатомия веб-сервиса
 - week 2, SQL NoSQL

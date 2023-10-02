@@ -1,15 +1,11 @@
-# go-web_services-mrg_course
+# Разработка веб-сервисов на Go
 
-[Go course from MRG by Романов Василий](README.md)
+[Go course, MRG, Романов Василий](https://github.com/vasnake/golang-web_services-mrg_course/blob/main/README.md)
 
-- [Разработка веб-сервисов на Go, Часть 1](https://study.vk.team/learning/play/671)
-    [part1](part1.md)
-- [Разработка веб-сервисов на Go: Часть 2](https://study.vk.team/learning/course/672)
-    [part2](part2.md)
-- [Разработка веб-сервисов на Go: Часть 3](https://study.vk.team/learning/course/673)
-    [part3](part3.md)
-- [Разработка веб-сервисов на Go: Часть 4](https://study.vk.team/learning/course/674)
-    part4 не существует?
+- [part1](part1.md)
+- [part2](part2.md)
+- [part3](part3.md)
+- part4 не существует?
 
 # Info, links
 

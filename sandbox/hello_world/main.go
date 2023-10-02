@@ -5,17 +5,18 @@
 // go work init
 // go work use ./hello_world/
 // popd
+
 // edit main.go
 // gofmt -w main.go
 // go run main.go
+
+// Check stdout, stderr descriptors:
 // GOOS=linux GOARCH=amd64 go build -o hello_world-amd64-linux main.go
 // hello_world>set GOOS=linux&&set GOARCH=amd64&&go build -o hello_world-amd64-linux main.go
-// mv -v ~/data/github/golang-web_services-mrg_course/sandbox/hello_world/hello_world-amd64-linux ~/data/gitlab/dm.dmgrinder/dmgrinder/
-
 /*
-# /workdir/project_files/hello_world-amd64-linux > /dev/null
+# project_files/hello_world-amd64-linux > /dev/null
 ERR: Answer is, int(42)
-# /workdir/project_files/hello_world-amd64-linux 2> /dev/null
+# project_files/hello_world-amd64-linux 2> /dev/null
 OUT: Hello World! Yours truly, string(Gofer)
 */
 
@@ -30,6 +31,7 @@ import (
 func main() {
 	name := "Gofer"
 	answer := 42
+
 	StdOut("Hello World! Yours truly", name)
 	StdErr("Answer is", answer)
 

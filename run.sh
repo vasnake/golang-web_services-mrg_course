@@ -1,7 +1,47 @@
 #!/bin/bash
-# alias gr='bash -x ~/github/vasnake/go/mrg_course/golang-web_services-mrg_course/run.sh'
+# alias gr='bash -x /mnt/c/Users/valik/data/github/golang-web_services-mrg_course/run.sh'
+PRJ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# program to run
+APP_SELECTOR=${GO_APP_SELECTOR:-hello_world}
+
+go_run() {
+    local selector="${1}"
+    case $selector in
+        hello_world | helloworld)   go_run_sandbox hello_world;;
+        *)                          errorExit "Unknown program: ${selector}";;
+    esac
+}
+
+go_run_sandbox() {
+    local module="${1}"
+    pushd ${PRJ_DIR}/sandbox
+    gofmt -w $module || exit
+    go run $module
+    local exit_code=$?
+    popd
+    return $exit_code
+}
+
+errorExit() {
+    echo "$1" 1>&2
+    exit 1
+}
+
+go_run ${APP_SELECTOR}
+exit_code=$?
+echo "Exit code: ${exit_code}"
+
+exit $exit_code
+
+installGo() {
+    # https://go.dev/doc/install
+    pushd /mnt/c/Users/valik/Downloads
+    sudo rm -rf /usr/local/go && tar -C /usr/local -xzf go1.21.1.linux-amd64.tar.gz
+    popd
+    # vim ~/.profile
+}
+
+# deprecated
 
 # app_name=hello_world
 app_name=spec

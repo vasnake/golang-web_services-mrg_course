@@ -1,6 +1,7 @@
-[Go course from MRG by Романов Василий](README.md)
-
 # Разработка веб-сервисов на Go. Часть 3
+
+[Go course, MRG, Романов Василий](README.md)
+[Разработка веб-сервисов на Go: Часть 3](https://study.vk.team/learning/course/673)
 
 - week 1, Структура приложения
 - week 2, Проектирование API
