@@ -6,6 +6,7 @@ import (
 
 func main() {
 	show("Sveiki!")
+
 	integers()
 	floats()
 	imaginary()
@@ -17,41 +18,99 @@ func main() {
 }
 
 func integers() {
-	show("Int literals ...")
+	show("An integer literal is a sequence of digits representing an integer constant")
+	// For readability, an underscore character _ may appear after a base prefix or between successive digits
 	show("Decimal: ", 0, 123, 123_456_789)
+
+	// An optional prefix sets a non-decimal base
 	show("Binary: ", 0b0, 0b11, 0b_010, 0b_0_0_1)
 	show("Octal: ", 0123, 0_123, 0o123, 0o76_54_32_10) // N.B. optional `o`, unlike other bases
 	show("Hex: ", 0x0A, 0x0a, 0x_0A, 0x_1234_5678_9abc_ef00, 0x_Bad_Face, 0xBEEF, 0x1E-2 /*0x1e - 2*/)
+
+	// _42         // an identifier, not an integer literal
+	// 42_         // invalid: _ must separate successive digits
+	// 4__2        // invalid: only one _ at a time
+	// 0_xBadFace  // invalid: _ must separate successive digits
 }
 
 func floats() {
-	show("Float literals ...")
+	show("A floating-point literal is a decimal or hexadecimal representation of a floating-point constant")
+
+	// One of the integer part or the fractional part may be elided;
+	// one of the decimal point or the exponent part may be elided.
 	// N.B. `0` as prefix will be ignored
 	show("Decimal: ", 1., 01.0e+0, 1.e+0, 1.0, 1e0, .1, .1e1, 1.1e-1, 012_345_6.7_89e-01)
+
 	// Hexadecimal floating-point constants make it easy for the compiler to reproduce the exact value.
 	// 0x1.fp-2 is (1 + 15/16)•(2^-2) = .484375
+	// For readability, an underscore character _ may appear after a base prefix or between successive digits
 	show("Hex: ", 0xA.Ap0, 0xA.Fp+1, 0xAp1, 0x.Ap1, 0x_Ap-0_1, 0xAp-1)
+	// consists of a 0x or 0X prefix,
+	// an integer part (hexadecimal digits),
+	// a radix point,
+	// a fractional part (hexadecimal digits),
+	// and an exponent part (p or P followed by an optional sign and decimal digits).
+	// One of the integer part or the fractional part may be elided; the radix point may be elided as well, but the exponent part is required
+
+	// 0x15e-2      // == 0x15e - 2 (integer subtraction)
+	// 0x.p1        // invalid: mantissa has no digits
+	// 1p-2         // invalid: p exponent requires hexadecimal mantissa
+	// 0x1.5e-2     // invalid: hexadecimal mantissa requires p exponent
+	// 1_.5         // invalid: _ must separate successive digits
+	// 1._5         // invalid: _ must separate successive digits
+	// 1.5_e1       // invalid: _ must separate successive digits
+	// 1.5e_1       // invalid: _ must separate successive digits
+	// 1.5e1_       // invalid: _ must separate successive digits
 }
 
 func imaginary() {
-	show("Imaginary literals ...")
+	show("An imaginary literal represents the imaginary part of a complex constant")
+	// It consists of an integer or floating-point literal followed by the lowercase letter i
+	// The value of an imaginary literal is the value of the respective integer or floating-point literal multiplied by the imaginary unit i
+	// integer part consisting entirely of decimal digits ... is considered a decimal integer, even if it starts with a leading 0
+
 	show("Decimal: ", 0i, 1i, 987i)
 	show("Int: ", 0b11i, 0o123i, 0xFi, 123i)
 	show("Float: ", 1.i, 01.0e0i, 1.1e-1i)
+
+	// 0123i  // == 123i for backward-compatibility
+	// 0o123i // == 0o123 * 1i == 83i
 }
 
 func runeLiterals() {
 	// Unicode code point, int32
-	show("Rune literals ...")
+	show("A rune literal represents a rune constant, an integer value identifying a Unicode code point")
+	// A rune literal is expressed as one or more characters enclosed in single quotes
+	// A single quoted character represents the Unicode value of the character itself,
+	// while multi-character sequences beginning with a backslash encode values in various formats
+
 	show("Characters: ", 'x', '\n', '0', 'a', '\'')
+
+	// There are four ways to represent the integer value as a numeric constant:
+	// \x followed by exactly two hexadecimal digits;
+	// \u followed by exactly four hexadecimal digits;
+	// \U followed by exactly eight hexadecimal digits,
+	// and a plain backslash \ followed by exactly three octal digits
+
 	show("Special chars: ", '\a', '\b', '\f', '\n', '\r', '\t', '\v', '\\', '\'', '"')
 	show("Unicode: ", '本', 'Я', '\uABCD', '\U00101234') // N.B. little `u` and big `U`
 	show("Byte: ", '\377', '\xFF')
+
+	// 'aa'         // illegal: too many characters
+	// '\k'         // illegal: k is not recognized after a backslash
+	// '\xa'        // illegal: too few hexadecimal digits
+	// '\0'         // illegal: too few octal digits
+	// '\400'       // illegal: octal value over 255
+	// '\uDFFF'     // illegal: surrogate half
+	// '\U00110000' // illegal: invalid Unicode code point
 }
 
 func stringLiterals() {
-	show("String literals ...")
+	show("A string literal represents a string constant obtained from concatenating a sequence of characters")
+	// There are two forms: raw string literals and interpreted string literals
+
 	// string composed of the uninterpreted (implicitly UTF-8-encoded) characters
+	// Raw string literals are character sequences between back quotes, as in `foo`
 	show(
 		"Raw: ",
 		`foo`,
@@ -60,7 +119,10 @@ func stringLiterals() {
 		`,
 		` " ' \ `,
 	)
+
 	// backslash escapes interpreted as they are in rune literals
+	// Interpreted string literals are character sequences between double quotes, as in "bar"
+	// The three-digit octal (\nnn) and two-digit hexadecimal (\xnn) escapes represent individual bytes of the resulting string
 	show(
 		"Interpreted: ",
 		"new line and 2 tabs:\n\t\t",
@@ -68,13 +130,32 @@ func stringLiterals() {
 		"\xFF \377",
 		"ÿ \u00FF \U000000FF \xc3\xbf", // N.B. little `u` and big `U`
 	)
+
+	// These examples all represent the same string:
+	// "日本語"                                 // UTF-8 input text
+	// `日本語`                                 // UTF-8 input text as a raw literal
+	// "\u65e5\u672c\u8a9e"                    // the explicit Unicode code points
+	// "\U000065e5\U0000672c\U00008a9e"        // the explicit Unicode code points
+	// "\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e"  // the explicit UTF-8 bytes
 }
 
 func constants() {
-	show("Constants ...")
+	show("Constants, numeric and string")
+	// There are boolean constants, rune constants, integer constants, floating-point constants, complex constants, and string constants.
+	// Rune, integer, floating-point, and complex constants are collectively called numeric constants.
 
-	const t = true
-	const f bool = 1 == 0
+	// Numeric constants represent exact values of arbitrary precision and do not overflow.
+	// Consequently, there are no constants denoting the IEEE-754 negative zero, infinity, and not-a-number values.
+	// Implementation restriction: Although numeric constants have arbitrary precision in the language,
+	// a compiler may implement them using an internal representation with limited precision
+
+	// Constants may be typed or untyped.
+	// Literal constants, true, false, iota, and certain constant expressions ... are untyped
+	// An untyped constant has a default type
+	// The default type of an untyped constant is bool, rune, int, float64, complex128, or string respectively
+
+	const t = true        // default type
+	const f bool = 1 == 0 // constant expression
 	show("Boolean: ", t, f)
 
 	const (
@@ -97,24 +178,30 @@ func constants() {
 }
 
 func variables() {
-	show("Variables ...")
-	// A variable is a storage location for holding a value
-	// A variable declaration or, ... the signature of a function declaration or function literal
-	// reserves storage for a named variable.
-	// Calling the built-in function `new`` or taking the address of a composite literal
-	// allocates storage for a variable at run time.
-	// Such an anonymous variable is referred to via a (possibly implicit) pointer indirection.
+	show("A variable is a storage location for holding a value. The set of permissible values is determined by the variable's type")
+	// A variable declaration or, ... the signature of a function declaration or function literal reserves storage for a named variable.
+
+	// A variable's value is retrieved by referring to the variable in an expression;
+	// it is the most recent value assigned to the variable.
+	// If a variable has not yet been assigned a value, its value is the zero value for its type
+
 	var a int
 	var b int = 42
 	var c = func(x int) (int, error) { return 42, nil }
 	d := "xz"
 
+	// Calling the built-in function `new` or taking the address of a composite literal allocates storage for a variable at run time.
+	// Such an anonymous variable is referred to via a (possibly implicit) pointer indirection.
+
 	type Point3D struct{ x, y, z float64 }
 	origin := &Point3D{} // composite literal
 
 	show("Values: ", a, b, c, d, origin, *origin)
+	// Values: int(0); int(42); func(int) (int, error)(0x47ed20); string(xz); *main.Point3D(&{0 0 0}); main.Point3D({0 0 0});
 
-	// The static type (or just type) of a variable is the type given in its declaration,
+	// static vs dynamic types
+
+	// Static type of a variable is the type given in its declaration,
 	// the type provided in the new call or composite literal,
 	// or the type of an element of a structured variable.
 
@@ -125,19 +212,20 @@ func variables() {
 	// but values stored in interface variables are always assignable to the static type of the variable.
 
 	type T struct{ a, b byte }
-	var v *T          // v has value nil, static type *T
-	var x interface{} // x is nil and has static type interface{}
-	show("Dynamic type 1: ", x, v)
-	x = 42 // x has value 42 and dynamic type int
-	show("Dynamic type 2: ", x)
-	x = v // x has value (*T)(nil) and dynamic type *T
-	show("Dynamic type 3: ", x)
+	var v *T                       // v has value nil, static type *T
+	var x interface{}              // x is nil and has static type interface{}
+	show("Dynamic type 1: ", x, v) // Dynamic type 1: <nil>(<nil>); *main.T(<nil>);
 
+	x = 42                      // x has value 42 and dynamic type int
+	show("Dynamic type 2: ", x) // Dynamic type 2: int(42);
+
+	x = v                       // x has value (*T)(nil) and dynamic type *T
+	show("Dynamic type 3: ", x) // Dynamic type 3: *main.T(<nil>);
 }
 
 func types() {
-	// A type determines a set of values together with operations and methods specific to those values
-	show("Types ...")
+	show("A type determines a set of values together with operations and methods specific to those values")
+
 	var a any
 	var b bool
 	var c byte

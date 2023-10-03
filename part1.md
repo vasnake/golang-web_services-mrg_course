@@ -13,14 +13,18 @@
 Введение в Go. [Код, домашки, литература](week_01/materials.zip)
 
 Зачем нужен еще один язык программирования?
-Go-team хотела (backend development) язык C/C++ но без их недостатков, плюс эффективная утилизация многопроцессорных систем.
+Go-team (backend development) хотела язык C/C++ но без их недостатков, плюс эффективная утилизация многопроцессорных систем.
 Эффективность (работы программеров в Гугл): компиляции, выполнения, разработки. Зависимости, рантайм, garbage-collection.
 Утилизация многопроцессорных систем (легкие потоки, асинхронность, CSP);
-Простой и понятный язык, читабельный, простая и быстрая сборка, с четким стилем.
-Сборка в статический бинарник, решение проблем dll-hell.
+Простой и понятный язык, читабельный, с четким стилем.
+Простая и быстрая сборка. Сборка в статический бинарник, решение проблем dll-hell.
 
 Go не подходит для realtime, embedding (в наличии сборка мусора), но всё остальное OK.
 
+Смысл всего упомянутого будет кристально ясен после просмотра серии YT-видео, объясняющих почему, откуда и зачем Go.
+Ищи видео от Go-Team и конкретно Rob Pike.
+
+Установка и наладка development environment:
 - https://go.dev/doc/install
 - https://go.googlesource.com/vscode-go/+/refs/heads/release.theia/README.md
 - https://code.visualstudio.com/docs/languages/go
@@ -33,9 +37,6 @@ Homework
 GOENV - файл с определениями переменных окружения
 GOMOD - путь к файлу `go.mod`, руками лучше не трогать
 ```
-
-Смысл всего упомянутого будет кристально ясен после просмотра серии YT-видео, объясняющих почему, откуда и зачем Go.
-Ищи видео от Go-Team и конкретно Rob Pike.
 
 ### Первая программа
 
@@ -65,21 +66,30 @@ go work use ./hello_world/
 
 - https://play.golang.com/
 - [run](run.sh)
-- [hello_world](week_01/hello_world.go)
+- [w01/hello_world](week_01/hello_world.go)
 
-`package main`: основной (запускаемый) пакет программы.
+Используй `camelCase` для имён. Публичные обьекты называй с большой буквы: `Println`.
 
-`func main() {...}`: основной (запускаемый) функ. программы. Если такой нет, то запускатор будет ругаться
+Файл с кодом содержит:
+- `package main`: декларация пакета, в котором расположен код файла. Название `main` означает, что это основной пакет программы,
+в котором расположена основная функция программы.
+- `func main() {...}`: декларация основной функции пакета. Функция будет выполнена при старте программы.
 ```s
 go run hello_world.go
+
+# если пакета main нет:
+package hello_world is not a main package
+
+# если функции main нет:
 runtime.main_main·f: function main is undeclared in the main package
 ```
 
-I: Как удобно в Scala, всё есть expression. Но в Golang не так, увы.
-
-Используй `camelCase` для имён. Публичные обьекты называй с большой буквы `Println`.
+I:
+> Как удобно в Scala, всё есть expression. Но в Golang не так, увы.
 
 ### https://go.dev/ref/spec
+
+Почитай спецификацию языка, осознай особенности.
 
 ```s
 pushd sandbox
@@ -92,6 +102,12 @@ go work use ./spec/
 ```
 [spec playground](./sandbox/spec/main.go)
 
+Пакет: имя, нэймспейс для группировки: констант, типов, переменных, функций. Один или несколько файлов.
+
+Модуль: коллекция пакетов, сопровождаемая файлом `go.mod`.
+
+> general-purpose language designed with systems programming in mind. It is strongly typed and garbage-collected and has explicit support for concurrent programming.
+
 > Programs are constructed from packages, whose properties allow efficient management of dependencies.
 
 > Go programs are constructed by linking together packages.
@@ -100,8 +116,35 @@ constants, types, variables and functions belonging to the package and which are
 Those elements may be exported and used in another package. ...
 An implementation may require that all source files for a package inhabit the same directory
 
-> A module is a collection of Go packages stored in a file tree with a `go.mod` file at its root.
-The go.mod file defines the module’s module path..., and its dependency requirements, ...
+> A module is a collection of Go packages ... with a `go.mod` file ...
+The `go.mod` file defines the module’s ... path..., and its dependency requirements ...
+
+> Source code is Unicode text encoded in UTF-8
+The text is not canonicalized, ... use the unqualified term character to refer to a Unicode code point in the source text.
+... a compiler may disallow the NUL character (U+0000) in the source text
+... A byte order mark ((U+FEFF)) may be disallowed anywhere else in the source
+Unicode character categories: newline, letter, digit, char (not newline). `_` is considered a lowercase letter.
+
+Comments:
+> Line comments start with the character sequence `//` and stop at the end of the line.
+General comments start with the character sequence `/*` and stop with the first subsequent character sequence `*/`.
+A general comment containing no newlines acts like a space. Any other comment acts like a newline.
+
+Tokens:
+> four classes: identifiers, keywords, operators and punctuation, and literals.
+... the next token is the longest sequence of characters that form a valid token
+The formal syntax uses semicolons ";" as terminators ... Go programs may omit most of these semicolons ...
+
+> Identifiers name program entities ... An identifier is a sequence of one or more letters and digits. The first character in an identifier must be a letter.
+Some identifiers are predeclared.
+
+> keywords are reserved and may not be used as identifiers (`map` is a keyword)
+
+> Operators combine operands into expressions
+
+> Variables of `interface` type also have a distinct dynamic type, which is the (non-interface) type of the value assigned to the variable at run time ...
+
+_YOU_ARE_HERE_: https://go.dev/ref/spec#Types
 
 ### Переменные, базовые типы данных
 
@@ -748,7 +791,7 @@ Unmarshal в пустой интерфейс.
 - `BotFather`: зарегить в телеграм.
 - `ngrok.io` как прокси для вывода бота в интернет. Можете заюзать heroku или другие облачные решения для запуска сервисов.
 
-# links, info
+## links, info
 
 Материалы для дополнительного чтения на английском:
 

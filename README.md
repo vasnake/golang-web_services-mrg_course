@@ -7,7 +7,7 @@
 - [part3](part3.md)
 - part4 не существует?
 
-# Info, links
+## Info, links
 
 - `Communicating Sequential Processes` by Tony Hoare
 - https://cs.stanford.edu/people/eroberts/courses/soco/projects/2008-09/tony-hoare/csp.html

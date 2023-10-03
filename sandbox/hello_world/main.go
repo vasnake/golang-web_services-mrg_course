@@ -35,6 +35,7 @@ func main() {
 	StdOut("Hello World! Yours truly", name)
 	StdErr("Answer is", answer)
 
+	// print program arguments
 	cmdLineArgs := os.Args
 	for i, arg := range cmdLineArgs {
 		StdOut(arg)
