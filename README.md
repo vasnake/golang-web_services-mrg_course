@@ -7,6 +7,15 @@
 - [part3](part3.md)
 - part4 не существует?
 
+## homework
+
+> Numeric constants represent exact values of arbitrary precision and do not overflow.
+Consequently, there are no constants denoting the IEEE-754 negative zero, infinity, and not-a-number values.
+
+Напиши библиотечные функции:
+- Сравнения двух чисел float, с учетом дельты, +/- zero.
+- Предикат `IsInvalidFloat`, используемый в фильтрации коллекции чисел. Инвалид: inf, nan.
+
 ## Info, links
 
 - `Communicating Sequential Processes` by Tony Hoare

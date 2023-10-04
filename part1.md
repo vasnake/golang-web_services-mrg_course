@@ -68,7 +68,7 @@ go work use ./hello_world/
 - [run](run.sh)
 - [w01/hello_world](week_01/hello_world.go)
 
-Используй `camelCase` для имён. Публичные обьекты называй с большой буквы: `Println`.
+Используй `camelCase` для имён. Публичные (экспортируемые) обьекты называй с большой буквы: `Println`.
 
 Файл с кодом содержит:
 - `package main`: декларация пакета, в котором расположен код файла. Название `main` означает, что это основной пакет программы,
@@ -142,9 +142,40 @@ Some identifiers are predeclared.
 
 > Operators combine operands into expressions
 
-> Variables of `interface` type also have a distinct dynamic type, which is the (non-interface) type of the value assigned to the variable at run time ...
+> If a variable has not yet been assigned a value, its value is the zero value for its type.
+Variables of `interface` type also have a distinct dynamic type, which is the (non-interface) type of the value assigned to the variable at run time ...
 
-_YOU_ARE_HERE_: https://go.dev/ref/spec#Types
+Строки: последовательность символов (рун), Unicode code-points. Длина строки в рунах != длине строки в байтах.
+Если надо работать с коллекцией байт или рун, то надо явно привести тип (`[]rune(str)` or `[]byte(str)`).
+Такое приведение типа создает копию данных, где иммутабельность уже не соблюдается.
+> A string value is a sequence of bytes. The number of bytes is called the length of the string ...
+Strings are immutable
+It is illegal to take the address of a string's byte
+
+> Numeric constants represent exact values of arbitrary precision and do not overflow.
+Consequently, there are no constants denoting the IEEE-754 negative zero, infinity, and not-a-number values.
+Constants may be typed or untyped.
+An untyped constant has a default type
+
+> Numeric types: uint8..64, int8..64, float32..64, complex64..128, byte (alias uint8), rune (alias uint32).
+Predeclared integer types with implementation-specific sizes: uint, int, uintptr.
+
+Array: коллекция элементов одного типа, массивы разных размеров это разные типы.
+Определение типа массива не может быть рекурсивным.
+> The length is part of the array's type
+An array type T may not have an element of type T, or of a type containing T as a component
+
+Slice: можно сказать, что слайс это view на array с данными.
+У слайса есть переменные длина и капасити.
+Слайс разделяет "хранилище" (массив) с другими слайсами, они все смотрят на один и тот-же кусок памяти.
+
+Struct: набор элементов (полей) структуры.
+Может содержать embedded поля, promoted поля. Нельзя определять поля рекурсивно.
+> A field declared with a type but no explicit field name is called an embedded field
+
+Function type: сигнатура функции определяет ее тип.
+Возможны variadic фунции, 0 и более аргументов на последней позиции списка аргументов.
+Возвращаемые параметры могут быть именованы, возвращаемые параметры это, в общем случае, кортеж.
 
 ### Переменные, базовые типы данных
 
