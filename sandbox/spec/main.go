@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	show("\nSveiki!\n")
+	show("\nSveiki!")
 
 	integers()
 	floats()
@@ -459,8 +459,8 @@ func types() {
 		show("\nA function type denotes the set of all functions with the same parameter and result types")
 		// The value of an uninitialized variable of function type is nil.
 
-		// The final incoming parameter in a function signature may have a type prefixed with ...
-		// A function with such a parameter is called variadic and may be invoked with zero or more arguments for that parameter
+		// The final incoming parameter in a function signature may have a type prefixed with `...`
+		// A function with such a parameter is called `variadic` and may be invoked with zero or more arguments for that parameter
 
 		// Named return values in signature
 		// Any number of return values
@@ -468,19 +468,18 @@ func types() {
 		// examples
 		var a = func() {}
 		var b = func(x int) int { return x + 42 }
-		var c = func(a, _ int, z float32) bool { return bool(float32(a) > z) }
+		var c = func(a, _ int, z float32) bool { return float32(a) > z }
 		var d = func(a, b int, z float32) bool { return a == b && z > 0 }
 
 		var e = func(prefix string, values ...int) {
 			for i, x := range values {
 				show(prefix, i, x)
 			}
-			return
 		}
 
 		var f = func(a, b int, z float64, opt ...interface{}) (success bool) {
 			success = (float64(a) - float64(b) + z - float64(len(opt))) > 0
-			return
+			return // success
 		}
 
 		var g = func(int, int, float64) (float64, *[]int) { return 42.0, &[]int{1, 2} }
@@ -494,12 +493,175 @@ func types() {
 		// functions g, h: func(int, int, float64) (float64, *[]int)(0x47fe60); func(int) func(*main.T)(0x47e540);
 	}
 
-	// Interface types
-	//	Basic interfaces
-	//	Embedded interfaces
-	//	General interfaces
-	// Map types
-	// Channel types
+	var interfaceTypes = func() {
+		show("\nAn interface type defines a `type set`")
+		// A variable of interface type can store a value of any type that is in the type set of the interface.
+		// Such a type is said to `implement` the interface.
+		// The value of an uninitialized variable of interface type is nil
+
+		// An interface type is specified by a list of `interface elements`
+		//  An interface element is either a method or a type
+
+		// A type T implements an interface I if
+		// T is not an interface and is an element of the type set of I; or
+		// T is an interface and the type set of T is a subset of the type set of I.
+
+		var basicInterfaces = func() {
+			show("Interfaces whose type sets can be defined entirely by a list of methods are called basic interfaces.")
+			// The type set defined by such an interface is the set of types which implement all of those methods
+
+			// type illegal interface {
+			// 	String() string
+			// 	String() string  // illegal: String not unique
+			// 	_(x int)         // illegal: method must have non-blank name
+			// }
+
+			// A simple File interface. // e.g.
+			type file interface {
+				Read(b []byte) (n int, err error)
+				Write(b []byte) (n int, err error)
+				Close() error
+			}
+
+			// More than one type may implement an interface
+			// type T1 int32
+			// type T2 uint32
+			// func (f T1) Read(n []byte) (int, error)  { return 42, nil }
+			// func (f T1) Write(n []byte) (int, error) { return 42, nil }
+			// func (f T1) Close() error                { return nil }
+			// func (f T2) Read(n []byte) (int, error)  { return 42, nil }
+			// func (f T2) Write(n []byte) (int, error) { return 42, nil }
+			// func (f T2) Close() error                { return nil }
+
+			// Any given type may implement several distinct interfaces.
+			// For instance, all types implement the empty interface (alias `any`)
+			// which stands for the set of all (non-interface) types `interface{}`
+
+		}
+
+		var embeddedInterfaces = func() {
+			show("Embedding interface E in T: an interface T may use a (possibly qualified) interface type name E as an interface element")
+			// In a slightly more general form
+			// an interface T may use a (possibly qualified) interface type name E as an interface element.
+			// This is called embedding interface E in T
+
+			// The type set of T is the intersection of the type sets defined by T's explicitly declared methods
+			// and the type sets of T’s embedded interfaces
+			// When embedding interfaces, methods with the same names must have identical signatures.
+
+			type Reader interface {
+				Read(p []byte) (n int, err error)
+				Close() error
+			}
+
+			type Writer interface {
+				Write(p []byte) (n int, err error)
+				Close() error
+			}
+
+			// ReadWriter's methods are Read, Write, and Close.
+			type ReadWriter interface {
+				Reader // includes methods of Reader in ReadWriter's method set
+				Writer // includes methods of Writer in ReadWriter's method set
+			}
+
+			// type ReadCloser interface {
+			// 	Reader   // includes methods of Reader in ReadCloser's method set
+			// 	Close()  // illegal: signatures of Reader.Close and Close are different
+			// }
+		}
+
+		var generalInterfaces = func() {
+			show("In their most general form, an interface element may also be an arbitrary type term T, or a term of the form ~T specifying the underlying type T, or a union of terms t1|t2|…|tn")
+			// Together with method specifications, these elements enable the precise definition of an interface's type set as follows:
+			// The type set of the empty interface is the set of all non-interface types.
+			// The type set of a non-empty interface is the intersection of the type sets of its interface elements.
+			// The type set of a method specification is the set of all non-interface types whose method sets include that method.
+			// The type set of a non-interface type term is the set consisting of just that type.
+			// The type set of a term of the form ~T is the set of all types whose underlying type is T.
+			// The type set of a union of terms t1|t2|…|tn is the union of the type sets of the terms
+
+			// Interfaces that are not `basic` may only be used as type constraints,
+			// or as elements of other interfaces used as constraints.
+			// They cannot be the types of values or variables, or components of other, non-interface types
+
+			// An interface representing only the type int.
+			type intInterface interface {
+				int
+			}
+
+			// An interface representing all types with underlying type int.
+			type allIntsInterface interface {
+				~int
+			}
+
+			// An interface representing all types with underlying type int that implement the String method.
+			type printableInt interface {
+				~int
+				String() string
+			}
+
+			// An interface representing an empty type set: there is no type that is both an int and a string.
+			type emptyTypesSet interface {
+				int
+				string
+			}
+
+			// In a term of the form ~T, the underlying type of T must be itself, and T cannot be an interface.
+			type MyInt int
+			// type illegal interface {
+			// 	~[]byte  // the underlying type of []byte is itself
+			// 	~MyInt   // illegal: the underlying type of MyInt is not MyInt
+			// 	~error   // illegal: error is an interface
+			// }
+
+			// Union elements denote unions of type sets:
+			// The Float interface represents all floating-point types
+			// (including any named types whose underlying types are either float32 or float64).
+			type Float interface {
+				~float32 | ~float64
+			}
+
+			// Given a type parameter P:
+			// type illegal interface {
+			// 	P                // illegal: P is a type parameter
+			// 	int | ~P         // illegal: P is a type parameter
+			// 	~int | MyInt     // illegal: the type sets for ~int and MyInt are not disjoint (~int includes MyInt)
+			// 	float32 | Float  // overlapping type sets but Float is an interface
+			// }
+
+		}
+
+		basicInterfaces()
+		embeddedInterfaces()
+		generalInterfaces()
+	}
+
+	var mapTypes = func() {
+		show("\nA map is an unordered group of elements of one type, called the element type, indexed by a set of unique keys of another type, called the key type")
+		// The value of an uninitialized map is nil.
+
+		// The comparison operators == and != must be fully defined for operands of the key type;
+		// thus the key type must not be a function, map, or slice.
+		// If the key type is an interface type, these comparison operators must be defined for the dynamic key values; failure will cause a run-time panic.
+		var a map[string]int
+		var b map[*T]struct{ x, y float64 }
+		var c map[string]interface{}
+		show("Maps examples: ", a, b, c)
+
+		// Elements may be added during execution using assignments and retrieved with index expressions;
+		// they may be removed with the `delete` and `clear` built-in function
+
+		// A new, empty map value is made using the built-in function `make`, which takes the map type and an optional capacity hint as arguments:
+		a = make(map[string]int)
+		a = make(map[string]int, 100)
+
+		// A nil map is equivalent to an empty map except that no elements may be added
+	}
+
+	var channelTypes = func() {
+		show("\n")
+	}
 
 	booleanTypes()
 	numericTypes()
@@ -509,6 +671,9 @@ func types() {
 	structTypes()
 	pointerTypes()
 	functionTypes()
+	interfaceTypes()
+	mapTypes()
+	channelTypes()
 }
 
 func show(msg string, xs ...any) {
@@ -521,6 +686,6 @@ func show(msg string, xs ...any) {
 }
 
 var runesCount = func(str string) int {
-	var runes = []rune(str)
+	var runes = []rune(str) // allocation?
 	return len(runes)
 }

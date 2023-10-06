@@ -174,8 +174,23 @@ Struct: набор элементов (полей) структуры.
 > A field declared with a type but no explicit field name is called an embedded field
 
 Function type: сигнатура функции определяет ее тип.
-Возможны variadic фунции, 0 и более аргументов на последней позиции списка аргументов.
+Возможны `variadic` фунции, 0 и более аргументов на последней позиции списка (кортежа) аргументов.
 Возвращаемые параметры могут быть именованы, возвращаемые параметры это, в общем случае, кортеж.
+
+Interface type: любой тип, имплементирующий данный интерфейс, может быть адресован через переменную типа этого интерфейса.
+Следствие: любой тип имплементирует пустой интерфейс, переменная типа пустой интерфейс может ссылаться на любой объект (не-интерфейс).
+> For convenience, the predeclared type `any` is an alias for the empty interface
+
+Embedding interface E in T: an interface T may use a (possibly qualified) interface type name E as an interface element
+
+Интерфейс можно ограничить, указав набор типов, для которых интерфейс валиден. Это будет не-basic интерфейс.
+> Interfaces that are not basic may only be used as type constraints, or as elements of other interfaces used as constraints. They cannot be the types of values or variables, or components of other, non-interface types
+
+Нельзя определять интерфейс рекурсивно.
+
+Map type: не-упорядоченная коллекция элементов, с индексами-ключами.
+> The comparison operators == and != must be fully defined for operands of the key type
+... A nil map is equivalent to an empty map except that no elements may be added
 
 ### Переменные, базовые типы данных
 

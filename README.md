@@ -13,8 +13,15 @@
 Consequently, there are no constants denoting the IEEE-754 negative zero, infinity, and not-a-number values.
 
 Напиши библиотечные функции:
-- Сравнения двух чисел float, с учетом дельты, +/- zero.
-- Предикат `IsInvalidFloat`, используемый в фильтрации коллекции чисел. Инвалид: inf, nan.
+- Предикат `IsInvalidFloat`, используемый в фильтрации коллекции чисел. Инвалид: inf, nan
+- Сравнения двух чисел float, с учетом дельты, +/- zero, nan, +/- inf
+
+> Two's complement is achieved by:
+- Step 1: starting with the equivalent positive number.
+- Step 2: inverting (or flipping) all bits – changing every 0 to 1, and every 1 to 0;
+- Step 3: adding 1 to the entire inverted number, ignoring any overflow.
+
+Напиши отображение 32-бит числа в int32, uint32. Битовое представление не меняется, меняется интерпретация набора бит.
 
 ## Info, links
 
