@@ -15,6 +15,9 @@ func main() {
 	constants()
 	variables()
 	types()
+	propertiesOfTypesAndValues()
+	blocks()
+	declarationsAndScope()
 
 	show(`
 Viso gero!
@@ -660,7 +663,46 @@ func types() {
 	}
 
 	var channelTypes = func() {
-		show("\n")
+		show("\nA channel provides a mechanism for concurrently executing functions to communicate by sending and receiving values of a specified element type")
+		// The value of an uninitialized channel is nil.
+
+		var a chan T         // can be used to send and receive values of type T
+		var b chan<- float64 // can only be used to send float64s
+		var c <-chan int     // can only be used to receive ints
+		show("Channels: ", a, b, c)
+
+		// A channel may be constrained only to send or only to receive by assignment or explicit conversion.
+		// The optional <- operator specifies the channel direction, send or receive
+		// If a direction is given, the channel is `directional`, otherwise it is `bidirectional`
+
+		// The <- operator associates with the leftmost chan possible:
+		var d chan<- chan int   // same as chan<- (chan int)
+		var g chan (<-chan int) // you have to use parentheses
+		var e chan<- <-chan int // same as chan<- (<-chan int)
+		var f <-chan <-chan int // same as <-chan (<-chan int)
+		show("Channel <- operator: ", d, e, f, g)
+
+		// A new, initialized channel value can be made using the built-in function make,
+		// which takes the channel type and an optional capacity as arguments:
+		var h = make(chan int, 100)
+		show("buffered channel: ", h, len(h), cap(h)) // buffered channel: chan int(0xc00012e000); int(0); int(100);
+		// The capacity, in number of elements, sets the size of the buffer in the channel.
+		// If the capacity is zero or absent, the channel is unbuffered and communication succeeds only when both a sender and receiver are ready.
+		// Otherwise, the channel is buffered and communication succeeds without blocking ...
+
+		// A channel may be closed with the built-in function `close`
+		// ... the built-in function close records that no more values will be sent on the channel.
+		// It is an error if ch is a receive-only channel.
+		// Sending to or closing a closed channel causes a run-time panic.
+		// After calling close, ... receive operations will return the zero value for the channel's type without blocking.
+		close(h)
+		show("closed channel: ", h)
+
+		// A single channel may be used in:
+		// send statements, receive operations, calls to the built-in functions cap and len
+		// by any number of goroutines without further synchronization.
+		// Channels act as first-in-first-out queues
+
 	}
 
 	booleanTypes()
@@ -676,11 +718,397 @@ func types() {
 	channelTypes()
 }
 
+func propertiesOfTypesAndValues() {
+	show("\nProperties of types and values ...")
+	// Underlying types
+
+	var underlyingTypes = func() {
+		show("Each type T has an underlying type")
+		// If T is one of the predeclared boolean, numeric, or string types, or a type literal, the corresponding underlying type is T itself.
+		// Otherwise, T's underlying type is the underlying type of the type to which T refers in its declaration.
+		// For a type parameter that is the underlying type of its type constraint, which is always an interface.
+
+		// The underlying type of string, A1, A2, B1, and B2 is string.
+		// The underlying type of []B1, B3, and B4 is []B1.
+		// The underlying type of P is interface{}
+		type (
+			A1 = string
+			A2 = A1
+		)
+		type (
+			B1 string
+			B2 B1
+			B3 []B1
+			B4 B3
+		)
+		// func f[P any](x P) { return }
+	}
+
+	var coreTypes = func() {
+		show("By definition, a core type is never a defined type, type parameter, or interface type")
+		// Each non-interface type T has a core type, which is the same as the underlying type of T
+
+		// An interface T has a core type if one of the following conditions is satisfied
+		// 1) There is a single type U which is the underlying type of all types in the type set of T
+		// or 2) the type set of T contains only channel types with identical element type E, and all directional channels have the same direction
+
+		type Celsius float32
+		type Kelvin float32
+		type data byte
+		type myString interface{ string }
+
+		// Examples of interfaces with core types:
+		type a interface{ int }                     // int
+		type b interface{ Celsius | Kelvin }        // float32
+		type c interface{ ~chan int }               // chan int
+		type d interface{ ~chan int | ~chan<- int } // chan<- int
+		type e interface {
+			~[]*data
+			String() string
+		} // []*data
+
+		// Examples of interfaces without core types:
+		type f interface{}                           // no single underlying type
+		type g interface{ Celsius | float64 }        // no single underlying type
+		type h interface{ chan int | chan<- string } // channels have different element types
+		type i interface{ <-chan int | chan<- int }  // directional channels have different directions
+
+		// Some operations (slice expressions, append and copy) rely on a slightly more loose form of core types which accept byte slices and strings
+		// Note that `bytestring` is not a real type; it cannot be used to declare variables or compose other types.
+		// It exists solely to describe the behavior of some operations that read from a sequence of bytes, which may be a byte slice or a string.
+		type j interface{ []byte | string }    // bytestring
+		type k interface{ ~[]byte | myString } // bytestring
+	}
+
+	var typeIdentity = func() {
+		show("A named type is always different from any other type")
+		// Otherwise, two types are identical if their underlying type literals are structurally equivalent
+		// Two struct types are identical ... Non-exported field names from different packages are always different
+
+		// Two function types are identical if they have the same number of parameters and result values,
+		// corresponding parameter and result types are identical, and either both functions are variadic or neither is.
+		// Parameter and result names are not required to match
+
+		// Given the declarations (what about named types?)
+		type (
+			A0 = []string
+			A1 = A0
+			A2 = struct{ a, b int }
+			A3 = int
+			A4 = func(A3, float64) *A0
+			A5 = func(x int, _ float64) *[]string
+
+			B0 A0
+			C0 = B0
+
+			B1 []string
+			// B0 and B1 are different because they are new types created by distinct type definitions
+
+			B2 struct{ a, b int }
+			B3 struct{ a, c int }
+
+			B4 func(int, float64) *B0
+			// B4 vs A5: func(int, float64) *B0 and func(x int, y float64) *[]string are different because B0 is different from []string
+
+			B5 func(x int, y float64) *A1
+
+			D0[P1, P2 any] struct {
+				x P1
+				y P2
+			}
+			// P1 and P2 are different because they are different type parameters
+			E0 = D0[int, string]
+			// D0[int, string] and struct{ x int; y string } are different because the former is an instantiated defined type
+			// while the latter is a type literal
+		)
+		// these types are identical:
+		// A0, A1, and []string
+		// A2 and struct{ a, b int }
+		// A3 and int
+		// A4, func(int, float64) *[]string, and A5
+
+		// B0 and C0
+		// D0[int, string] and E0
+		// []int and []int
+		// struct{ a, b *B5 } and struct{ a, b *B5 }
+		// func(x int, y float64) *[]string, func(int, float64) (result *[]string), and A5
+
+	}
+
+	var assignability = func() {
+		show(`A value x of type V is assignable to a variable of type T ("x is assignable to T") if one of the following conditions applies`)
+		// V and T are identical.
+		// V and T have identical underlying types but are not type parameters and at least one of V or T is not a named type.
+		// V and T are channel types with identical element types, V is a bidirectional channel, and at least one of V or T is not a named type.
+		// T is an interface type, but not a type parameter, and x implements T.
+		// x is the predeclared identifier nil and T is a pointer, function, slice, map, channel, or interface type, but not a type parameter.
+		// x is an untyped constant representable by a value of type T.
+
+		// Additionally, if ... V or T are type parameters, x is assignable to a variable of type T if one of the following conditions applies:
+		// x is the predeclared identifier nil, T is a type parameter, and x is assignable to each type in T's type set.
+		// V is not a named type, T is a type parameter, and x is assignable to each type in T's type set.
+		// V is a type parameter and T is not a named type, and values of each type in V's type set are assignable to T.
+	}
+
+	var representability = func() {
+		show("A constant x is representable by a value of type T, where T is not a type parameter, if one of the following conditions applies")
+		// If T is a type parameter, x is representable by a value of type T if x is representable by a value of each type in T's type set
+
+		// x                   T           x is representable by a value of T because:
+		// 'a'                 byte        97 is in the set of byte values
+		// 97                  rune        rune is an alias for int32, and 97 is in the set of 32-bit integers
+		// "foo"               string      "foo" is in the set of string values
+		// 1024                int16       1024 is in the set of 16-bit integers
+		// 42.0                byte        42 is in the set of unsigned 8-bit integers
+		// 1e10                uint64      10000000000 is in the set of unsigned 64-bit integers
+		// 2.718281828459045   float32     2.718281828459045 rounds to 2.7182817 which is in the set of float32 values
+		// -1e-1000            float64     -1e-1000 rounds to IEEE -0.0 which is further simplified to 0.0
+		// 0i                  int         0 is an integer value
+		// (42 + 0i)           float32     42.0 (with zero imaginary part) is in the set of float32 values
+
+		// x                   T           x is not representable by a value of T because
+		// 0                   bool        0 is not in the set of boolean values
+		// 'a'                 string      'a' is a rune, it is not in the set of string values
+		// 1024                byte        1024 is not in the set of unsigned 8-bit integers
+		// -1                  uint16      -1 is not in the set of unsigned 16-bit integers
+		// 1.1                 int         1.1 is not an integer value
+		// 42i                 float32     (0 + 42i) is not in the set of float32 values
+		// 1e1000              float64     1e1000 overflows to IEEE +Inf after rounding
+	}
+
+	var methodSets = func() {
+		show("The method set of a type determines the methods that can be called on an operand of that type")
+		// Every type has a (possibly empty) method set associated with it:
+		// - The method set of a defined type T consists of all methods declared with receiver type T.
+		// - The method set of a pointer to a defined type T (where T is neither a pointer nor an interface) is
+		// the set of all methods declared with receiver *T or T.
+		// - The method set of an interface type is the intersection of the method sets of each type in the interface's type set
+		// (the resulting method set is usually just the set of declared methods in the interface).
+
+		// urther rules apply to structs ... containing embedded fields
+	}
+
+	underlyingTypes()
+	coreTypes()
+	typeIdentity()
+	assignability()
+	representability()
+	methodSets()
+}
+
+func blocks() {
+	show("\nA block is a possibly empty sequence of declarations and statements within matching brace brackets")
+	// In addition to explicit blocks in the source code, there are implicit blocks:
+	// - The universe block encompasses all Go source text.
+	// - Each package has a package block containing all Go source text for that package.
+	// - Each file has a file block containing all Go source text in that file.
+	// - Each "if", "for", and "switch" statement is considered to be in its own implicit block.
+	// - Each clause in a "switch" or "select" statement acts as an implicit block.
+
+	// Blocks nest and influence scoping
+	{
+		var x = 42
+		show("x 1: ", x)
+		{
+			var x = 24
+			show("x 2: ", x)
+		}
+		show("x 3: ", x)
+		// x 1: int(42);
+		// x 2: int(24);
+		// x 3: int(42);
+	}
+
+}
+
+func declarationsAndScope() {
+	show("\nA declaration binds a non-blank identifier to a constant, type, type parameter, variable, function, label, or package")
+	// Every identifier in a program must be declared.
+	// No identifier may be declared twice in the same block, and no identifier may be declared in both the file and package block
+
+	//  In the package block, the identifier `init` may only be used for init function declarations
+
+	// The package clause is not a declaration; the package name does not appear in any scope.
+	// Its purpose is to identify the files belonging to the same package and to specify the default package name for import declarations.
+
+	// Go is lexically scoped using blocks:
+	//-  The scope of a `predeclared` identifier is the `universe` block.
+	//-  The scope of an identifier denoting a constant, type, variable, or function (but not method) declared at top level
+	// (outside any function) is the package block.
+	//-  The scope of the package name of an imported package is the file block of the file containing the import declaration.
+	//-  The scope of an identifier denoting a method receiver, function parameter, or result variable is the function body.
+	//-  The scope of an identifier denoting a type parameter of a function or declared by a method receiver begins
+	// after the name of the function and ends at the end of the function body.
+	//-  The scope of an identifier denoting a type parameter of a type begins after the name of the type and ends at the end of the TypeSpec.
+	//-  The scope of a constant or variable identifier declared inside a function begins
+	// at the end of the ConstSpec or VarSpec (ShortVarDecl for short variable declarations) and ends
+	// at the end of the innermost containing block.
+	//-  The scope of a type identifier declared inside a function begins
+	// at the identifier in the TypeSpec and ends at the end of the innermost containing block.
+
+	var labelScopes = func() {
+		show(`Labels are declared by labeled statements and are used in the "break", "continue", and "goto" statements`)
+		// In contrast to other identifiers, labels are not block scoped and do not conflict with identifiers that are not labels.
+		// The scope of a label is the body of the function in which it is declared and excludes the body of any nested function
+	}
+
+	var blankIdentifier = func() {
+		show("The blank identifier is represented by the underscore character _")
+		// It serves as an anonymous placeholder instead of a regular (non-blank) identifier
+		// and has special meaning in declarations, as an operand, and in assignment statements.
+	}
+
+	var predeclaredIdentifiers = func() {
+		show("The following identifiers are implicitly declared in the universe block")
+		// Types:
+		// 		any bool byte comparable
+		// 		complex64 complex128 error float32 float64
+		// 		int int8 int16 int32 int64 rune string
+		// 		uint uint8 uint16 uint32 uint64 uintptr
+
+		// 	Constants:
+		// 		true false iota
+
+		// 	Zero value:
+		// 		nil
+
+		// 	Functions:
+		// 		append cap clear close complex copy delete imag len
+		// 		make max min new panic print println real recover
+
+	}
+
+	var exportedIdentifiers = func() {
+		show("An identifier may be exported to permit access to it from another package")
+		// An identifier is exported if both:
+		//- the first character of the identifier's name is a Unicode uppercase letter (Unicode character category Lu); and
+		//- the identifier is declared in the package block or it is a field name or method name.
+	}
+
+	var constantDeclarations = func() {
+		show("A constant declaration binds a list of identifiers (the names of the constants) to the values of a list of constant expressions")
+		// If the type is omitted, the constants take the individual types of the corresponding expressions
+		const Pi float64 = 3.14159265358979323846
+		const zero = 0.0 // untyped floating-point constant
+		const (
+			size int64 = 1024
+			eof        = -1 // untyped integer constant
+		)
+		const a, b, c = 3, 4, "foo" // a = 3, b = 4, c = "foo", untyped integer and string constants
+		const u, v float32 = 0, 3   // u = 0.0, v = 3.0
+
+		// Within a parenthesized const declaration list the expression list may be omitted from any but the first ConstSpe
+		// Such an empty list is equivalent to the textual substitution of the first preceding non-empty expression list and its type if any.
+		// Omitting the list of expressions is therefore equivalent to repeating the previous list
+		// Together with the iota constant generator this mechanism permits light-weight declaration of sequential values:
+		const (
+			Sunday = iota
+			Monday
+			Tuesday
+			Wednesday
+			Thursday
+			Friday
+			Partyday
+			numberOfDays // this constant is not exported
+		)
+		show("iota generator: ", Sunday, Monday, Tuesday)
+	}
+
+	var iotaX = func() {
+		show("Within a constant declaration, the predeclared identifier iota represents successive untyped integer constants.")
+		// Its value is the index of the respective ConstSpec in that constant declaration, starting at zero
+		const (
+			c0 = iota // c0 == 0
+			c1 = iota // c1 == 1
+			c2 = iota // c2 == 2
+		)
+		const (
+			a = 1 << iota // a == 1  (iota == 0)
+			b = 1 << iota // b == 2  (iota == 1)
+			c = 3         // c == 3  (iota == 2, unused)
+			d = 1 << iota // d == 8  (iota == 3)
+		)
+		const (
+			u         = iota * 42 // u == 0     (untyped integer constant)
+			v float64 = iota * 42 // v == 42.0  (float64 constant)
+			w         = iota * 42 // w == 84    (untyped integer constant)
+		)
+		const x = iota // x == 0
+		const y = iota // y == 0
+
+		// By definition, multiple uses of iota in the same ConstSpec all have the same value:
+		const (
+			bit0, mask0 = 1 << iota, 1<<iota - 1 // bit0 == 1, mask0 == 0  (iota == 0)
+			bit1, mask1                          // bit1 == 2, mask1 == 1  (iota == 1)
+			_, _                                 //                        (iota == 2, unused)
+			bit3, mask3                          // bit3 == 8, mask3 == 7  (iota == 3)
+		)
+		// This last example exploits the implicit repetition of the last non-empty expression list
+	}
+
+	var typeDeclarations = func() {
+		show("A type declaration binds an identifier, the type name, to a type. Type declarations come in two forms: alias declarations and type definitions")
+
+		// Type definitions
+		// A type definition creates a new, distinct type with the same underlying type and operations as the given type
+		// and binds an identifier, the type name, to it
+		// The new type is called a `defined type`. It is different from any other type, including the type it is created from
+		type (
+			Point struct{ x, y float64 } // Point and struct{ x, y float64 } are different types
+			polar Point                  // polar and Point denote different types
+			Node  struct{ value any }
+		)
+
+		// Alias declarations
+		// An alias declaration binds an identifier to the given type
+		// Within the scope of the identifier, it serves as an alias for the type
+		type (
+			nodeList = []*Node // nodeList and []*Node are identical types
+			Polar    = polar   // Polar and polar denote identical types
+		)
+
+		// A defined type may have methods associated with it
+		type (
+			Block interface {
+				BlockSize() int
+				Encrypt(src, dst []byte)
+				Decrypt(src, dst []byte)
+			}
+		)
+		// It does not inherit any methods bound to the given type, but the method set of an interface type
+		// or of elements of a composite type remains unchanged:
+
+		// A Mutex is a data type with two methods, Lock and Unlock.
+		type Mutex struct         { /* Mutex fields */ }
+		func (m *Mutex) Lock()    { /* Lock implementation */ }
+		func (m *Mutex) Unlock()  { /* Unlock implementation */ }
+	}
+
+	// Type parameter declarations
+	// Variable declarations
+	// Short variable declarations
+	// Function declarations
+	// Method declarations
+
+	labelScopes()
+	blankIdentifier()
+	predeclaredIdentifiers()
+	exportedIdentifiers()
+
+	// Uniqueness of identifiers
+	show("Two identifiers are different if they are spelled differently, or if they appear in different packages and are not exported.")
+
+	constantDeclarations()
+	iotaX()
+	typeDeclarations()
+
+}
+
 func show(msg string, xs ...any) {
 	var line string = msg
 	for _, x := range xs {
-		line += fmt.Sprintf("%T(%v); ", x, x)
-		// line += fmt.Sprintf("%#v; ", x)
+		line += fmt.Sprintf("%T(%v); ", x, x) // type(value)
+		// line += fmt.Sprintf("%#v; ", x) // repr
 	}
 	fmt.Println(line)
 }
