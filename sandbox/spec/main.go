@@ -18,6 +18,7 @@ func main() {
 	propertiesOfTypesAndValues()
 	blocks()
 	declarationsAndScope()
+	expressions()
 
 	show(`
 Viso gero!
@@ -1047,9 +1048,10 @@ func declarationsAndScope() {
 	}
 
 	var typeDeclarations = func() {
-		show("A type declaration binds an identifier, the type name, to a type. Type declarations come in two forms: alias declarations and type definitions")
+		show("A type declaration binds an identifier, the type name, to a type")
+		// Type declarations come in two forms: alias declarations and type definitions
 
-		// Type definitions
+		show("Type definitions")
 		// A type definition creates a new, distinct type with the same underlying type and operations as the given type
 		// and binds an identifier, the type name, to it
 		// The new type is called a `defined type`. It is different from any other type, including the type it is created from
@@ -1059,7 +1061,7 @@ func declarationsAndScope() {
 			Node  struct{ value any }
 		)
 
-		// Alias declarations
+		show("Alias declarations")
 		// An alias declaration binds an identifier to the given type
 		// Within the scope of the identifier, it serves as an alias for the type
 		type (
@@ -1076,19 +1078,180 @@ func declarationsAndScope() {
 			}
 		)
 		// It does not inherit any methods bound to the given type, but the method set of an interface type
-		// or of elements of a composite type remains unchanged:
+		// or of elements of a composite type remains unchanged, e.g:
 
 		// A Mutex is a data type with two methods, Lock and Unlock.
-		type Mutex struct         { /* Mutex fields */ }
-		func (m *Mutex) Lock()    { /* Lock implementation */ }
-		func (m *Mutex) Unlock()  { /* Unlock implementation */ }
+		type Mutex struct { /* Mutex fields */
+		}
+		// func (m *Mutex) Lock()   { /* Lock implementation */ }
+		// func (m *Mutex) Unlock() { /* Unlock implementation */ }
+
+		// NewMutex has the same composition as Mutex but its method set is empty
+		type NewMutex Mutex
+
+		// The method set of *PrintableMutex contains the methods
+		// Lock and Unlock bound to its embedded field Mutex.
+		type PrintableMutex struct{ Mutex }
+
+		// e.g. EOF
+
+		// Type definitions may be used to define different boolean, numeric, or string types and associate methods with them
+		type TimeZone int
+		const (
+			EST TimeZone = -(5 + iota)
+			CST
+			MST
+			PST
+		)
+		// func (tz TimeZone) String() string { return fmt.Sprintf("GMT%+dh", tz) }
+
+		// If the type definition specifies type parameters, the type name denotes a generic type
+		type List[T any] struct {
+			next  *List[T]
+			value T
+		}
+		// A generic type may also have methods associated with it
+		// func (l *List[T]) Len() int  { ??? }
 	}
 
-	// Type parameter declarations
-	// Variable declarations
-	// Short variable declarations
-	// Function declarations
-	// Method declarations
+	var typeParameterDeclarations = func() {
+		show("A type parameter list declares the type parameters of a generic function or type declaration")
+		// The type parameter list looks like an ordinary function parameter list
+		// The type parameter is replaced with a type argument upon instantiation of the generic function or type
+
+		// [P any]
+		type a[P any] struct{ x P }
+		// [S interface{ ~[]byte|string }]
+		type b[S interface{ ~[]byte | string }] struct{ x S }
+		// [S ~[]E, E any]
+		type c[S ~[]E, E any] struct{ x S }
+		// [P Constraint[int]]
+		// [_ any]
+
+		// Just as each ordinary function parameter has a parameter type,
+		// each type parameter has a corresponding (meta-)type which is called its type constraint.
+
+		// A parsing ambiguity arises when the type parameter list for a generic type declares a single type parameter P with a constraint C
+		// such that the text `P C` forms a valid expression
+		// type T[P *C] …
+		// type T[P (C)] …
+		// type T[P *C|Q] …
+		// …
+		// To resolve the ambiguity, embed the constraint in an interface or use a trailing comma:
+		// type T[P interface{*C}] …
+		// type T[P *C,] …
+
+		// no recursion
+		// type T1[P T1[P]] …                    // illegal: T1 refers to itself
+		// type T2[P interface{ T2[int] }] …     // illegal: T2 refers to itself
+		// type T3[P interface{ m(T3[int])}] …   // illegal: T3 refers to itself
+		// type T4[P T5[P]] …                    // illegal: T4 refers to T5 and
+		// type T5[P T4[P]] …                    // illegal: T5 refers to T4
+		// type T6[P int] struct{ f *T6[P] }     // ok: reference to T6 is not in type parameter list
+
+		var typeConstraints = func() {
+			show("A type constraint is an interface")
+			// that defines the set of permissible type arguments for the respective type parameter
+			// and controls the operations supported by values of that type parameter.
+
+			// in a type parameter list the enclosing interface{ … } may be omitted for convenience:
+			// [T []P]                      // = [T interface{[]P}]
+			// [T ~int]                     // = [T interface{~int}]
+			// [T int|string]               // = [T interface{int|string}]
+			// type Constraint ~int         // illegal: ~int is not in a type parameter list
+
+			// The `comparable` interface and interfaces that (directly or indirectly) embed `comparable` may only be used as type constraints
+			// The predeclared interface type `comparable` denotes the set of all non-interface types that are strictly comparable
+			type a[P comparable] struct{ x P }
+			type b[P interface{ comparable }] struct{ x P }
+
+			// Satisfying a type constraint
+
+			// comparing operands of type parameter type may panic at run-time:
+			// A type argument T satisfies a type constraint C if ... T implements C
+			// As an exception, a `strictly comparable` type constraint may also be satisfied by a `comparable`
+			// (not necessarily strictly comparable) type argument
+		}
+
+		typeConstraints()
+	}
+
+	var variableDeclarations = func() {
+		show("\nA variable declaration creates one or more variables")
+		// binds corresponding identifiers to them, and gives each a type and an initial value
+		// e.g.
+		var i int
+		var U, V, W float64
+		var k = 0
+		var x, y float32 = -1, -2
+		var (
+			I       int
+			u, v, s = 2.0, 3.0, "bar"
+		)
+		// var re, im = complexSqrt(-1)
+		// var _, found = entries[name]  // map lookup; only interested in "found"
+		show("vars: ", i, U, V, W, k, x, y, u, v, s, I)
+
+		// The predeclared value nil cannot be used to initialize a variable with no explicit type
+		// var d = math.Sin(0.5)  // d is float64
+		// var i = 42             // i is int
+		// var t, ok = x.(T)      // t is T, ok is bool
+		// var n = nil            // illegal
+	}
+
+	var shortVariableDeclarations = func() {
+		show("\nA short variable declaration ... is shorthand for a regular variable declaration with initializer expressions but no types")
+		// Short variable declarations may appear only inside functions
+
+		// e.g.
+		i, j := 0, 10
+		f := func() int { return 7 }
+		ch := make(chan int)
+		// r, w, _ := os.Pipe()  // os.Pipe() returns a connected pair of Files and an error, if any
+		// _, y, _ := coord(p)   // coord() returns three values; only interested in y coordinate
+		show("vars: ", i, j, f, ch)
+
+		// a short variable declaration may redeclare variables
+		// provided they were originally declared earlier in the same block (or the parameter lists if the block is the function body)
+		// with the same type, and at least one of the non-blank variables is new
+		i, k := 1, 11
+		show("redeclared i, add new k: ", i, k)
+	}
+
+	var functionDeclarations = func() {
+		show("\nA function declaration binds an identifier, the function name, to a function")
+		// If the function's signature declares result parameters, the function body's statement list must end in a terminating statement
+
+		// A generic function must be instantiated before it can be called or used as a value.
+
+		// A function declaration without type parameters may omit the body.
+		// Such a declaration provides the signature for a function implemented outside Go, such as an assembly routine
+	}
+
+	var methodDeclarations = func() {
+		show("A method is a function with a receiver")
+		// A method declaration binds an identifier, the method name, to a method,
+		// and associates the method with the receiver's base type (n.b. not pointer)
+
+		//  Its type must be a defined type T or a pointer to a defined type T, ... T is called the receiver base type
+		// A receiver base type cannot be a pointer or interface type and it must be defined in the same package as the method
+		// The method is said to be bound to its receiver base type and the method name is visible only within selectors for type T or *T
+
+		// Given defined type Point the declarations
+		// func (p *Point) Length() float64 {
+		// 	return math.Sqrt(p.x * p.x + p.y * p.y)
+		// }
+		// func (p *Point) Scale(factor float64) {
+		// 	p.x *= factor
+		// 	p.y *= factor
+		// }
+		// bind the methods Length and Scale, with receiver type *Point, to the base type Point.
+
+		// If the receiver base type is a generic type, the receiver specification must declare corresponding type parameters
+		// type Pair[A, B any] struct { a A; b B }
+		// func (p Pair[A, B]) Swap() Pair[B, A] { return Pair[B, A]{p.b, p.a} } // receiver declares A, B
+		// func (p Pair[First, _]) First() First { return p.a }                  // receiver declares First, corresponds to A in Pair
+	}
 
 	labelScopes()
 	blankIdentifier()
@@ -1101,7 +1264,40 @@ func declarationsAndScope() {
 	constantDeclarations()
 	iotaX()
 	typeDeclarations()
+	typeParameterDeclarations()
+	variableDeclarations()
+	shortVariableDeclarations()
+	functionDeclarations()
+	methodDeclarations()
 
+}
+
+func expressions() {
+	show("\nAn expression specifies the computation of a value by applying operators and functions to operands")
+	// Operands
+	// Qualified identifiers
+	// Composite literals
+	// Function literals
+	// Primary expressions
+	// Selectors
+	// Method expressions
+	// Method values
+	// Index expressions
+	// Slice expressions
+	// Type assertions
+	// Calls
+	// Passing arguments to ... parameters
+	// Instantiations
+	// Type inference
+	// Operators
+	// Arithmetic operators
+	// Comparison operators
+	// Logical operators
+	// Address operators
+	// Receive operator
+	// Conversions
+	// Constant expressions
+	// Order of evaluation
 }
 
 func show(msg string, xs ...any) {
