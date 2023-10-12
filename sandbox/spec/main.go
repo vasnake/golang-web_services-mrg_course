@@ -1274,19 +1274,444 @@ func declarationsAndScope() {
 
 func expressions() {
 	show("\nAn expression specifies the computation of a value by applying operators and functions to operands")
+
 	// Operands
+	// Operands denote the elementary values in an expression
+	// An operand may be a literal, a ... identifier denoting a constant, variable, or function,
+	// or a parenthesized expression.
+
 	// Qualified identifiers
-	// Composite literals
+	// A qualified identifier is an identifier qualified with a package name prefix
+	// The identifier must be exported and declared in the package block of that package
+
+	var compositeLiterals = func() {
+		show("Composite literals construct new composite values each time they are evaluated")
+		// The LiteralType's core type T must be a struct, array, slice, or map type
+		// The key is interpreted as a field name for struct literals, an index for array and slice literals, and a key for map literals
+
+		// Given the declarations
+		type Point struct{ x, y float64 }
+		type Point3D struct{ x, y, z float64 }
+		type Line struct{ p, q Point3D }
+		// one may write
+		origin := Point3D{}                           // zero value for Point3D
+		line := Line{origin, Point3D{y: -4, z: 12.3}} // zero value for line.q.x
+		show("zero values: ", origin, line, Line{})
+		// zero values: main.Point3D({0 0 0}); main.Line({{0 0 0} {0 -4 12.3}}); main.Line({{0 0 0} {0 0 0}});
+
+		// For array and slice literals the following rules apply:
+		//- Each element has an associated integer index marking its position in the array.
+		//- An element with a key uses the key as its index.
+		// The key must be a non-negative constant representable by a value of type int; and if it is typed it must be of integer type.
+		//- An element without a key uses the previous element's index plus one.
+		// If the first element has no key, its index is zero.
+
+		// Taking the address of a composite literal generates a pointer to a unique variable initialized with the literal's value.
+		var pointer *Point3D = &Point3D{y: 1000}
+		var zvPointer *Point3D
+		show("pointer: ", pointer, zvPointer)
+		// pointer: *main.Point3D(&{0 1000 0}); *main.Point3D(<nil>);
+
+		// Note that the zero value for a slice or map type is not the same as an initialized but empty value of the same type.
+		// Consequently, taking the address of an empty slice or map composite literal does not have the same effect as
+		// allocating a new slice or map value with new.
+		p1 := &[]int{}   // p1 points to an initialized, empty slice with value []int{} and length 0
+		p2 := new([]int) // p2 points to an uninitialized slice with value nil and length 0
+		show("empty slices: ", p1, p2)
+		// empty slices: *[]int(&[]); *[]int(&[]);
+
+		// Array ... The notation `...` specifies an array length equal to the maximum element index plus one.
+		buffer := [10]string{}            // len(buffer) == 10
+		intSet := [6]int{1, 2, 3, 5}      // len(intSet) == 6
+		days := [...]string{"Sat", "Sun"} // len(days) == 2
+		show("arrays: ", buffer, intSet, days)
+		// arrays: [10]string([         ]); [6]int([1 2 3 5 0 0]); [2]string([Sat Sun]);
+
+		// A slice literal describes the entire underlying array literal.
+		// Thus the length and capacity of a slice literal are the maximum element index plus one
+		xs := []int{3, 7, 11}
+		// and is shorthand for a slice operation applied to an array:
+		tmp := [3]int{3, 7, 11}
+		xs = tmp[0:3]
+		show("slice: ", xs)
+
+		// Within a composite literal of array, slice, or map type T,
+		// elements or map keys that are themselves composite literals
+		// may elide the respective literal type if it is identical to the element or key type of T
+		var a = [...]Point{{1.5, -3.5}, {0, 0}}  // same as [...]Point{Point{1.5, -3.5}, Point{0, 0}}
+		var b = [][]int{{1, 2, 3}, {4, 5}}       // same as [][]int{[]int{1, 2, 3}, []int{4, 5}}
+		var c = [][]Point{{{0, 1}, {1, 2}}}      // same as [][]Point{[]Point{Point{0, 1}, Point{1, 2}}}
+		var d = map[string]Point{"orig": {0, 0}} // same as map[string]Point{"orig": Point{0, 0}}
+		var e = map[Point]string{{0, 0}: "orig"} // same as map[Point]string{Point{0, 0}: "orig"}
+
+		type PPoint *Point
+		var f = [2]*Point{{1.5, -3.5}, {}} // same as [2]*Point{&Point{1.5, -3.5}, &Point{}}
+		var g = [2]PPoint{{1.5, -3.5}, {}} // same as [2]PPoint{PPoint(&Point{1.5, -3.5}), PPoint(&Point{})}
+		show("elide literal type: ", a, b, c, d, e, f, g)
+		// elide literal type: [2]main.Point([{1.5 -3.5} {0 0}]); [][]int([[1 2 3] [4 5]]); [][]main.Point([[{0 1} {1 2}]]); map[string]main.Point(map[orig:{0 0}]); map[main.Point]string(map[{0 0}:orig]); [2]*main.Point([0xc000114d30 0xc000114d40]); [2]main.PPoint([0xc000114d50 0xc000114d60]);
+
+		// To resolve the ambiguity, the composite literal must appear within parentheses.
+		// if x == (T{a,b,c}[i]) { … }
+		// if (x == T{a,b,c}[i]) { … }
+		// A parsing ambiguity arises when a composite literal using the TypeName form of the LiteralType appears as an operand
+		// between the keyword and the opening brace of the block of an "if", "for", or "switch" statement ...
+
+		// some examples:
+		// vowels[ch] is true if ch is a vowel
+		vowels := [128]bool{'a': true, 'e': true, 'i': true, 'o': true, 'u': true, 'y': true}
+		show("vowels: ", vowels)
+	}
+	compositeLiterals()
+
 	// Function literals
+	// A function literal represents an anonymous function.
+	// Function literals cannot declare type parameters.
+	// A function literal can be assigned to a variable or invoked directly
+	a := func(a, b int, z float64) bool { return a*b < int(z) }
+	b := func(a, b int, z float64) bool { return a*b < int(z) }(1, 2, 3)
+	show("function literals: ", a, b)
+	// Function literals are closures: they may refer to variables defined in a surrounding function
+
 	// Primary expressions
-	// Selectors
-	// Method expressions
-	// Method values
-	// Index expressions
-	// Slice expressions
-	// Type assertions
-	// Calls
-	// Passing arguments to ... parameters
+	// Primary expressions are the operands for unary and binary expressions
+	// x
+	// 2
+	// (s + ".txt")
+	// f(3.1415, true)
+	// Point{1, 2}
+	// m["foo"]
+	// s[i : j + 1]
+	// obj.color
+	// f.p[i].x()
+
+	var selectors = func() {
+		show("Selectors, in `x.f` the identifier f is called the (field or method) selector")
+		// For a primary expression x that is not a package name, the selector expression `x.f` denotes the field or method f of the value
+		// If x is a package name, see the section on qualified identifiers
+		// The number of embedded fields traversed to reach f is called its `depth in T`
+
+		// As an exception, if the type of x is a defined pointer type and `(*x).f` is a valid selector expression denoting a field
+		// (but not a method), `x.f` is shorthand for `(*x).f`
+
+		// For example, given the declarations:
+		// type T0 struct { x int }
+		// (func(*T0) M0)()
+		// type T1 struct { y int }
+		// func(T1) M1()
+		// type T2 struct {
+		// 	z int
+		// 	T1
+		// 	*T0
+		// }
+		// func(*T2) M2()
+		// type Q *T2
+		// var t T2  // with t.T0 != nil
+		// var p *T2 // with p != nil and (*p).T0 != nil
+		// var q Q = p
+
+		// one may write:
+		// t.z // t.z
+		// t.y // t.T1.y
+		// t.x // (*t.T0).x
+		// p.z // (*p).z
+		// p.y // (*p).T1.y
+		// p.x // (*(*p).T0).x
+		// q.x // (*(*q).T0).x        (*q).x is a valid field selector
+		// p.M0() // ((*p).T0).M0()      M0 expects *T0 receiver
+		// p.M1() // ((*p).T1).M1()      M1 expects T1 receiver
+		// p.M2() // p.M2()              M2 expects *T2 receiver
+		// t.M2() // (&t).M2()           M2 expects *T2 receiver, see section on Calls
+
+		// but the following is invalid:
+		// q.M0()       // (*q).M0 is valid but not a field selector
+	}
+	selectors()
+
+	var methodExpressions = func() {
+		show("Method expressions, `T.M` is a function that is callable as a regular function with the same arguments as `M`")
+		// prefixed by an additional argument that is the receiver of the method
+		/*
+			Consider a struct type T with two methods
+				type T struct {
+					a int
+				}
+				func (tv T) Mv(a int) int          { return 0 } // value receiver
+				func (tp *T) Mp(f float32) float32 { return 1 } // pointer receiver
+				var t T
+
+			The expression
+			T.Mv
+			yields a function equivalent to Mv but with an explicit receiver as its first argument; it has signature
+			func(tv T, a int) int
+
+			so these five invocations are equivalent:
+			t.Mv(7)
+			T.Mv(t, 7)
+			(T).Mv(t, 7)
+			f1 := T.Mv; f1(t, 7)
+			f2 := (T).Mv; f2(t, 7)
+
+			Similarly, the expression
+			(*T).Mp
+			yields a function value representing Mp with signature
+			func(tp *T, f float32) float32
+
+			For a method with a value receiver, one can derive a function with an explicit pointer receiver, so
+			(*T).Mv
+			yields a function value representing Mv with signature
+			func(tv *T, a int) int
+			the method does not overwrite the value whose address is passed in the function call
+
+			var f1 = (*T).Mv
+			show("Value reciever, t.a before: ", t.a) // 0
+			f1(&t, 42)
+			show("t.a after: ", t.a) // 0
+			var f2 = (*T).Mp
+			f2(&t, 42) // t.Mp(42)
+			show("t.a after: ", t.a) // 42
+
+			... a value-receiver function for a pointer-receiver method, is illegal
+		*/
+	}
+	methodExpressions()
+
+	var methodValues = func() {
+		show("Method values, x.M is called a method value")
+		// If the expression `x` has static type `T` and `M` is in the method set of type `T`
+		// The expression x is evaluated and saved during the evaluation of the method value; the saved copy is then used as the receiver
+
+		/* e.g.
+		   type S struct { *T }
+		   type T int
+		   func (t T) M() { print(t) }
+
+		   t := new(T) // *T, reference to t
+		   s := S{T: t}
+		   f := t.M                    // receiver *t is evaluated and stored in f
+		   g := s.M                    // receiver *(s.T) is evaluated and stored in g
+		   *t = 42                     // does not affect stored receivers in f and g
+		*/
+
+		/* consider:
+		type T struct {
+			a int
+		}
+		func (tv T) Mv(a int) int          { tv.a = a; return tv.a } // value receiver
+		func (tp *T) Mp(f float32) float32 { return 1 }              // pointer receiver
+		var t T
+		var pt *T
+		func makeT() T { return T{} }
+
+		// The expression
+		t.Mv // yields a function value of type
+		func(int) int
+
+		// These two invocations are equivalent:
+		t.Mv(7)
+		f := t.Mv; f(7)
+
+		// a reference to a non-interface method with a value receiver using a pointer
+		// will automatically dereference that pointer:
+		// pt.Mv is equivalent to (*pt).Mv.
+
+		// a reference to a non-interface method with a pointer receiver using an addressable value
+		// will automatically take the address of that value:
+		// t.Mp is equivalent to (&t).Mp
+
+		// e.g.
+		f := t.Mv; f(7)   // like t.Mv(7)
+		f := pt.Mp; f(7)  // like pt.Mp(7)
+		f := pt.Mv; f(7)  // like (*pt).Mv(7)
+		f := t.Mp; f(7)   // like (&t).Mp(7)
+		f := makeT().Mp   // invalid: result of makeT() is not addressable
+		*/
+
+		//  it is also legal to create a method value from a value of interface type
+	}
+	methodValues()
+
+	var indexExpressions = func() {
+		show("Index expressions, A primary expression of the form `a[x]`")
+		// denotes the element of the array, pointer to array, slice, string or map a indexed by x.
+		// The value x is called the index or map key
+
+		// array, slice, string:
+		// index x is in range `0 <= x < len(a)`, otherwise it is out of range
+
+		// For a of pointer to array type: `a[x]` is shorthand for `(*a)[x]`
+
+		// string:
+		// `a[x]` is the non-constant byte value at index `x` and the type of `a[x]` is `byte`
+		// a[x] may not be assigned to
+
+		// map:
+		// x's type must be assignable to the key type of `M`
+		// if the map is `nil` or does not contain such an entry, `a[x]` is the zero value for the element type of `M`
+		var m map[string]int = nil
+		var x = "bar"
+		show("map: ", m)
+		show("map[foo] element: ", m["foo"])
+
+		// An index expression on a map a of type map[K]V used in an assignment statement or initialization of the special form
+		// yields an additional untyped boolean value
+		var v, keyInMap = m[x]
+		v, keyInMap2 := m[x]
+		v, keyInMap = m[x]
+		show("map index expression: ", v, keyInMap, keyInMap2)
+		// map index expression: int(0); bool(false); bool(false);
+
+		// Assigning to an element of a nil map causes a run-time panic
+		/*
+			var m = map[string]int{} // empty map vs
+			var m map[string]int = nil // nil map
+			var m map[string]int // nil map
+		*/
+	}
+	indexExpressions()
+
+	var sliceExpressions = func() {
+		show("Slice expressions construct a substring or slice from a string, array, pointer to array, or slice")
+		// There are two variants: a simple form that specifies a low and high bound,
+		// and a full form that also specifies a bound on the capacity
+		var a = "foo bar"
+		var low, high = 2, 5
+
+		// Simple slice expressions
+
+		// The primary expression `a[low : high]`
+		// constructs a substring or slice.
+		// The core type of a must be a string, array, pointer to array, slice, or a bytestring
+		// The result has indices starting at 0 and length equal to high - low
+		var b = a[low:high]
+		show("slice: ", a, low, high, b, len(b))
+		// slice: string(foo bar); int(2); int(5); string(o b); int(3);
+
+		// For convenience, any of the indices may be omitted.
+		// A missing low index defaults to zero; a missing high index defaults to the length
+		b = a[2:] // same as a[2 : len(a)]
+		b = a[:3] // same as a[0 : 3]
+		b = a[:]  // same as a[0 : len(a)]
+
+		// If a is a pointer to an array, `a[low : high]` is shorthand for `(*a)[low : high]`
+
+		// For arrays or strings, the indices are in range `0 <= low <= high <= len(a)`, otherwise they are out of range
+		// For slices, the upper index bound is the slice capacity `cap(a)` rather than the length
+
+		// If the sliced operand is an array, it must be addressable
+
+		// If the sliced operand of a valid slice expression is a `nil` slice, the result is a `nil` slice.
+		func() {
+			var a [10]int // array, ten zeros
+			s1 := a[3:7]  // underlying array of s1 is array a; &s1[2] == &a[5]
+			s2 := s1[1:4] // underlying array of s2 is underlying array of s1 which is array a; &s2[1] == &a[5]
+			s2[1] = 42    // s2[1] == s1[2] == a[5] == 42; they all refer to the same underlying array element
+			show("array: ", a)
+			// array: [10]int([0 0 0 0 0 42 0 0 0 0]);
+
+			var s []int // nil slice
+			s3 := s[:0] // s3 == nil
+			show("slice: ", s3, s3 == nil, s == nil)
+			// slice: []int([]); bool(true); bool(true);
+		}()
+
+		// Full slice expressions
+
+		func() {
+			var a, low, high, max = [10]int{}, 2, 5, 7
+			// The primary expression `a[low : high : max]`
+			var b = a[low:high:max]
+			// constructs a slice of the same type, and with the same length and elements as the simple slice expression `a[low : high]`
+			// Additionally, it controls the resulting slice's capacity by setting it to `max - low`
+			// Only the first index may be omitted; it defaults to 0
+			// The indices are in range `0 <= low <= high <= max <= cap(a)`, otherwise they are out of range
+			show("array: ", b, len(b), cap(b)) // array: []int([0 0 0]); int(3); int(5);
+		}()
+	}
+	sliceExpressions()
+
+	var typeAssertions = func() {
+		show("Type assertions, The notation `x.(T)` is called a type assertion")
+		// the primary expression
+		// x.(T)
+		// asserts that `x` is not `nil` and that the value stored in `x` is of type `T`.
+
+		// If the type assertion holds, the value of the expression is the value stored in x and its type is T
+		// If the type assertion is false, a run-time panic occurs
+
+		var x interface{} = 7 // x has dynamic type int and value 7
+		i := x.(int)          // i has type int and value 7
+		_ = i == 7
+
+		// type I interface { m() }
+		// func f(y I) {
+		// 	s := y.(string)        // illegal: string does not implement I (missing method m)
+		// 	r := y.(io.Reader)     // r has type io.Reader and the dynamic type of y must implement both I and io.Reader
+		// }
+
+		// special form
+
+		// A type assertion used in an assignment statement or initialization of the special form
+		// yields an additional untyped boolean value.
+		// The value of ok is true if the assertion holds.
+		// Otherwise it is false and the value of v is the zero value for type T.
+		// No run-time panic occurs in this case
+		type T = int // type alias, types identical
+		var v, ok = x.(T)
+		v, ok = x.(T)
+		v, ok2 := x.(T)
+		// var v, ok interface{} = x.(T) // dynamic types of v and ok are T and bool
+		show("asserted: ", v, ok, ok2)
+		// asserted: int(7); bool(true); bool(true);
+	}
+	typeAssertions()
+
+	var calls = func() {
+		show("Calls, `f(a1, a2, … an)` calls f with arguments a1, a2, … an")
+		// Given an expression `f` with a core type `F` of function type
+
+		// arguments must be single-valued expressions assignable to the parameter types of F and
+		// are evaluated before the function is called
+
+		/*
+			// method call vs function call from package
+			math.Atan2(x, y)  // function call
+			var pt *Point
+			pt.Scale(3.5)     // method call with receiver pt
+		*/
+
+		// If f denotes a generic function, it must be instantiated before it can be called or used as a function value
+
+		// In a function call, the function value and arguments are evaluated in the usual order.
+		// After they are evaluated, the parameters of the call are passed by value to the function
+		// and the called function begins execution.
+		// The return parameters of the function are passed by value back to the caller when the function returns
+
+		// Calling a nil function value causes a run-time panic
+
+		// As a special case, if the return values of a `g` are individually assignable to the parameters of `f`,
+		// then the call `f(g(parameters_of_g))` will invoke `f`
+		// after binding the return values of `g` to the parameters of `f`
+		var Split = func(s string, pos int) (string, string) {
+			return s[0:pos], s[pos:]
+		}
+		var Join = func(s, t string) string {
+			return s + t
+		}
+		if Join(Split("value", len("value")/2)) != "value" {
+			panic("test fails")
+		}
+
+		// Methods: There is no distinct method type and there are no method literals
+	}
+	calls()
+
+	var passingVariadicArguments = func() {
+		show("Passing arguments to ... parameters")
+		// If `f` is variadic with a final parameter `p` of type `...T`, then within `f` the type of `p` is equivalent to type `[]T`.
+
+	}
+	passingVariadicArguments()
+
 	// Instantiations
 	// Type inference
 	// Operators

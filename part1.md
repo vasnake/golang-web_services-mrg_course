@@ -193,6 +193,7 @@ Embedding interface E in T: an interface T may use a (possibly qualified) interf
 Map type: не-упорядоченная коллекция элементов, с индексами-ключами.
 > The comparison operators `==` and `!=` must be fully defined for operands of the key type
 ... A nil map is equivalent to an empty map except that no elements may be added
+> Note that the `zero value` for a `slice` or `map` type is not the same as an `initialized but empty` value of the same type
 
 Channael type: средство коммуникации (между горутинами), обмен сообщениями (элементами) определенного типа. FIFO queue.
 Канал может быть буферизован, это не отражается на его типе. Небуферизованный канал работает только если приемщик и отправитель оба готовы.
@@ -205,6 +206,25 @@ Channael type: средство коммуникации (между горут�
 
 Type parameters:
 > comparing operands of type parameter type may panic at run-time
+
+Composite literals:
+это не константы, каждый раз создается новое значение.
+> The LiteralType's core type T must be a struct, array, slice, or map type
+
+> Function literals are closures
+
+Method expressions:
+> For a method with a value receiver, one can derive a function with an explicit pointer receiver
+... the method does not overwrite the value whose address is passed in the function call
+... a value-receiver function for a pointer-receiver method, is illegal
+
+Method values:
+ресивер вычисляется и сохраняется (создается копия) при получении method value,
+в отличие от method expression, где функция создается с дополнительным параметром (ибо ресивер вычислить невозможно).
+
+Type assertions: `var v, ok = x.(T)`
+
+Variadic functions: список параметров (variadic) внутри функции виден как слайс.
 
 ### Переменные, базовые типы данных
 
