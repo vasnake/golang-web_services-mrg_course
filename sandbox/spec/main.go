@@ -1708,12 +1708,74 @@ func expressions() {
 	var passingVariadicArguments = func() {
 		show("Passing arguments to ... parameters")
 		// If `f` is variadic with a final parameter `p` of type `...T`, then within `f` the type of `p` is equivalent to type `[]T`.
+		// If `f` is invoked with no actual arguments for `p`, the value passed to `p` is `nil`
 
+		// new slice/array for every call
+		var f = func(xs ...int) {
+			show("one argument as slice: ", xs == nil, xs, len(xs), cap(xs))
+		}
+		f()        // one argument as slice: bool(true); []int([]); int(0); int(0);
+		f(1)       // one argument as slice: bool(false); []int([1]); int(1); int(1);
+		f(1, 2, 3) // one argument as slice: bool(false); []int([1 2 3]); int(3); int(3);
+
+		// If the final argument is assignable to a slice type `[]T` and is followed by `...`,
+		// it is passed unchanged as the value for a `...T` parameter. In this case no new slice is created
+		var ys = []int{3, 7}
+		f(ys...) // one argument as slice: bool(false); []int([3 7]); int(2); int(2);
 	}
 	passingVariadicArguments()
 
-	// Instantiations
-	// Type inference
+	var instantiations = func() {
+		show("A generic function or type is instantiated by substituting type arguments for the type parameters")
+		// Instantiating a type results in a new non-generic named type;
+		// instantiating a function produces a new non-generic function
+
+		/*
+			type parameter list    type arguments    after substitution
+			[P any]                int               int satisfies any
+			[S ~[]E, E any]        []int, int        []int satisfies ~[]int, int satisfies any
+			[P io.Writer]          string            illegal: string doesn't satisfy io.Writer
+			[P comparable]         any               any satisfies (but does not implement) comparable
+		*/
+
+		// For a generic type, all type arguments must always be provided explicitly.
+
+		// When using a generic function, type arguments may be provided explicitly,
+		// or they may be partially or completely inferred from the context
+		/*
+			// sum returns the sum (concatenation, for strings) of its arguments.
+			func sum[T ~int | ~float64 | ~string](x... T) T { ... }
+
+			x := sum                       // illegal: the type of x is unknown
+			intSum := sum[int]             // intSum has type func(x... int) int
+			a := intSum(2, 3)              // a has value 5 of type int
+			b := sum[float64](2.0, 3)      // b has value 5.0 of type float64
+			c := sum(b, -1)                // c has value 4.0 of type float64
+
+			type sumFunc func(x... string) string
+			var f sumFunc = sum            // same as var f sumFunc = sum[string]
+			f = sum                        // same as f = sum[string]
+		*/
+
+		// A partial type argument list cannot be empty; at least the first argument must be present
+		/*
+			func apply[S ~[]E, E any](s S, f func(E) E) S { … }
+
+			f0 := apply[]                  // illegal: type argument list cannot be empty
+			f1 := apply[[]int]             // type argument for S explicitly provided, type argument for E inferred
+			f2 := apply[[]string, string]  // both type arguments explicitly provided
+
+			var bytes []byte
+			r := apply(bytes, func(byte) byte { … })  // both type arguments inferred from the function arguments
+		*/
+	}
+	instantiations()
+
+	var typeInference = func() {
+		show("Type inference, ")
+	}
+	typeInference()
+
 	// Operators
 	// Arithmetic operators
 	// Comparison operators

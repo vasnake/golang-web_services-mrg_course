@@ -225,6 +225,9 @@ Method values:
 Type assertions: `var v, ok = x.(T)`
 
 Variadic functions: список параметров (variadic) внутри функции виден как слайс.
+Function `f := func(xs ...int){}` could be called as `var ys = []int{3, 7}; f(ys...)`
+
+Generic functions (types): it's like templates, instantiation creates a new non-generic function/type.
 
 ### Переменные, базовые типы данных
 
