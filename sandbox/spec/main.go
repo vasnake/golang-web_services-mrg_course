@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	sfs "spec/functions"
 )
 
 func main() {
@@ -315,7 +316,7 @@ func types() {
 		// It is illegal to take the address of a string's byte (`&str[i]` is invalid)
 
 		var a string = ""
-		show("strings: ", a, "йцукен", len("йцукен"), runesCount("йцуукен")) // strings: string(); string(йцукен); int(12); int(7);
+		show("strings: ", a, "йцукен", len("йцукен"), sfs.RunesCount("йцуукен")) // strings: string(); string(йцукен); int(12); int(7);
 		show("string bytes, runes: ", []byte("йцукен"), []rune("йцукен"))
 		// string bytes, runes: []uint8([208 185 209 134 209 131 208 186 208 181 208 189]); []int32([1081 1094 1091 1082 1077 1085])
 		show("ASCII string bytes, runes: ", []byte("abc"), []rune("abc"))
@@ -1772,17 +1773,355 @@ func expressions() {
 	instantiations()
 
 	var typeInference = func() {
-		show("Type inference, ")
+		show("Type inference, A use of a generic function may omit some or all type arguments if they can be inferred from the context")
+		// Type inference uses the type relationships between pairs of types for inference
+		// a function argument must be `assignable` to its respective function parameter
+
+		// Each such pair of matched types corresponds to a `type equation` ...
+		// Inferring the missing type arguments means solving the resulting set of type equations
+
+		// Type equations are always solved for the bound type parameters only
+		// The types of function arguments may contain type parameters from other functions (such as a generic function enclosing a function call).
+		// Those type parameters may also appear in type equations but they are not `bound` in that context.
+		// type parameters are called bound type parameters:
+		// Given a set of type equations, the type parameters to solve for
+		// are the type parameters of the functions that need to be instantiated and for which no explicit type arguments is provided
+
+		// Type inference gives precedence to type information obtained from typed operands before considering untyped constants
+
+		// the bound type parameters in each type argument are substituted with the respective type arguments for those type parameters
+		// until each type argument is free of bound type parameters
+
+		var typeUnification = func() {
+			show("Type unification, Type inference solves type equations through type unification")
+			// Type unification recursively compares the LHS and RHS types of an equation
+			// where ... types may ... contain bound type parameters,
+			// and looks for type arguments for those type parameters
+			// such that the LHS and RHS match
+
+			// Unification uses a combination of `exact` and `loose` unification depending on whether two types have to be
+			// `identical`, `assignment`-compatible, or only `structurally` equal.
+
+			// Type inference repeats type unification as long as new type arguments are inferred
+		}
+		typeUnification()
 	}
 	typeInference()
 
-	// Operators
-	// Arithmetic operators
-	// Comparison operators
+	var operators = func() {
+		show("Operators, Operators combine operands into expressions")
+		// ... the operand types must be identical unless ...
+
+		// if one operand is an untyped constant
+		// and the other operand is not, the constant is implicitly converted to the type of the other operand
+
+		// The right operand in a shift expression must have integer type
+		// or be an untyped constant representable by a value of type uint.
+		// If the left operand of a non-constant shift expression is an untyped constant, it is first implicitly converted
+		// to the type it would assume if the shift expression were replaced by its left operand alone
+
+		// var a [1024]byte
+		var s uint = 33
+
+		// The results of the following examples are given for 64-bit ints.
+		var i = 1 << s         // 1 has type int
+		var j int32 = 1 << s   // 1 has type int32; j == 0
+		var k = uint64(1 << s) // 1 has type uint64; k == 1<<33
+		var m int = 1.0 << s   // 1.0 has type int; m == 1<<33
+		var n = 1.0<<s == j    // 1.0 has type int32; n == true
+		var o = 1<<s == 2<<s   // 1 and 2 have type int; o == false
+		var p = 1<<s == 1<<33  // 1 has type int; p == true
+
+		// var u = 1.0<<s                 // illegal: 1.0 has type float64, cannot shift
+		// var u1 = 1.0<<s != 0           // illegal: 1.0 has type float64, cannot shift
+		// var u2 = 1<<s != 1.0           // illegal: 1 has type float64, cannot shift
+		// var v1 float32 = 1<<s          // illegal: 1 has type float32, cannot shift
+		// var v2 = string(1<<s)          // illegal: 1 is converted to a string, cannot shift
+
+		var w int64 = 1.0 << 33 // 1.0<<33 is a constant shift expression; w == 1<<33
+		// var x = a[1.0<<s]            // panics: 1.0 has type int, but 1<<33 overflows array bounds
+		// var b = make([]byte, 1.0<<s) // 1.0 has type int; len(b) == 1<<33 // oom
+		show("shift operators, x64: ", i, j, k, m, n, o, p, w)
+		// shift operators, x64: int(8589934592); int32(0); uint64(8589934592); int(8589934592); bool(true); bool(false); bool(true); int64(8589934592);
+
+		// The results of the following examples are given for 32-bit ints,
+		// which means the shifts will overflow.
+		var mm int = 1.0 << s // 1.0 has type int; mm == 0
+		var oo = 1<<s == 2<<s // 1 and 2 have type int; oo == true
+		// var pp = 1<<s == 1<<33         // illegal: 1 has type int, but 1<<33 overflows int
+		// var xx = a[1.0<<s]            // 1.0 has type int; xx == a[0] // panic
+		// var bb = make([]byte, 1.0<<s) // 1.0 has type int; len(bb) == 0 // oom
+		show("shift operators, x32: ", mm, oo)
+		// shift operators, x32: int(8589934592); bool(false);
+
+		var operatorPrecedence = func() {
+			show("Operator precedence, Unary operators have the highest precedence")
+			// As the `++` and `--` operators form statements, not expressions, they fall outside the operator hierarchy
+			// statement `*p++` is the same as `(*p)++`
+
+			// There are five precedence levels for binary operators
+			// Multiplication operators bind strongest,
+			// followed by addition operators, comparison operators,
+			// `&&` (logical AND), and finally `||` (logical OR):
+			/*
+				Precedence    Operator
+					5             *  /  %  <<  >>  &  &^
+					4             +  -  |  ^
+					3             ==  !=  <  <=  >  >=
+					2             &&
+					1             ||
+			*/
+			// Binary operators of the same precedence associate from left to right
+		}
+		operatorPrecedence()
+	}
+	operators()
+
+	var arithmeticOperators = func() {
+		show("Arithmetic operators apply to numeric values and yield a result of the same type as the first operand")
+		// `+` also applies to strings
+		// The bitwise logical and shift operators apply to integers only
+		/*
+			+    sum                    integers, floats, complex values, strings
+			-    difference             integers, floats, complex values
+			*    product                integers, floats, complex values
+			/    quotient               integers, floats, complex values
+			%    remainder              integers
+
+			&    bitwise AND            integers
+			|    bitwise OR             integers
+			^    bitwise XOR            integers
+			&^   bit clear (AND NOT)    integers
+
+			<<   left shift             integer << integer >= 0
+			>>   right shift            integer >> integer >= 0
+		*/
+
+		// The operands are represented as values of the type argument that the type parameter is instantiated with,
+		// and the operation is computed with the precision of that type argument
+		var v1, v2 = []float64{1, 2}, []float64{3, 4}
+		show("operands and result of generic expression: ", sfs.DotProduct(v1, v2))
+		// operands and result of generic expression: float64(11);
+
+		var IntegerOperators = func() {
+			show("Integer operators, quotient, reminder, shift, unari ops")
+			// For two `integer` values x and y,
+			// the integer quotient `q = x / y` and remainder `r = x % y` satisfy the following relationships
+			// with `x / y` truncated towards zero:
+			// `x = q*y + r`  and  `|r| < |y|`
+			// With exception:
+			// the quotient q `x / -1 == x` and r == 0 if the dividend `x` is the most negative value for its type,
+			// due to two's-complement integer overflow
+
+			// The shift operators implement arithmetic shifts if the left operand is a signed integer
+			// and logical shifts if it is an unsigned integer
+			// There is no upper limit on the shift count.
+			// Shifts behave as if the left operand is shifted `n` times by 1 for a shift count of `n`
+
+			// For integer operands, the unary operators +, -, and ^ are defined as follows
+			/*
+				+x                          is 0 + x
+				-x    negation              is 0 - x
+				^x    bitwise complement    is m ^ x  with m = "all bits set to 1" for unsigned x
+													and  m = -1 for signed x
+			*/
+		}
+		IntegerOperators()
+
+		var integerOverflow = func() {
+			show("Integer overflow, For unsigned integer values, the operations +, -, *, and << are computed modulo 2n")
+			// discard high bits upon overflow, and programs may rely on "wrap around"
+			var a uint8 = 250
+			show("overflow unsigned: ", a+a) // overflow unsigned: uint8(244);
+
+			// For signed integers, the operations +, -, *, /, and << may legally overflow
+			// and the resulting value exists and is deterministically defined by the signed integer representation, the operation, and its operands.
+			// Overflow does not cause a run-time panic.
+			var b int8 = 127
+			show("overflow signed: ", b+b) // overflow signed: int8(-2);
+
+		}
+		integerOverflow()
+
+		var floatingPointOperators = func() {
+			show("Floating-point operators, For floating-point and complex numbers, +x is the same as x, while -x is the negation of x.")
+			// The result of a floating-point or complex division by zero ... is implementation-specific
+
+			// An implementation may combine multiple floating-point operations into a single fused operation ...
+			// produce a result that differs from the value obtained by executing and rounding the instructions individually
+			// For instance, some architectures provide a "fused multiply and add" (FMA) instruction
+			// that computes `x*y + z` without rounding the intermediate result `x*y`
+
+			// examples of FMA
+
+			var x, y, z, r, t float32 = 1.1, 3.3, 5.5, 0, 0
+			var p *float32 = &t
+			// FMA allowed for computing r, because x*y is not explicitly rounded:
+			r = x*y + z
+			r = z
+			r += x * y
+			t = x * y
+			r = t + z
+			*p = x * y
+			r = *p + z
+			// r  = x*y + float64(z)
+
+			// FMA disallowed for computing r, because it would omit rounding of x*y:
+			// An explicit floating-point type conversion rounds to the precision of the target type, preventing fusion
+			// r  = float64(x*y) + z
+			// r  = z; r += float64(x*y)
+			// t  = float64(x*y); r = t + z
+
+		}
+		floatingPointOperators()
+
+		var stringConcatenation = func() {
+			show("String concatenation, strings can be concatenated using the + operator or the += assignment operator")
+			// String addition creates a new string
+			var c = 65
+			s := "hi " + string(c)
+			s += " and good bye"
+			show("string concatenation: ", s) // string concatenation: string(hi A and good bye);
+		}
+		stringConcatenation()
+	}
+	arithmeticOperators()
+
+	var comparisonOperators = func() {
+		show("Comparison operators, compare two operands and yield an untyped boolean value")
+		// A type is `strictly comparable` if it is comparable and not an interface type nor composed of interface types
+		// Boolean, numeric, string, pointer, and channel types are strictly comparable
+
+		// In any comparison, the first operand must be assignable to the type of the second operand, or vice versa
+		/*
+			==    equal
+			!=    not equal
+			<     less
+			<=    less or equal
+			>     greater
+			>=    greater or equal
+		*/
+
+		// The equality operators == and != apply to operands of `comparable` types.
+		// The ordering operators <, <=, >, and >= apply to operands of `ordered` types.
+		/*
+			Boolean types are comparable
+			Integer types are comparable and ordered
+			Floating-point types are comparable and ordered ... as defined by the IEEE-754 standard
+			Complex types are comparable
+			String types are comparable and ordered. Two string values are compared lexically byte-wise
+			Pointer types are comparable. Two pointer values are equal if they point to the same variable or if both have value nil
+			Channel types are comparable. Two channel values are equal if they were created by the same call to `make` or if both have value nil
+			Interface types ... are comparable. Two interface values are equal if they have identical dynamic types and equal dynamic values or if both have value nil
+			Struct types are comparable if all their field types are comparable ... in source order
+			Array types are comparable if their array element types are comparable
+			Type parameters are comparable if they are strictly comparable
+		*/
+		// Slice, map, and function types are not comparable
+		// as a special case, a slice, map, or function value may be compared to the predeclared identifier `nil`
+
+		// run-time panic
+		// A comparison of two interface values with identical dynamic types causes a run-time panic if that type is not comparable
+
+	}
+	comparisonOperators()
+
 	// Logical operators
-	// Address operators
-	// Receive operator
-	// Conversions
+	// Logical operators apply to boolean values
+	// The right operand is evaluated conditionally
+	/*
+		&&    conditional AND    p && q  is  "if p then q else false"
+		||    conditional OR     p || q  is  "if p then true else q"
+		!     NOT                !p      is  "not p"
+	*/
+
+	var addressOperators = func() {
+		show("Address operators, For an operand x of type T, the address operation `&x` generates a pointer of type `*T` to x")
+		// The operand must be addressable, that is, either a
+		// variable, pointer indirection, or slice indexing operation; or a field selector of an addressable struct operand;
+		// or an array indexing operation of an addressable array.
+		// As an exception to the addressability requirement, x may also be a (possibly parenthesized) composite literal.
+
+		// If x is nil, an attempt to evaluate `*x` will cause a run-time panic
+		// var x *int = nil
+		// *x   // causes a run-time panic
+		// &*x  // causes a run-time panic
+	}
+	addressOperators()
+
+	var receiveOperator = func() {
+		show("Receive operator, For an operand ch whose core type is a channel, the value of the receive operation <-ch is the value received from the channel ch")
+		//  the type of the receive operation is the element type of the channel
+
+		// The expression blocks until a value is available
+		// Receiving from a nil channel blocks forever
+		// A receive operation on a closed channel ... immediately, yielding the element type's zero value
+
+		// A `receive expression` used in an assignment statement or initialization of the special form
+		// `ok` is `false` if it is a zero value generated because the channel is closed and empty
+		var ch = make(chan byte)
+		close(ch)
+		var x, ok = <-ch
+		show("receive expression, value, was-sent-to-opened-channel: ", x, ok)
+		// receive expression, value, was-sent-to-opened-channel: uint8(0); bool(false);
+	}
+	receiveOperator()
+
+	var conversions = func() {
+		show("Conversions, A conversion changes the type of an expression")
+		// A conversion may appear literally in the source, or it may be implied by the context in which an expression appears
+		// An explicit conversion is an expression of the form `T(x)` where T is a type and x is an expression
+
+		// If the type starts with the operator `*` or `<-`,
+		// or if the type starts with the keyword `func` and has no result list, it must be parenthesized
+		/*
+			*Point(p)        // same as *(Point(p))
+			(*Point)(p)      // p is converted to *Point
+
+			<-chan int(c)    // same as <-(chan int(c))
+			(<-chan int)(c)  // c is converted to <-chan int
+
+			func()(x)        // function signature func() x
+			(func())(x)      // x is converted to func()
+			(func() int)(x)  // x is converted to func() int
+			func() int(x)    // x is converted to func() int (unambiguous)
+		*/
+
+		// Converting a constant to a type that is not a type parameter yields a typed constant
+		// nil is not a constant
+		/*
+			int(1.2)                 // illegal: 1.2 cannot be represented as an int
+			string(65.0)             // illegal: 65.0 is not an integer constant
+		*/
+
+		// Converting a constant to a type parameter yields a non-constant value of that type
+		/*
+			func f[P ~float32|~float64]() {
+				… P(1.1) …
+				// results in a non-constant value of type P and the value 1.1 is represented as a float32 or a float64 depending on the type argument
+			}
+		*/
+
+		// A non-constant value x can be converted to type T in any of these cases
+		// ...
+		// x is an integer or a slice of bytes or runes and T is a string type
+		// x is a string and T is a slice of bytes or runes
+
+		// Struct tags are ignored when comparing struct types for identity for the purpose of conversion
+
+		// Specific rules apply to (non-constant) conversions between numeric types to/from a string type
+		// These conversions may change the representation of x and incur a run-time cost.
+		// All other conversions only change the type but not the representation of x
+
+		// There is no linguistic mechanism to convert between pointers and integers.
+		// The package unsafe implements this functionality under restricted circumstances
+
+		// Conversions between numeric types
+		// Conversions to and from a string type
+		// Conversions from slice to array or array pointer
+	}
+	conversions()
+
 	// Constant expressions
 	// Order of evaluation
 }
@@ -1794,9 +2133,4 @@ func show(msg string, xs ...any) {
 		// line += fmt.Sprintf("%#v; ", x) // repr
 	}
 	fmt.Println(line)
-}
-
-var runesCount = func(str string) int {
-	var runes = []rune(str) // allocation?
-	return len(runes)
 }

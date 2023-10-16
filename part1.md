@@ -104,6 +104,7 @@ go work use ./spec/
 
 Пакет: имя, нэймспейс для группировки: констант, типов, переменных, функций. Один или несколько файлов.
 Идентификатор может быть "экспортирован" из пакета, если имя начинается с Большой Буквы.
+Один пакет = одна директория (по имени пакета).
 
 Модуль: коллекция пакетов, сопровождаемая файлом `go.mod`.
 
@@ -228,6 +229,27 @@ Variadic functions: список параметров (variadic) внутри ф
 Function `f := func(xs ...int){}` could be called as `var ys = []int{3, 7}; f(ys...)`
 
 Generic functions (types): it's like templates, instantiation creates a new non-generic function/type.
+
+> Arithmetic operators ... yield a result of the same type as the first operand
+
+Floating-point operators:
+> An implementation may combine multiple floating-point operations into a single fused operation
+
+Comparison operators:
+> Two string values are compared lexically byte-wise
+Two channel values are equal if they were created by the same call to `make`
+Slice, map, and function types are not comparable
+Boolean, numeric, string, pointer, and channel types are strictly comparable
+
+Receive operator:
+> Receiving from a nil channel blocks forever
+
+Conversion:
+> nil is not a constant
+conversions only change the type but not the representation of x (not applicable to numeric/string) ...
+
+> There is no linguistic mechanism to convert between pointers and integers. 
+The package `unsafe` implements this functionality under restricted circumstances
 
 ### Переменные, базовые типы данных
 
