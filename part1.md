@@ -64,6 +64,9 @@ go work use ./hello_world/
 Пришлось перенести сэндбокс в дерево вне `desktop` и подключить этот сэндбокс к vscode воркспейс как отдельный корень.
 После чего gopls всосал `go.work` в корне сэндбокс и оттуда прочухал модуль `hello_world`.
 
+vscode command (palette) `Go: Install/Update Tools` требуется для обновления инструментария (golint, gopls) после установки новой версии go.
+Если это само не обновится, есть шанс получить в редакторе сообщения от устаревшей версии языка.
+
 - https://play.golang.com/
 - [run](run.sh)
 - [w01/hello_world](week_01/hello_world.go)
@@ -245,11 +248,17 @@ Receive operator:
 > Receiving from a nil channel blocks forever
 
 Conversion:
-> nil is not a constant
-conversions only change the type but not the representation of x (not applicable to numeric/string) ...
+> nil is not a constant ...
+Converting a constant to a type (that is not a type parameter) yields a typed constant ...
+conversions only change the type but not the representation of x (not applicable to `numeric <=> string`) ...
+there is no indication of overflow (int) ...
+the conversion succeeds (float) but the result value is implementation-dependent ...
 
 > There is no linguistic mechanism to convert between pointers and integers. 
 The package `unsafe` implements this functionality under restricted circumstances
+
+Исключение из правил:
+> an integer value may be converted to a string type
 
 ### Переменные, базовые типы данных
 

@@ -12,3 +12,8 @@ func DotProduct[F ~float32 | ~float64](v1, v2 []F) F {
 	}
 	return s
 }
+
+// TwoValuesToArray function returns given parameters as array.
+func TwoValuesToArray(a, b any) [2]any {
+	return [2]any{a, b}
+}

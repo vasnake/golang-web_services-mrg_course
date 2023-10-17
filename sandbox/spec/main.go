@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	sfs "spec/functions"
+	"unicode/utf8"
 )
 
 func main() {
@@ -316,7 +317,8 @@ func types() {
 		// It is illegal to take the address of a string's byte (`&str[i]` is invalid)
 
 		var a string = ""
-		show("strings: ", a, "йцукен", len("йцукен"), sfs.RunesCount("йцуукен")) // strings: string(); string(йцукен); int(12); int(7);
+		show("strings: ", a, "йцукен", len("йцукен"), sfs.TwoValuesToArray(sfs.RuneCount("йцуукен")))
+		// strings: string(); string(йцукен); int(12); [2]interface {}([7 <nil>]);
 		show("string bytes, runes: ", []byte("йцукен"), []rune("йцукен"))
 		// string bytes, runes: []uint8([208 185 209 134 209 131 208 186 208 181 208 189]); []int32([1081 1094 1091 1082 1077 1085])
 		show("ASCII string bytes, runes: ", []byte("abc"), []rune("abc"))
@@ -2116,9 +2118,118 @@ func expressions() {
 		// There is no linguistic mechanism to convert between pointers and integers.
 		// The package unsafe implements this functionality under restricted circumstances
 
-		// Conversions between numeric types
-		// Conversions to and from a string type
-		// Conversions from slice to array or array pointer
+		var conversionsBetweenNumericTypes = func() {
+			show("Conversions between numeric types")
+			// non-constant numeric values
+
+			// integer types, if the value is a signed integer,
+			// it is sign extended to implicit infinite precision; (otherwise it is zero extended).
+			// It is then truncated to fit in the result type's size
+			v := uint16(0x10F0)
+			show("int conversions truncate and extend, ", uint32(int8(v)) == 0xFFFFFFF0) // int conversions truncate and extend, bool(true);
+			// The conversion always yields a valid value; there is no indication of overflow
+
+			// a floating-point number to an integer, the fraction is discarded (truncation towards zero)
+			var getFloat = func() float32 { return float32(5.3 / 3.1) }
+			show("float to int: ", getFloat(), uint32(getFloat())) // float to int: float32(1.7096775); uint32(1);
+
+			// to a floating-point type, ..., the result value is rounded to the precision specified by the destination type
+			// the value of a variable `x` of type `float32` may be stored using additional precision
+			// but `float32(x)` represents the result of rounding x's value to 32-bit precision
+			var a float32 = 5.3 / 3.1
+			show("rounding floats, ", a, float32(a), float64(a))
+			// rounding floats, float32(1.7096775); float32(1.7096775); float64(1.7096774578094482);
+
+			// In all non-constant conversions involving floating-point
+			// if the result type cannot represent the value
+			// the conversion succeeds but the result value is implementation-dependent
+
+		}
+		conversionsBetweenNumericTypes()
+
+		var conversionsToAndFromStringType = func() {
+			show("Conversions to and from a string type")
+
+			// Converting a slice of bytes to a string type yields a string whose successive bytes are the elements of the slice
+			var a = string([]byte{'h', 'e', 'l', 'l', '\xc3', '\xb8'}) // "hellø"
+			var b = string([]byte{})                                   // ""
+			var c = string([]byte(nil))                                // ""
+			show("bytes => string, ", a, b, c, "len, cap of []byte(nil)", len([]byte(nil)), cap([]byte(nil)))
+			// bytes => string, string(hellø); string(); string(); string(len, cap of []byte(nil)); int(0); int(0);
+
+			// Converting a slice of runes to a string type yields a string that is the concatenation of the individual rune values
+			// converted to string
+			a = string([]rune{0x767d, 0x9d6c, 0x7fd4, 0x1f30e}) // "\u767d\u9d6c\u7fd4" == "白鵬翔" // "\U0001f30e" == "🌎"
+			b = string([]rune{})                                // ""
+			c = string([]rune(nil))                             // ""
+			show("runes => string, ", a, b, c)                  // runes => string, string(白鵬翔🌎); string(); string();
+
+			// Converting a value of a string type to a slice of bytes type yields a slice whose successive elements are the bytes of the string
+			show("string => bytes, ", []byte("🌏")) // string => bytes, []uint8([240 159 140 143]);
+
+			// Converting a value of a string type to a slice of runes type yields a slice containing the individual Unicode code points of the string
+			show("string => runes, ", []rune("🌏")) // string => runes, []int32([127759]);
+
+			// for historical reasons, an integer value may be converted to a string type.
+			// This form of conversion yields a string containing the (possibly multi-byte) UTF-8 representation
+			// of the Unicode code point with the given integer value.
+			// Values outside the range of valid Unicode code points are converted to "\uFFFD".
+			// Library functions such as `utf8.AppendRune` or `utf8.EncodeRune` should be used instead
+			a = string('a')                  // "a"
+			b = string(65)                   // "A"
+			c = string(0xf8)                 // "\u00f8" == "ø" == "\xc3\xb8"
+			show("int => string: ", a, b, c) // int => stringstring(a); string(A); string(ø);
+			a = string(-1)                   // "\ufffd" == "\xef\xbf\xbd"
+			b = string(0x65e5)               // "\u65e5" == "日" == "\xe6\x97\xa5"
+			show("int => string: ", a, b)    // int => stringstring(�); string(日);
+
+			aa := utf8.AppendRune([]byte("a"), 0xf8)
+			bb := utf8.AppendRune([]byte("a"), -1)
+			show("utf.AppendRune: ", aa, string(aa), bb, string(bb))
+			// utf.AppendRune: []uint8([97 195 184]); string(aø); []uint8([97 239 191 189]); string(a�);
+		}
+		conversionsToAndFromStringType()
+
+		var conversionsFromSliceToArray = func() {
+			show("Conversions from slice to array or array pointer")
+			// Converting a slice to an array yields an array containing the elements of the underlying array of the slice.
+			// Similarly, converting a slice to an array pointer yields a pointer to the underlying array of the slice.
+			// In both cases, if the length of the slice is less than the length of the array, a run-time panic occurs
+			var s = make([]byte, 2, 4)
+
+			// array
+			a0 := [0]byte(s)
+			a1 := [1]byte(s[1:]) // a1[0] == s[1]
+			a2 := [2]byte(s)     // a2[0] == s[0]
+			// a4 := [4]byte(s)         // panics: len([4]byte) > len(s)
+			s[0] = 1 // slices are copies made before this mutation
+			show("slice => array: ", s, a0, a1, a2)
+			// slice => array: []uint8([1 0]); [0]uint8([]); [1]uint8([0]); [2]uint8([0 0]);
+
+			// pointer to array
+			s0 := (*[0]byte)(s)     // s0 != nil
+			s1 := (*[1]byte)(s[1:]) // &s1[0] == &s[1]
+			s2 := (*[2]byte)(s)     // &s2[0] == &s[0]
+			// s4 := (*[4]byte)(s)     // panics: len([4]byte) > len(s)
+			s[0] = 2 // slices are pointers to original array
+			show("slice => *array: ", s, s0, s1, s2)
+			// slice => *array: []uint8([2 0]); *[0]uint8(&[]); *[1]uint8(&[0]); *[2]uint8(&[2 0]);
+
+			// string, nil
+			var t []string        // nil, not initialized slice
+			t0 := [0]string(t)    // ok for nil slice t
+			t1 := (*[0]string)(t) // t1 == nil, see conversion of `u` below
+			// t2 := (*[1]string)(t) // panics: len([1]string) > len(t)
+			show("slice => array, nil: ", t, t0, t1)
+			// slice => array, nil: []string([]); [0]string([]); *[0]string(<nil>);
+
+			// byte, not nil
+			u := make([]byte, 0) // empty, initialized slice
+			u0 := (*[0]byte)(u)  // u0 != nil
+			show("slice => array, empty: ", u, u0)
+			// slice => array, empty: []uint8([]); *[0]uint8(&[]);
+		}
+		conversionsFromSliceToArray()
 	}
 	conversions()
 

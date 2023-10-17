@@ -9,7 +9,9 @@
 // go work init
 // go work use ./tools/ ./tools/gopls/
 
-go 1.19
+go 1.21
+
+toolchain go1.21
 
 use (
 	./hello_world
