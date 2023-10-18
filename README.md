@@ -22,6 +22,10 @@ Consequently, there are no constants denoting the IEEE-754 negative zero, infini
 - Step 3: adding 1 to the entire inverted number, ignoring any overflow.
 
 Напиши отображение 32-бит числа в int32, uint32. Битовое представление не меняется, меняется интерпретация набора бит.
+Рассмотри два случая: int32 получен как результат хеширования
+и 1) надо отобразить диапазон значений на uint32. 2) надо сохранить битовое представление.
+
+Напиши конвертеры: (u)int => bitstring, bitstring => u(int).
 
 ## Info, links
 
@@ -33,3 +37,4 @@ Consequently, there are no constants denoting the IEEE-754 negative zero, infini
 - [Implementing a bignum calculator with Rob Pike](https://youtu.be/PXoG0WX0r_E)
 - [Lexical Scanning in Go - Rob Pike](https://www.youtube.com/watch?v=HxaD_trXwRE)
 - [Advanced Topics in Programming Languages: Concurrency/message passing Newsqueak](https://youtu.be/hB05UFqOtFA), prime sieve on channels
+

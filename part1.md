@@ -67,6 +67,20 @@ go work use ./hello_world/
 vscode command (palette) `Go: Install/Update Tools` требуется для обновления инструментария (golint, gopls) после установки новой версии go.
 Если это само не обновится, есть шанс получить в редакторе сообщения от устаревшей версии языка.
 
+Я пока не знаю, можно ли в коде давать hint для линтеров, поэтому:
+раздражающие предупреждения отключаются так, пример:
+```s
+# go vet:
+go vet -stringintconv=false ./spec
+
+#vscode go tools: ~\AppData\Roaming\Code\User\settings.json
+"gopls": {
+    "ui.diagnostic.analyses": {
+        "stringintconv": false
+    }
+}
+```
+
 - https://play.golang.com/
 - [run](run.sh)
 - [w01/hello_world](week_01/hello_world.go)
@@ -102,6 +116,9 @@ go mod init spec
 go mod tidy
 popd
 go work use ./spec/
+go vet -stringintconv=false spec
+gofmt -w spec
+go run spec
 ```
 [spec playground](./sandbox/spec/main.go)
 
@@ -234,6 +251,7 @@ Function `f := func(xs ...int){}` could be called as `var ys = []int{3, 7}; f(ys
 Generic functions (types): it's like templates, instantiation creates a new non-generic function/type.
 
 > Arithmetic operators ... yield a result of the same type as the first operand
+но это не так для Constant Expressions!
 
 Floating-point operators:
 > An implementation may combine multiple floating-point operations into a single fused operation
@@ -257,8 +275,14 @@ the conversion succeeds (float) but the result value is implementation-dependent
 > There is no linguistic mechanism to convert between pointers and integers. 
 The package `unsafe` implements this functionality under restricted circumstances
 
-Исключение из правил:
+Исключение из правил (`string(rune(x))` vs `strconv.Itoa`):
 > an integer value may be converted to a string type
+
+> converting a slice to an array pointer yields a pointer to the underlying array of the slice
+
+Constant expressions:
+тип результата бинарной операции (над нетипизированными операндами) определяет тип самого правого операнда.
+Что противоположно правилам Arithmetic Operators!
 
 ### Переменные, базовые типы данных
 
@@ -908,7 +932,6 @@ Unmarshal в пустой интерфейс.
 ## links, info
 
 Материалы для дополнительного чтения на английском:
-
 * https://go.dev/ref/spec - спецификация по языку
 * https://go.dev/ref/mem - модель памяти го. на начальном этапе не надо, но знать полезно
 * https://go.dev/doc/code - How to Write Go Code
@@ -934,3 +957,9 @@ Unmarshal в пустой интерфейс.
 * https://youtu.be/MzTcsI6tn-0 - как организовать код / Ashley McNamara + Brian Ketelsen. Go best practices
 * https://medium.com/@benbjohnson/standard-package-layout-7cdbc8391fc1 - статья на предыдущую тему / Standard Package Layout
 * https://dave.cheney.net/practical-go/presentations/qcon-china.html - Practical Go: Real world advice for writing maintainable Go programs / Dave Cheney dave@cheney.net Version 12c316-Dirty, 2019-04-24
+
+linter tools
+* https://pkg.go.dev/cmd/vet
+* https://golangci-lint.run/usage/configuration
+* https://github.com/golang/vscode-go/wiki/settings#uidiagnosticanalyses
+* https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/stringintconv#hdr-Analyzer_stringintconv

@@ -1981,7 +1981,7 @@ func expressions() {
 			show("String concatenation, strings can be concatenated using the + operator or the += assignment operator")
 			// String addition creates a new string
 			var c = 65
-			s := "hi " + string(c)
+			s := "hi " + string(c) // go vet -stringintconv=false spec
 			s += " and good bye"
 			show("string concatenation: ", s) // string concatenation: string(hi A and good bye);
 		}
@@ -2175,6 +2175,7 @@ func expressions() {
 			// of the Unicode code point with the given integer value.
 			// Values outside the range of valid Unicode code points are converted to "\uFFFD".
 			// Library functions such as `utf8.AppendRune` or `utf8.EncodeRune` should be used instead
+			// `string(rune(x))` vs `strconv.Itoa`
 			a = string('a')                  // "a"
 			b = string(65)                   // "A"
 			c = string(0xf8)                 // "\u00f8" == "ø" == "\xc3\xb8"
@@ -2233,7 +2234,68 @@ func expressions() {
 	}
 	conversions()
 
-	// Constant expressions
+	var constantExpressions = func() {
+		show("Constant expressions may contain only constant operands and are evaluated at compile time")
+		// boolean, integer, floating-point, complex, or string constant
+
+		// A compiler may use rounding while computing untyped floating-point expressions
+
+		// shift => always int
+
+		// ... untyped operands of a binary operation (other than a shift) are of different kinds,
+		// the result is of the operand's kind that appears later in this list
+		// N.B. Ariphmetic Operators works opposite!
+
+		// e.g.
+		const a = 2 + 3.0  // a == 5.0   (untyped floating-point constant)
+		const b = 15 / 4   // b == 3     (untyped integer constant)
+		const c = 15 / 4.0 // c == 3.75  (untyped floating-point constant)
+
+		const Θ float64 = 3 / 2  // Θ == 1.0   (type float64, 3/2 is integer division)
+		const Π float64 = 3 / 2. // Π == 1.5   (type float64, 3/2. is float division)
+
+		const d = 1 << 3.0 // d == 8     (untyped integer constant)
+		const e = 1.0 << 3 // e == 8     (untyped integer constant)
+
+		// const f = int32(1) << 33  // illegal    (constant 8589934592 overflows int32)
+		// const g = float64(2) >> 1 // illegal    (float64(2) is a typed floating-point constant)
+
+		const h = "foo" > "bar" // h == true  (untyped boolean constant)
+		const j = true          // j == true  (untyped boolean constant)
+		const k = 'w' + 1       // k == 'x'   (untyped rune constant) // WTF?! should be int
+		const l = "hi"          // l == "hi"  (untyped string constant)
+		const m = string(k)     // m == "x"   (type string)
+
+		const Σ = 1 - 0.707i     //            (untyped complex constant)
+		const Δ = Σ + 2.0e-4     //            (untyped complex constant)
+		const Φ = iota*1i - 1/1i //            (untyped complex constant)
+
+		// Constant expressions are always evaluated exactly
+		const Huge = 1 << 100        // Huge == 1267650600228229401496703205376  (untyped integer constant)
+		const Four int8 = Huge >> 98 // Four == 4                                (type int8)
+		show("constants w/o limitations: ", float64(Huge), Four)
+		// constants w/o limitations: float64(1.2676506002282294e+30); int8(4);
+
+		// The values of typed constants must always be accurately representable by values of the constant type
+		/*
+			uint(-1)     // -1 cannot be represented as a uint
+			int(3.14)    // 3.14 cannot be represented as an int
+			int64(Huge)  // 1267650600228229401496703205376 cannot be represented as an int64
+			Four * 300   // operand 300 cannot be represented as an int8 (type of Four)
+			Four * 100   // product 400 cannot be represented as an int8 (type of Four)
+		*/
+
+		// BitFlip: The mask used by the unary bitwise complement operator ^ matches the rule for non-constants
+		aa := ^1 // untyped integer constant, equal to -2 (11111110 = 11111111 ^ 0000001)
+		// bb := uint8(^1)  // illegal: same as uint8(-2), -2 cannot be represented as a uint8
+		cc := ^uint8(1)                           // typed uint8 constant, same as 0xFF ^ uint8(1) = uint8(0xFE)
+		dd := int8(^1)                            // same as int8(-2)
+		ee := ^int8(1)                            // same as -1 ^ int8(1) = -2
+		show("mask for unary ^ ", aa, cc, dd, ee) // mask for unary ^ int(-2); uint8(254); int8(-2); int8(-2);
+		show("binary representation, 1, -1: ", sfs.IntBits(byte(1)), sfs.IntBits(int8(-2)))
+	}
+	constantExpressions()
+
 	// Order of evaluation
 }
 

@@ -17,6 +17,8 @@ go_run_sandbox() {
     local module="${1}"
     pushd ${PRJ_DIR}/sandbox
     gofmt -w $module || exit
+    go vet $module
+    # go vet -stringintconv=false spec
     go run $module
     local exit_code=$?
     popd
