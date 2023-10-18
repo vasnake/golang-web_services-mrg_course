@@ -21,6 +21,7 @@ func main() {
 	blocks()
 	declarationsAndScope()
 	expressions()
+	statements()
 
 	show(`
 Viso gero!
@@ -2292,11 +2293,189 @@ func expressions() {
 		dd := int8(^1)                            // same as int8(-2)
 		ee := ^int8(1)                            // same as -1 ^ int8(1) = -2
 		show("mask for unary ^ ", aa, cc, dd, ee) // mask for unary ^ int(-2); uint8(254); int8(-2); int8(-2);
-		show("binary representation, 1, -1: ", sfs.IntBits(byte(1)), sfs.IntBits(int8(-2)))
+		show("Two's complement, binary representation, 1, -2: ", sfs.IntBits(byte(1)), sfs.IntBits(int8(-2)))
+		// Two's complement, binary representation, 1, -2: string(00000001); string(11111110);
 	}
 	constantExpressions()
 
-	// Order of evaluation
+	var orderOfEvaluation = func() {
+		show("Order of evaluation")
+		// At package level, initialization dependencies determine the evaluation order
+		// of individual initialization expressions in variable declarations ... but not for operands within each expression
+
+		// Otherwise, ... all function calls, method calls, and communication operations
+		// are evaluated in lexical left-to-right order
+
+		// but
+		// example: int(3); func() int(0x4844a0); []int([2 2]); map[int]int(map[2:2]); map[int]int(map[3:3]);
+		var notSpecified = func() {
+			a := 1
+			f := func() int { a++; return a }
+			x := []int{a, f()}           // x may be [1, 2] or [2, 2]: evaluation order between a and f() is not specified
+			m := map[int]int{a: 1, a: 2} // m may be {2: 1} or {2: 2}: evaluation order between the two map assignments is not specified
+			n := map[int]int{a: f()}     // n may be {2: 3} or {3: 3}: evaluation order between the key and the value is not specified
+			show("example: ", a, f, x, m, n)
+		}
+		notSpecified()
+
+		// At package level,
+		/*
+			// initialization dependencies override the left-to-right rule
+			// for individual initialization expressions,
+			// but not for operands within each expression:
+			// functions u and v are independent of all other variables and functions
+			// The function calls happen in the order u(), sqr(), v(), f(), v(), and g()
+			var a, b, c = f() + v(), g(), sqr(u()) + v()
+			f := func() int { return c }
+			g := func() int { return a }
+			sqr := func(x int) int { return x * x }
+		*/
+
+		// Floating-point operations within a single expression are evaluated according to the associativity of the operator
+	}
+	orderOfEvaluation()
+}
+
+func statements() {
+	show("\nStatements control execution")
+
+	var terminatingStatements = func() {
+		show("A terminating statement interrupts the regular flow of control in a block")
+		// what about `return` from `if` block? It interrupts how many nested blocks?
+
+		// terminating statements:
+		// `return`
+		// `goto`
+		// `panic()`
+		// A block in which the statement list ends in a terminating statement
+		// `if` with `else` and both terminating
+		// `for` with no `break` and no loop condition and no `range`
+		// `switch` with no `break` and with `default` and each case terminating
+		// `select` with no `break` and each case terminating
+		// labeled statement that terminating
+	}
+	terminatingStatements()
+
+	// 	Empty statements
+	// The empty statement does nothing
+
+	var labeledStatements = func() {
+		show("Labeled statements, A labeled statement may be the target of a `goto`, `break` or `continue` statement")
+
+		for i := 0; i < 999; i++ {
+			show("i: ", i, &i)
+			goto One
+		}
+	One:
+		show("One")
+
+	Two:
+		for j := 0; j < 3; j++ {
+			show("j: ", j, &j)
+			break Two
+		}
+		show("Two")
+
+	Three:
+		for k := 0; k < 3; k++ {
+			show("k: ", k, &k)
+			if k > 0 {
+				continue Three
+			}
+			show("k again: ", k, &k)
+		}
+		show("Three")
+	}
+	labeledStatements()
+
+	var expressionStatements = func() {
+		show("Expression statements, function and method calls and receive operations can appear in statement context")
+
+		// The following built-in functions are not permitted in statement context:
+		// append cap complex imag len make new real
+		// unsafe.Add unsafe.Alignof unsafe.Offsetof unsafe.Sizeof unsafe.Slice unsafe.SliceData unsafe.String unsafe.StringData
+
+		// legal:
+		// h(x+y)
+		// f.Close()
+		// <-ch
+		// (<-ch)
+
+		// illegal:
+		// len("foo")
+
+		var ch = make(chan int)
+		close(ch)
+		// expression statement e.g.
+		<-ch
+	}
+	expressionStatements()
+
+	var sendStatements = func() {
+		show("Send statements, A send statement sends a value on a channel")
+		// Both the channel and the value expression are evaluated before communication begins
+
+		// Communication blocks until the send can proceed.
+		// A send on an unbuffered channel can proceed if a receiver is ready.
+		// A send on a buffered channel can proceed if there is room in the buffer.
+		// A send on a closed channel proceeds by causing a run-time panic.
+		// A send on a nil channel blocks forever
+
+		var ch = make(chan int, 1) // buffer size 1
+		ch <- 42                   // send statement
+	}
+	sendStatements()
+
+	// 	IncDec statements
+	// The "++" and "--" statements increment or decrement their operands by the untyped constant 1
+	// The following assignment statements are semantically equivalent
+	// IncDec statement    Assignment
+	// x++                 x += 1
+	// x--                 x -= 1
+
+	var assignmentStatements = func() {
+		show("Assignment statements, An assignment replaces the current value stored in a variable with a new value specified by an expression.")
+		// An assignment statement may assign a single value to a single variable, or multiple values to a matching number of variables.
+
+		// Each left-hand side operand must be
+		// addressable, a map index expression, or (for = assignments only) the blank identifier.
+		// Operands may be parenthesized
+		var p *int = new(int)
+		var a [3]int
+		var k, i int
+		var f = func() int { return 42 }
+		var ch = make(chan int)
+		close(ch)
+
+		var x = 1
+		(*p) = f()
+		a[i] = 23
+		k, valueWasSent := <-ch // same as: k = <-ch
+		show("assigned: ", *p, a, k, f, ch, x, valueWasSent)
+		// assigned: int(42); [3]int([23 0 0]); int(0); func() int(0x481f40); chan int(0xc000094f60); int(1); bool(false);
+
+		// An assignment operation `x op= y` where `op` is a binary arithmetic operator
+		// is equivalent to `x = x op (y)` but evaluates x only once
+		// The op= construct is a single token
+		a[i] <<= 2    // shift left by 2
+		*p &^= 1 << x // &^   bit clear (AND NOT)    integers
+		show("op with assignment: ", a, *p)
+		// op with assignment: [3]int([92 0 0]); int(40);
+	}
+	assignmentStatements()
+
+	// 	If statements
+	// 	Switch statements
+	// 	For statements
+	// 	Go statements
+	// 	Select statements
+	// 	Return statements
+	// 	Break statements
+	// 	Continue statements
+	// 	Goto statements
+	// 	Fallthrough statements
+	// 	Defer statements
+
 }
 
 func show(msg string, xs ...any) {

@@ -284,6 +284,11 @@ Constant expressions:
 тип результата бинарной операции (над нетипизированными операндами) определяет тип самого правого операнда.
 Что противоположно правилам Arithmetic Operators!
 
+Order of evaluation:
+порядок вычислений операндов определён не во всех случаях
+> At package level, initialization dependencies determine the evaluation order ... but not for operands within each expression ...
+all function calls, method calls, and communication operations are evaluated in lexical left-to-right order ...
+
 ### Переменные, базовые типы данных
 
 - [vars_1](week_01/vars_1.go)
