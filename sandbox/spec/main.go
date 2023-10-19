@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	sfs "spec/functions"
+	"time"
 	"unicode/utf8"
 )
 
@@ -2440,6 +2441,8 @@ func statements() {
 		// Each left-hand side operand must be
 		// addressable, a map index expression, or (for = assignments only) the blank identifier.
 		// Operands may be parenthesized
+
+		// prepare example
 		var p *int = new(int)
 		var a [3]int
 		var k, i int
@@ -2447,6 +2450,7 @@ func statements() {
 		var ch = make(chan int)
 		close(ch)
 
+		// example
 		var x = 1
 		(*p) = f()
 		a[i] = 23
@@ -2455,19 +2459,389 @@ func statements() {
 		// assigned: int(42); [3]int([23 0 0]); int(0); func() int(0x481f40); chan int(0xc000094f60); int(1); bool(false);
 
 		// An assignment operation `x op= y` where `op` is a binary arithmetic operator
-		// is equivalent to `x = x op (y)` but evaluates x only once
-		// The op= construct is a single token
-		a[i] <<= 2    // shift left by 2
-		*p &^= 1 << x // &^   bit clear (AND NOT)    integers
+		// is equivalent to `x = x op (y)` but evaluates `x` only once
+		// The `op=` construct is a single token
+		a[i] <<= 2        // shift by 2
+		(*p) &^= (1 << x) // &^   bit clear (AND NOT)    integers
 		show("op with assignment: ", a, *p)
 		// op with assignment: [3]int([92 0 0]); int(40);
+
+		// A `tuple assignment` assigns the individual elements of a multi-valued operation to a list of variables
+		// There are two forms:
+		// 1) right hand operand is a single multi-valued expression;
+		// 2) number of operands on the left must equal the number of expressions on the right
+		count, err := sfs.RuneCount("foo")
+		one, two, three := '一', '二', '三'
+		show("tuple assignment: ", count, err, one, two, three)
+		// tuple assignment: int(3); <nil>(<nil>); int32(19968); int32(20108); int32(19977);
+
+		// The blank identifier provides a way to ignore right-hand side values in an assignment
+		// Any typed value may be assigned to the blank identifier
+		x, _ = sfs.RuneCount("") // evaluate func but ignore second result value
+
+		// The assignment proceeds in two phases
+		// First, the operands of index expressions and pointer indirections ... on the left and the expressions on the right are all evaluated ...
+		// Second, the assignments are carried out in left-to-right order
+		var implications = func() {
+			var a, b int = 1, 2
+			a, b = b, a // exchange a and b
+
+			x := []int{1, 2, 3}
+			i := 0
+			i, x[i] = 1, 2 // set i = 1, x[0] = 2
+
+			i = 0
+			x[i], i = 2, 1 // set x[0] = 2, i = 1
+
+			x[0], x[0] = 1, 2 // set x[0] = 1, then x[0] = 2 (so x[0] == 2 at end)
+
+			// x[1], x[3] = 4, 5  // set x[1] = 4, then panic setting x[3] = 5 (out of range)
+
+			type Point struct{ x, y int }
+			var p *Point // pointer = nil, no structure allocated
+			// x[2], p.x = 6, 7  // set x[2] = 6, then panic setting p.x = 7
+
+			i = 2
+			x = []int{3, 5, 7}
+			for i, x[i] = range x { // set i, x[2] = 0, x[0]
+				break
+			}
+			// after this loop, i == 0 and x is []int{3, 5, 3}
+			show("assignment order implications: ", i, x, p, a, b)
+			// assignment order implications: int(0); []int([3 5 3]); *main.Point(<nil>); int(2); int(1);
+		}
+		implications()
 	}
 	assignmentStatements()
 
-	// 	If statements
-	// 	Switch statements
-	// 	For statements
-	// 	Go statements
+	var ifStatements = func() int {
+		show("If statements specify the conditional execution of two branches")
+		// prep
+		var x, max int
+		// example: check expression value, execute one of two blocks
+		if x > max {
+			x = max
+		}
+
+		// The expression may be preceded by a simple statement,
+		// which executes before the expression is evaluated
+		// prep
+		var f = func() int { return 42 }
+		var y, z int
+		// example
+		if x := f(); x < y {
+			return x
+		} else if x > z {
+			return z
+		} else {
+			return y
+		}
+	}
+	_ = ifStatements()
+
+	var switchStatements = func() {
+		show("Switch statements provide multi-way execution")
+		// An expression or type is compared to the "cases" inside the "switch" to determine which branch to execute
+		// The switch expression is evaluated exactly once in a switch statement.
+
+		// There are two forms: expression switches and type switches
+		// In an expression switch, the cases contain expressions that are compared against the value of the switch expression
+		// In a type switch, the cases contain types that are compared against the type of a specially annotated switch expression
+
+		var expressionSwitches = func() {
+			show("Expression switches")
+			// The switch expression may be preceded by a simple statement, which executes before the expression is evaluated
+
+			// switch expression is evaluated and the case expressions, which need not be constants, are evaluated
+			// left-to-right and top-to-bottom
+			// first one that equals the switch expression triggers execution of the statements of the associated case
+
+			// There can be at most one default case and it may appear anywhere in the "switch" statement.
+			// A missing switch expression is equivalent to the boolean value `true`
+
+			// The predeclared untyped value `nil` cannot be used as a switch expression. The switch expression type must be `comparable`
+
+			// the switch expression is treated as if it were used to declare and initialize a temporary variable `t` without explicit type;
+			// it is that value of `t` against which each case expression `x` is tested for equality
+
+			// the last non-empty statement may be a (possibly labeled) "fallthrough" statement to indicate that control should flow
+			// from the end of this clause to the first statement of the next clause
+
+			// prep
+			var tag, x, y, z int
+			var s3 = func() int { show("s3"); return 3 }
+			var s1 = func() int { show("s1"); return 1 }
+			var s2 = func() int { show("s2"); return 2 }
+			var f = func() int { show("f"); return 42 }
+			var f3 = func() int { show("f3"); return 3 }
+			var f1 = func() int { show("f1"); return 1 }
+			var f2 = func() int { show("f2"); return 2 }
+
+			var example = func() int {
+				switch tag {
+				default:
+					s3()
+				case 0, 1, 2, 3: // tag == 0
+					s1()
+				case 4, 5, 6, 7:
+					s2()
+				}
+				// s1
+
+				switch { // t = true, x, y, z == 0
+				case x < y:
+					f1()
+				case x < z:
+					f2()
+				case x == 4:
+					f3()
+				}
+				// nothing executed
+
+				switch x := f(); { // missing switch expression means "true"
+				case x < 0:
+					return -x
+				default:
+					return x // x == 42
+				}
+				// f
+			}
+			show("example return value: ", example())
+			// example return value: int(42);
+		}
+		expressionSwitches()
+
+		var typeSwitches = func() {
+			show("Type switches, A type switch compares types rather than values")
+			// It is marked by a special switch expression that has the form of a type assertion
+			// using the keyword `type` rather than an actual type
+			// The type switch guard may be preceded by a simple statement, which executes before the guard is evaluated
+			// The "fallthrough" statement is not permitted in a type switch
+
+			// Cases then match actual types `T` against the dynamic type of the expression `x`
+			// As with type assertions, `x` must be of interface type
+
+			// The TypeSwitchGuard may include a short variable declaration
+			// Instead of a type, a case may use the predeclared identifier nil
+
+			// A type parameter or a generic type may be used as a type in a case.
+			// If upon instantiation that type turns out to duplicate another entry in the switch, the first matching case is chosen.
+			/*
+				func f[P any](x any) int {
+					switch x.(type) {
+					case P:
+						return 0
+					case string:
+						return 1
+					case []P:
+						return 2
+					case []byte:
+						return 3
+					default:
+						return 4
+					}
+				}
+				var v1 = f[string]("foo")   // v1 == 0
+				var v2 = f[byte]([]byte{})  // v2 == 2
+			*/
+
+			// Given an expression x of type interface{}, the following type switch:
+			var x interface{}
+			switch i := x.(type) {
+			case nil:
+				show("x is nil: ", i) // type of i is type of x (interface{})
+			case int:
+				show("is int: ", i) // type of i is int
+			case float64:
+				show("is float64: ", i) // type of i is float64
+			case func(int) float64:
+				show("is `func(int) float64`: ", i) // type of i is func(int) float64
+			case bool, string:
+				show("type is bool or string: ", i) // type of i is type of x (interface{})
+			default:
+				show("don't know the type: ", i) // type of i is type of x (interface{})
+			}
+			// could be rewritten:
+			v := x // x is evaluated exactly once
+			if v == nil {
+				i := v // type of i is type of x (interface{})
+				show("x is nil: ", i)
+			} else if i, isInt := v.(int); isInt {
+				show("is int: ", i) // type of i is int
+			} else if i, isFloat64 := v.(float64); isFloat64 {
+				show("is float64: ", i) // type of i is float64
+			} else if i, isFunc := v.(func(int) float64); isFunc {
+				show("is `func(int) float64`: ", i) // type of i is func(int) float64
+			} else {
+				_, isBool := v.(bool)
+				_, isString := v.(string)
+				if isBool || isString {
+					i := v // type of i is type of x (interface{})
+					show("type is bool or string: ", i)
+				} else { // default
+					i := v // type of i is type of x (interface{})
+					show("don't know the type: ", i)
+				}
+			}
+			// x is nil: <nil>(<nil>);
+		}
+		typeSwitches()
+	}
+	switchStatements()
+
+	var forStatements = func() {
+		show("For statements specifies repeated execution of a block. There are three forms")
+		// The iteration may be controlled by a
+		// single condition,
+		// a "for" clause,
+		// or a "range" clause.
+
+		// For statements with single condition
+		// specifies the repeated execution of a block as long as a boolean condition evaluates to true.
+		// The condition is evaluated before each iteration.
+		// If the condition is absent, it is equivalent to the boolean value true
+		var a, b int = 1, 4
+		for {
+			if a >= b {
+				break
+			}
+			a *= 2
+		}
+		for a < b {
+			a *= 2
+		}
+		show("For statements with single condition: ", a, b)
+		// For statements with single condition: int(4); int(4);
+
+		// For statements with `for` clause
+		// additionally it may specify an `init` and a `post` statement, such as an assignment, an increment or decrement statement.
+		// The init statement may be a short variable declaration, but the post statement must not
+		// the init statement is executed once before evaluating the condition for the first iteration
+		// the post statement is executed after each execution of the block (and only if the block was executed)
+		// Any element of the ForClause may be empty but the semicolons are required unless there is only a condition.
+		// If the condition is absent, it is equivalent to the boolean value true
+		for i := 1; i <= 3; i++ {
+			a = b / i
+		}
+		show("For statements with `for` clause: ", a)
+		// For statements with for clause: int(1);
+		for ; a < b; a++ {
+			a += b
+		}
+		for i := 0; i < b; {
+			i++
+		}
+
+		show("For statements with `range` clause")
+		// A "for" statement with a "range" clause iterates through all entries of an
+		// array, slice, string or map, or values received on a channel
+		// For each entry it assigns iteration values to corresponding iteration variables if present and then executes the block
+		for i, x := range "Йfoo" {
+			show("entry key i, entry value x: ", i, x)
+		} // if collection is string: value is rune, key is rune first byte index, ignoring the fact that string is a collection of bytes
+		// entry key i, entry value x: int(0); int32(1049);
+		// entry key i, entry value x: int(2); int32(102);
+		// entry key i, entry value x: int(3); int32(111);
+		// entry key i, entry value x: int(4); int32(111);
+
+		// The expression on the right in the "range" clause is called the `range expression`
+		// its core type must be an array, pointer to an array, slice, string, map, or channel
+		// the operands on the left must be addressable or map index expressions
+		// If the range expression is a channel, at most one iteration variable is permitted, otherwise there may be up to two
+		// If the channel is nil, the range expression blocks forever. Otherwise iterate until ch is closed.
+		// If the last iteration variable is the blank identifier, the range clause is equivalent to the same clause without that identifier
+		// The range expression x is evaluated once before beginning the loop
+		// Function calls on the left are evaluated once per iteration
+		// The iteration order over maps is not specified and is not guaranteed to be the same from one iteration to the next
+		// concurrent add/remove ops may or may not be reflected by producing iteration value
+
+		var ch = sfs.MakeChannel[int](1, true, 42)
+		for x := range ch { // If the range expression is a channel, at most one iteration variable is permitted
+			show("element from chan: ", x)
+		}
+		// element from chan: int(42);
+
+		var examples = func() {
+			var f = func(int) {}
+			var g = func(int, string) {}
+			var h = func(string, any) {}
+
+			var testdata *struct {
+				a *[7]int
+			}
+			for i, _ := range testdata.a {
+				// testdata.a is never evaluated; len(testdata.a) is constant
+				// i ranges from 0 to 6
+				f(i)
+			}
+
+			var a [10]string
+			for i, s := range a {
+				// type of i is int
+				// type of s is string
+				// s == a[i]
+				g(i, s)
+			}
+
+			var key string
+			var val interface{} // element type of m is assignable to val
+			m := map[string]int{"mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6}
+			for key, val = range m {
+				h(key, val)
+			}
+			// key == last map key encountered in iteration
+			// val == map[key]
+
+			var ch = sfs.MakeChannel[int](1, true, 42)
+			for w := range ch {
+				b = w
+			}
+
+			// empty (drain) channel `ch`
+			for range ch {
+			}
+		}
+		examples()
+	}
+	forStatements()
+
+	var goStatements = func() {
+		show("Go statements, starts the execution of a function call as an independent concurrent thread of control")
+		// A "go" statement starts the execution of a function call as an independent concurrent thread of control,
+		// or goroutine, within the same address space.
+
+		// The expression must be a function or method call; it cannot be parenthesized
+		// Calls of built-in functions are restricted as for expression statements
+
+		// The function value and parameters are evaluated as usual
+		// program execution does not wait for the invoked function to complete
+		// When the function terminates, its goroutine also terminates.
+		// If the function has any return values, they are discarded when the function completes
+		show("main started ...")
+
+		var someWork = func(ch chan int, iterations int) {
+			show("go func started ...")
+			for i := 0; i < iterations; i++ {
+				ch <- i
+				show("put: ", i)
+				if i < (iterations - 1) {
+					time.Sleep(1 * time.Second)
+				}
+			}
+			close(ch)
+			show("go func stopped.")
+		}
+
+		var ch = sfs.MakeChannel[int](0, false)
+		go someWork(ch, 3)
+		for x := range ch {
+			show("get: ", x)
+		} // wait for ch to be closed
+
+		show("main done.")
+	}
+	goStatements()
+
 	// 	Select statements
 	// 	Return statements
 	// 	Break statements

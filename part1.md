@@ -285,9 +285,13 @@ Constant expressions:
 Что противоположно правилам Arithmetic Operators!
 
 Order of evaluation:
-порядок вычислений операндов определён не во всех случаях
+порядок вычислений операндов определён не во всех случаях, всегда учитывай порядок вычисления операндов в выражениях, избегай магии!
 > At package level, initialization dependencies determine the evaluation order ... but not for operands within each expression ...
 all function calls, method calls, and communication operations are evaluated in lexical left-to-right order ...
+
+`For` statements with `range` clause:
+При итерировании строки имеем коллекцию рун, но ключ показывает индекс первого байта руны (не забывайте однако, строка это коллекция байт).
+> If the range expression is a channel, at most one iteration variable is permitted, otherwise there may be up to two
 
 ### Переменные, базовые типы данных
 

@@ -71,3 +71,16 @@ func DotProduct[F ~float32 | ~float64](v1, v2 []F) F {
 func TwoValuesToArray(a, b any) [2]any {
 	return [2]any{a, b}
 }
+
+// MakeChannel function returns new bidirectional channel, created with options:
+// buffer length, list of values put in channel, close channel before returning.
+func MakeChannel[T any](bufferLength int, doClose bool, xs ...T) chan T {
+	var ch = make(chan T, bufferLength)
+	for _, x := range xs {
+		ch <- x
+	}
+	if doClose {
+		close(ch)
+	}
+	return ch
+}
