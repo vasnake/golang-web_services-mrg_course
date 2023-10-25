@@ -2696,10 +2696,10 @@ func statements() {
 		// a "for" clause,
 		// or a "range" clause.
 
-		// For statements with single condition
-		// specifies the repeated execution of a block as long as a boolean condition evaluates to true.
+		show("For statements with single condition")
+		// specifies the repeated execution of a block as long as a boolean condition evaluates to `true`.
 		// The condition is evaluated before each iteration.
-		// If the condition is absent, it is equivalent to the boolean value true
+		// If the condition is absent, it is equivalent to the boolean value `true`
 		var a, b int = 1, 4
 		for {
 			if a >= b {
@@ -2713,18 +2713,17 @@ func statements() {
 		show("For statements with single condition: ", a, b)
 		// For statements with single condition: int(4); int(4);
 
-		// For statements with `for` clause
+		show("For statements with `for` clause (max: 2 statements, 1 expression in clause)")
 		// additionally it may specify an `init` and a `post` statement, such as an assignment, an increment or decrement statement.
 		// The init statement may be a short variable declaration, but the post statement must not
 		// the init statement is executed once before evaluating the condition for the first iteration
 		// the post statement is executed after each execution of the block (and only if the block was executed)
 		// Any element of the ForClause may be empty but the semicolons are required unless there is only a condition.
-		// If the condition is absent, it is equivalent to the boolean value true
+		// If the condition is absent, it is equivalent to the boolean value `true`
 		for i := 1; i <= 3; i++ {
 			a = b / i
 		}
-		show("For statements with `for` clause: ", a)
-		// For statements with for clause: int(1);
+		show("For statements with `for` clause: ", a) // For statements with for clause: int(1);
 		for ; a < b; a++ {
 			a += b
 		}
@@ -2736,32 +2735,38 @@ func statements() {
 		// A "for" statement with a "range" clause iterates through all entries of an
 		// array, slice, string or map, or values received on a channel
 		// For each entry it assigns iteration values to corresponding iteration variables if present and then executes the block
+		// for channel only iteration value, no key
+		// for string key is index of first byte of rune, value is rune
 		for i, x := range "Йfoo" {
 			show("entry key i, entry value x: ", i, x)
-		} // if collection is string: value is rune, key is rune first byte index, ignoring the fact that string is a collection of bytes
-		// entry key i, entry value x: int(0); int32(1049);
-		// entry key i, entry value x: int(2); int32(102);
-		// entry key i, entry value x: int(3); int32(111);
-		// entry key i, entry value x: int(4); int32(111);
+			// entry key i, entry value x: int(0); int32(1049);
+			// entry key i, entry value x: int(2); int32(102);
+			// entry key i, entry value x: int(3); int32(111);
+			// entry key i, entry value x: int(4); int32(111);
+		}
+		// if collection is string: value is rune, key is rune first byte index,
+		// ignoring the fact that string is a collection of bytes
 
 		// The expression on the right in the "range" clause is called the `range expression`
-		// its core type must be an array, pointer to an array, slice, string, map, or channel
+		// its core type must be an array, (pointer to an array), slice, string, map, or channel
 		// the operands on the left must be addressable or map index expressions
-		// If the range expression is a channel, at most one iteration variable is permitted, otherwise there may be up to two
-		// If the channel is nil, the range expression blocks forever. Otherwise iterate until ch is closed.
 		// If the last iteration variable is the blank identifier, the range clause is equivalent to the same clause without that identifier
 		// The range expression x is evaluated once before beginning the loop
+		// The range expression is not evaluated: if at most one iteration variable is present and `len(x)` is constant
 		// Function calls on the left are evaluated once per iteration
 		// The iteration order over maps is not specified and is not guaranteed to be the same from one iteration to the next
 		// concurrent add/remove ops may or may not be reflected by producing iteration value
 
-		var ch = sfs.MakeChannel[int](1, true, 42)
-		for x := range ch { // If the range expression is a channel, at most one iteration variable is permitted
+		// If the range expression is a channel, at most one iteration variable is permitted, otherwise there may be up to two
+		// If the channel is `nil`, the range expression blocks forever. Otherwise iterate until ch is closed.
+
+		var ch = sfs.MakeChannel[int](1, true, 42) // buffered, closed, one element=42
+		for x := range ch {
 			show("element from chan: ", x)
 		}
 		// element from chan: int(42);
 
-		var examples = func() {
+		var rangeExamples = func() {
 			var f = func(int) {}
 			var g = func(int, string) {}
 			var h = func(string, any) {}
@@ -2801,14 +2806,14 @@ func statements() {
 			for range ch {
 			}
 		}
-		examples()
+		rangeExamples()
 	}
 	forStatements()
 
 	var goStatements = func() {
 		show("Go statements, starts the execution of a function call as an independent concurrent thread of control")
 		// A "go" statement starts the execution of a function call as an independent concurrent thread of control,
-		// or goroutine, within the same address space.
+		// or `goroutine`, within the same address space.
 
 		// The expression must be a function or method call; it cannot be parenthesized
 		// Calls of built-in functions are restricted as for expression statements
@@ -2819,20 +2824,18 @@ func statements() {
 		// If the function has any return values, they are discarded when the function completes
 		show("main started ...")
 
-		var someWork = func(ch chan int, iterations int) {
+		var someWork = func(ch chan<- int, iterations int) {
 			show("go func started ...")
 			for i := 0; i < iterations; i++ {
+				time.Sleep(1 * time.Second)
 				ch <- i
 				show("put: ", i)
-				if i < (iterations - 1) {
-					time.Sleep(1 * time.Second)
-				}
 			}
 			close(ch)
 			show("go func stopped.")
 		}
 
-		var ch = sfs.MakeChannel[int](0, false)
+		var ch = sfs.MakeChannel[int](0, false) // unbuffered, open
 		go someWork(ch, 3)
 		for x := range ch {
 			show("get: ", x)
@@ -2842,8 +2845,105 @@ func statements() {
 	}
 	goStatements()
 
-	// 	Select statements
-	// 	Return statements
+	var selectStatements = func() {
+		show("Select statements, chooses which of a set of possible `send` or `receive` operations will proceed")
+		// like `switch` but cases all referring to communication operations
+		// There can be at most one `default` case and it may appear anywhere in the list of cases
+		// A case with a RecvStmt may assign the result of a RecvExpr to one or two variables
+
+		// execution steps
+		// - For all the cases ... the channel operands of receive operations
+		// and the channel and right-hand-side expressions of send statements
+		// are evaluated exactly once, in source order, upon entering the "select" statement
+		// The result is a set of channels to receive from or send to, and the corresponding values to send
+		// - if one or more of the communications can proceed, a single one ... is chosen via a uniform pseudo-random selection.
+		// Otherwise, if there is a default case, that case is chosen.
+		// If there is no default case, the "select" statement blocks until at least one of the communications can proceed.
+		// - communication operation is executed
+
+		// a select with only nil channels and no default case blocks forever
+
+		var examples = func() {
+			show("`select` examples")
+			var a []int
+			var c1, c2, c3, c4 chan int
+			var i1, i2 int
+			var f = func() int { return 0 }
+
+			select {
+			case i1 = <-c1:
+				print("received ", i1, " from c1\n")
+			case c2 <- i2:
+				print("sent ", i2, " to c2\n")
+			case i3, ok := (<-c3): // same as: i3, ok := <-c3
+				if ok {
+					print("received ", i3, " from c3\n")
+				} else {
+					print("c3 is closed\n")
+				}
+			case a[f()] = <-c4:
+				// same as:
+				// case t := <-c4
+				//	a[f()] = t
+			default:
+				print("no communication\n") // all channels are null
+			}
+
+			// var c chan int
+			// for { // send random sequence of bits to c
+			// 	select {
+			// 	case c <- 0: // note: no statement, no fallthrough, no folding of cases
+			// 	case c <- 1:
+			// 	}
+			// }
+
+			// select {} // block forever
+		}
+		examples()
+	}
+	selectStatements()
+
+	var returnStatements = func() {
+		show("Return statements in a function F terminates the execution of F")
+		// and optionally provides one or more result values.
+		// Any functions deferred by F are executed before F returns to its caller
+		// A "return" statement that specifies results -
+		// sets the result parameters before any deferred functions are executed
+
+		// There are three ways to return values from a function with a result type
+		// - The return value or values may be explicitly listed in the "return" statement
+		// - The expression list in the "return" statement may be a single call to a multi-valued function
+		// - The expression list may be empty if the function's result type specifies names for its result parameters.
+
+		// all the result values are initialized to the zero values for their type upon entry to the function
+
+		var simpleF = func() int {
+			return 2
+		}
+
+		var complexF1 = func() (re float64, im float64) {
+			return -7.0, -4.0
+		}
+
+		var complexF2 = func() (re float64, im float64) {
+			return complexF1()
+		}
+		var complexF3 = func() (re float64, im float64) {
+			simpleF()
+			// re = 7.0
+			// im = 4.0
+			re, im = complexF2()
+			return
+		}
+
+		// func (devnull) Write(p []byte) (n int, _ error) {
+		// 	n = len(p)
+		// 	return
+		// }
+		show("return examples: ", sfs.TwoValuesToArray(complexF3()))
+	}
+	returnStatements()
+
 	// 	Break statements
 	// 	Continue statements
 	// 	Goto statements

@@ -291,7 +291,14 @@ all function calls, method calls, and communication operations are evaluated in 
 
 `For` statements with `range` clause:
 При итерировании строки имеем коллекцию рун, но ключ показывает индекс первого байта руны (не забывайте однако, строка это коллекция байт).
-> If the range expression is a channel, at most one iteration variable is permitted, otherwise there may be up to two
+> If the range expression is a channel, at most one iteration variable is permitted, otherwise there may be up to two ...
+The range expression is not evaluated: if at most one iteration variable is present and `len(x)` is constant
+
+Select statements:
+выбирает (произвольно) один из готовых комм.кейсов. Если нет готовых, то блочится или уходит в default.
+
+Return statements:
+> Any functions deferred by F are executed before F returns to its caller
 
 ### Переменные, базовые типы данных
 
