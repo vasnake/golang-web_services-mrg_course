@@ -298,7 +298,21 @@ Select statements:
 выбирает (произвольно) один из готовых комм.кейсов. Если нет готовых, то блочится или уходит в default.
 
 Return statements:
+Именованные возвращаемые параметры фунции/метода, их не требуется явно указывать в `return`.
 > Any functions deferred by F are executed before F returns to its caller
+
+Break statements:
+Если есть label, то метка указывает блок из которого надо выйти. Это НЕ goto!
+
+Continue statements:
+Если есть label, то метка указывает блок где надо начать следующую итерацию. Это НЕ goto!
+
+Fallthrough statements:
+Противоположность `break` в традиционном `switch`. Чтобы провалиться дальше надо явно написать `Fallthrough`.
+
+Defer statements:
+Типа деструктора (finally) для функции. Вызов блока перед возвращением из функции.
+Несколько defer собираются в стек (FILO).
 
 ### Переменные, базовые типы данных
 

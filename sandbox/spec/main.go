@@ -2824,12 +2824,19 @@ func statements() {
 		// If the function has any return values, they are discarded when the function completes
 		show("main started ...")
 
+		var nowMilliseconds = func() int64 {
+			return time.Now().UnixMilli()
+		}
+		var nowMicro = func() int64 {
+			return time.Now().UnixMicro()
+		}
+
 		var someWork = func(ch chan<- int, iterations int) {
 			show("go func started ...")
 			for i := 0; i < iterations; i++ {
-				time.Sleep(1 * time.Second)
+				time.Sleep(1 * time.Millisecond)
 				ch <- i
-				show("put: ", i)
+				show("put: ", i, nowMilliseconds(), nowMicro())
 			}
 			close(ch)
 			show("go func stopped.")
@@ -2838,7 +2845,7 @@ func statements() {
 		var ch = sfs.MakeChannel[int](0, false) // unbuffered, open
 		go someWork(ch, 3)
 		for x := range ch {
-			show("get: ", x)
+			show("get: ", x, nowMilliseconds(), nowMicro()) // travel time ~100 microseconds, 10K messages/sec?
 		} // wait for ch to be closed
 
 		show("main done.")
@@ -2944,13 +2951,241 @@ func statements() {
 	}
 	returnStatements()
 
-	// 	Break statements
-	// 	Continue statements
-	// 	Goto statements
-	// 	Fallthrough statements
-	// 	Defer statements
+	var breakStatements = func() {
+		show(`Break statements terminates execution of the innermost "for", "switch", or "select"`)
+		// If there is a label, it must be that of an enclosing "for", "switch", or "select" statement,
+		// and that is the one whose execution terminates
 
+		// prep example
+		n, m := 3, 3
+		a := [3][3]any{} // all nil
+		var state, item any = nil, 42
+		const (
+			Found = iota
+			Error
+		)
+		// example
+	OuterLoop:
+		for i := 0; i < n; i++ {
+			show("i: ", i)
+			for j := 0; j < m; j++ {
+				show("j: ", i)
+				switch a[i][j] {
+				case nil:
+					state = Error
+					break OuterLoop // goto `show final state`
+				case item:
+					state = Found
+					break OuterLoop
+				}
+			}
+			show("after inner loop")
+		}
+		show("final state: ", state == Found)
+	}
+	breakStatements()
+
+	var continueStatements = func() {
+		show(`Continue statements begins the next iteration of the innermost enclosing "for"`)
+		// If there is a label, it must be that of an enclosing "for" statement,
+		// and that is the one whose execution advances
+
+		// example prep
+		var rows = [2][2]int{
+			{1, 0},
+			{2, 0},
+		}
+		var endOfRow = 0
+		var bias = func(a, b int) int {
+			return a + b
+		}
+
+		// example
+	RowLoop:
+		for y, row := range rows {
+			show("start RowLoop iteration")
+			for x, data := range row {
+				show("start data iteration")
+				if data == endOfRow {
+					continue RowLoop // goto RowLoop end
+				}
+				row[x] = data + bias(x, y)
+				show("updated row: ", row)
+			}
+			// RowLoop end
+		}
+		show("end of processing: ", rows)
+		/*
+			start RowLoop iteration
+			start data iteration
+			updated row: [2]int([1 0]);
+			start data iteration
+			start RowLoop iteration
+			start data iteration
+			updated row: [2]int([3 0]);
+			start data iteration
+			end of processing: [2][2]int([[1 0] [2 0]]);
+		*/
+	}
+	continueStatements()
+
+	var gotoStatements = func() {
+		show("Goto statements transfers control to the statement with the corresponding label within the same function")
+		// Executing the "goto" statement must not cause any variables to come into scope that were not already in scope
+		// A "goto" statement outside a block cannot jump to a label inside that block
+
+		// example prep
+		var rows = [2][2]int{
+			{1, 0},
+			{2, 0},
+		}
+		var endOfRow = 0
+		var bias = func(a, b int) int {
+			return a + b
+		}
+
+		// example
+		for y, row := range rows {
+			show("start RowLoop iteration")
+			for x, data := range row {
+				show("start data iteration")
+				if data == endOfRow {
+					goto EndOfProcessing
+				}
+				row[x] = data + bias(x, y)
+				show("updated row: ", row)
+			}
+			// RowLoop end
+		}
+	EndOfProcessing:
+		show("end of processing: ", rows)
+		/*
+			start RowLoop iteration
+			start data iteration
+			updated row: [2]int([1 0]);
+			start data iteration
+			end of processing: [2][2]int([[1 0] [2 0]]);
+		*/
+	}
+	gotoStatements()
+
+	var fallthroughStatements = func() {
+		show(`Fallthrough statements transfers control to the first statement of the next case clause in an expression "switch" statement.`)
+
+		// prep example
+		n, m := 2, 2
+		a := [2][2]any{} // all nil
+		var state, item any = nil, 42
+		const (
+			Found = iota
+			Error
+		)
+		// example
+		for i := 0; i < n; i++ {
+			for j := 0; j < m; j++ {
+				switch a[i][j] {
+				case nil:
+					state = Error
+					show("case nil: ", i, j)
+					fallthrough // goto next-case-first-line
+				case item:
+					// next-case-first-line:
+					state = Found
+					show("case item: ", i, j)
+				}
+			}
+		}
+		show("final state: ", state == Found)
+		/*
+			case nil: int(0); int(0);
+			case item: int(0); int(0);
+			case nil: int(0); int(1);
+			case item: int(0); int(1);
+			case nil: int(1); int(0);
+			case item: int(1); int(0);
+			case nil: int(1); int(1);
+			case item: int(1); int(1);
+			final state: bool(true);
+		*/
+	}
+	fallthroughStatements()
+
+	var deferStatements = func() {
+		show("Defer statements invokes a function whose execution is deferred to the moment the surrounding function returns")
+		// The expression must be a function or method call; it cannot be parenthesized
+		// deferred functions are executed after any result parameters are set by that return statement
+		// but before the function returns to its caller
+
+		// Each time a "defer" statement executes, the function value and parameters to the call are evaluated as usual
+		// If a deferred function value evaluates to nil, execution panics when the function is invoked
+		// deferred functions are invoked immediately before the surrounding function returns,
+		// in the reverse order they were deferred (FILO)
+
+		// If the deferred function has any return values, they are discarded
+
+		// examples
+
+		var l int
+		var lock = func(x int) {
+			show("lock: ", x)
+		}
+		var unlock = func(x int) {
+			show("unlock: ", x)
+		}
+
+		var lockExample = func() {
+			lock(l)
+			defer unlock(l) // unlocking happens before surrounding function returns
+			show("call unlock ...")
+		}
+		lockExample()
+		/*
+			lock: int(0);
+			call unlock ...
+			unlock: int(0);
+		*/
+
+		var printExample = func() {
+			// prints 3 2 1 0 before surrounding function returns
+			for i := 0; i <= 3; i++ {
+				defer show("deferred print: ", i) // evaluate parameters and wait
+			}
+		}
+		printExample()
+		/*
+			deferred print: int(3);
+			deferred print: int(2);
+			deferred print: int(1);
+			deferred print: int(0);
+		*/
+
+		// f returns 42
+		var f = func() (result int) {
+			defer func() { // function literal
+				// result is accessed after it was set to 6 by the return statement
+				result *= 7 // it's not a parameter, it will be evaluated on call-time
+			}()
+			return 6 // call-time
+		}
+		show("deferred result mutation: ", f()) // deferred result mutation: int(42);
+	}
+	deferStatements()
 }
+
+/*
+Built-in functions
+	Appending to and copying slices
+	Clear
+	Close
+	Manipulating complex numbers
+	Deletion of map elements
+	Length and capacity
+	Making slices, maps and channels
+	Min and max
+	Allocation
+	Handling panics
+	Bootstrapping
+*/
 
 func show(msg string, xs ...any) {
 	var line string = msg
