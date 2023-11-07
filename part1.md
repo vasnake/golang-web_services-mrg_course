@@ -314,6 +314,34 @@ Defer statements:
 Типа деструктора (finally) для функции. Вызов блока перед возвращением из функции.
 Несколько defer собираются в стек (FILO).
 
+Built-in functions:
+> The built-in functions do not have standard Go types, so they can only appear in call expressions;
+they cannot be used as function values
+
+`append`:
+добавляет элементы в слайс, элементы-слайса в слайс, байты-строки в слайс.
+
+`copy`: копирует элементы слайса, байты строки.
+
+`clear`: слайс - забивает zero-значениями по индексам 0..len; map - удаляет пары. (C - consistensy)
+
+`close(channel)`: 
+> Closing a receive-only channel is an error.
+Receive from closed ch - non-blocking zero value.
+Other ops - panic. (C - consistency)
+
+`make`: slice, map or channel. Returns `T` (not `*T`) and init memory.
+`new`: allocate storage for a variable, returns `*T` (not `T`).
+
+`panic(not_nil)`: propagate to top, terminate program. Deferred block still called.
+`recover`: returns nil if no panic to recover from.
+
+`print`, `println`: наличие этих функций не гарантировано.
+
+Bootstrapping:
+package `init` function. 
+> Multiple such functions may be defined per package, even within a single source file
+
 ### Переменные, базовые типы данных
 
 - [vars_1](week_01/vars_1.go)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	sfs "spec/functions"
 	"time"
 	"unicode/utf8"
@@ -23,6 +24,12 @@ func main() {
 	declarationsAndScope()
 	expressions()
 	statements()
+	builtInFunctions()
+	packagesChapter()
+	programInitializationAndExecution()
+	errorsChapter()
+	runTimePanics()
+	systemConsiderations()
 
 	show(`
 Viso gero!
@@ -3172,20 +3179,422 @@ func statements() {
 	deferStatements()
 }
 
-/*
-Built-in functions
-	Appending to and copying slices
-	Clear
-	Close
-	Manipulating complex numbers
-	Deletion of map elements
-	Length and capacity
-	Making slices, maps and channels
-	Min and max
-	Allocation
-	Handling panics
-	Bootstrapping
-*/
+func builtInFunctions() {
+	show("\nThe built-in functions do not have standard Go types")
+	// so they can only appear in call expressions; they cannot be used as function values
+	// some of them accept a type instead of an expression as the first argument
+
+	var appendingToAndCopyingSlices = func() {
+		show("Appending to and copying slices")
+		// The built-in functions `append` and `copy` assist in common slice operations
+
+		// The variadic function append appends zero or more values x to a slice s
+		// The core type of s must be a slice of type []E
+		// As a special case, if the core type of s is []byte, append also accepts a second argument with core type bytestring
+		/*
+			func append(slice []Type, elems ...Type) []Type
+			slice = append(slice, elem1, elem2)
+			slice = append(slice, anotherSlice...)
+
+			As a special case, it is legal to append a string to a byte slice, like this:
+			slice = append([]byte("hello "), "world"...)
+		*/
+		// If the capacity of s is not large enough to fit the additional values, append allocates a new, sufficiently large underlying array
+		var appendExample = func() {
+			s0 := []int{0, 0}
+			s1 := append(s0, 2)              // append a single element     s1 is []int{0, 0, 2}
+			s2 := append(s1, 3, 5, 7)        // append multiple elements    s2 is []int{0, 0, 2, 3, 5, 7}
+			s3 := append(s2, s0...)          // append a slice              s3 is []int{0, 0, 2, 3, 5, 7, 0, 0}
+			s4 := append(s3[3:6], s3[2:]...) // append overlapping slice    s4 is []int{3, 5, 7, 2, 3, 5, 7, 0, 0}
+			show("s4: ", s4)                 // s4: []int([3 5 7 2 3 5 7 0 0]);
+
+			var t []interface{}
+			t = append(t, 42, 3.1415, "foo") //                             t is []interface{}{42, 3.1415, "foo"}
+			show("t: ", t)                   // t: []interface {}([42 3.1415 foo]);
+
+			var b []byte
+			b = append(b, "barЯ"...) // append string contents      b is []byte{'b', 'a', 'r' }
+			show("b: ", b)           // b: []uint8([98 97 114 208 175]);
+		}
+		appendExample()
+
+		// The function `copy` copies slice elements from a source src to a destination dst
+		// The number of elements copied is the minimum of `len(src)` and `len(dst)`
+
+		// As a special case, if the destination's core type is `[]byte`,
+		//`copy` also accepts a source argument with core type `bytestring`.
+		// This form copies the bytes from the byte slice or string into the byte slice
+		// func copy(dst, src []Type) int
+		// func copy(dst []byte, src string) int
+		var copyExample = func() {
+			var a = [...]int{0, 1, 2, 3, 4, 5, 6, 7}
+			var s = make([]int, 6)
+			var b = make([]byte, 5)
+			n1 := copy(s, a[0:])           // n1 == 6, s is []int{0, 1, 2, 3, 4, 5}
+			n2 := copy(s, s[2:])           // n2 == 4, s is []int{2, 3, 4, 5, 4, 5}
+			n3 := copy(b, "Hello, World!") // n3 == 5, b is []byte("Hello")
+			show("n1, n2, n3, s, b: ", n1, n2, n3, s, b)
+			// n1, n2, n3, s, b: int(6); int(4); int(5); []int([2 3 4 5 4 5]); []uint8([72 101 108 108 111]);
+		}
+		copyExample()
+
+	}
+	appendingToAndCopyingSlices()
+
+	// Clear
+	var clearFunc = func() {
+		show("function clear ... deletes or zeroes out all elements")
+		// The built-in function clear takes an argument of map, slice, or type parameter type, and deletes or zeroes out all elements.
+		// If the map or slice is nil, clear is a no-op
+		/*
+			Call        Argument type     Result
+
+			clear(m)    map[K]T           deletes all entries, resulting in an
+										empty map (len(m) == 0)
+
+			clear(s)    []T               sets all elements up to the length of
+										s to the zero value of T
+		*/
+	}
+	clearFunc()
+
+	var closeFunc = func() {
+		show("close(channel) - the built-in function close records that no more values will be sent on the channel")
+		// Closing a receive-only channel is an error
+		// Closing the nil channel causes a run-time panic
+		// Closing a closed channel causes a run-time panic
+		// Sending to a closed channel causes a run-time panic
+		// Receive operations will return the zero value for the channel's type without blocking
+	}
+	closeFunc()
+
+	var manipulatingComplexNumbers = func() {
+		show("The `real` and `imag` functions together form the inverse of `complex`")
+		// the built-in function `complex` constructs a complex value from a floating-point real and imaginary part,
+		// while `real` and `imag` extract the real and imaginary parts of a complex value
+		/*
+			complex(realPart, imaginaryPart floatT) complexT
+			real(complexT) floatT
+			imag(complexT) floatT
+		*/
+		var complexExamples = func() {
+			var a = complex(2, -2)              // complex128
+			const b = complex(1.0, -1.4)        // untyped complex constant 1 - 1.4i
+			x := float32(math.Cos(math.Pi / 2)) // float32
+			var c64 = complex(5, -x)            // complex64
+			var s int = complex(1, 0)           // untyped complex constant 1 + 0i can be converted to int
+			// _ = complex(1, 2<<s)                // illegal: 2 assumes floating-point type, cannot shift
+			var rl = real(c64) // float32
+			var im = imag(a)   // float64
+			const c = imag(b)  // untyped constant -1.4
+			// _ = imag(3 << s)                    // illegal: 3 assumes complex type, cannot shift
+			show("examples, s, rl, im: ", s, rl, im) // examples, s, rl, im: int(1); float32(5); float64(-2);
+		}
+		complexExamples()
+	}
+	manipulatingComplexNumbers()
+
+	// Deletion of map elements
+	/*
+		The built-in function `delete` removes the element with key k from a map m.
+
+		delete(m, k)  // remove element m[k] from map m
+
+		If the map m is `nil` or the element m[k] does not exist, `delete` is a no-op.
+	*/
+
+	var lengthAndCapacity = func() {
+		show("Length and capacity, The built-in functions `len` and `cap` take arguments of various types and return a result of type `int`")
+		// The implementation guarantees that the result always fits into an int.
+		/*
+			Call      Argument type    Result
+
+			len(s)    string type      string length in bytes
+					[n]T, *[n]T      array length (== n)
+					[]T              slice length
+					map[K]T          map length (number of defined keys)
+					chan T           number of elements queued in channel buffer
+					type parameter   see below
+
+			cap(s)    [n]T, *[n]T      array length (== n)
+					[]T              slice capacity
+					chan T           channel buffer capacity
+					type parameter   see below
+		*/
+
+		// The length of a nil slice, map or channel is 0.
+		// The capacity of a nil slice or channel is 0.
+
+		// When `len` not evaluated
+		// var z complex128
+		const (
+			c1 = imag(2i)                   // imag(2i) = 2.0 is a constant
+			c2 = len([10]float64{2})        // [10]float64{2} contains no function calls
+			c3 = len([10]float64{c1})       // [10]float64{c1} contains no function calls
+			c4 = len([10]float64{imag(2i)}) // imag(2i) is a constant and no function call is issued
+			// c5 = len([10]float64{imag(z)})   // invalid: imag(z) is a (non-constant) function call
+		)
+	}
+	lengthAndCapacity()
+
+	var makingSlicesMapsAndChannels = func() {
+		show("Making slices, maps and channels, `make` takes a type T, optionally followed by a type-specific list of expressions")
+		// The core type of T must be a `slice`, `map` or `channel`.
+		// It returns a value of type T (not *T). The memory is initialized
+		/*
+			Call             Core type    Result
+
+			make(T, n)       slice        slice of type T with length n and capacity n
+			make(T, n, m)    slice        slice of type T with length n and capacity m
+
+			make(T)          map          map of type T
+			make(T, n)       map          map of type T with initial space for approximately n elements
+
+			make(T)          channel      unbuffered channel of type T
+			make(T, n)       channel      buffered channel of type T, buffer size n
+		*/
+
+		s := make([]int, 10, 100)      // slice with len(s) == 10, cap(s) == 100
+		s = make([]int, 1e3)           // slice with len(s) == cap(s) == 1000
+		c := make(chan int, 10)        // channel with a buffer size of 10
+		m := make(map[string]int, 100) // map with initial space for approximately 100 elements
+		// s = make([]int, 1<<63)         // illegal: len(s) is not representable by a value of type int
+		// s = make([]int, 10, 0)         // illegal: len(s) > cap(s)
+		show("examples, s, c, m: ", s, c, m)
+	}
+	makingSlicesMapsAndChannels()
+
+	var minAndMax = func() {
+		show("Min and max compute the smallest (largest) value of a fixed number of arguments of ordered types")
+		//  There must be at least one argument
+		//  type of min/max(x, y) is the type of x + y
+
+		var x, y int
+		m := min(x)                // m == x
+		m = min(x, y)              // m is the smaller of x and y
+		m = max(x, y, 10)          // m is the larger of x and y but at least 10
+		c := max(1, 2.0, 10)       // c == 10.0 (floating-point kind)
+		f := max(0, float32(x))    // type of f is float32
+		t := max("", "foo", "bar") // t == "foo" (string kind)
+		// var s []string
+		// _ = min(s...)               // invalid: slice arguments are not permitted
+		show("examples, m, c, f, s, t: ", m, c, f, t)
+
+		// For numeric arguments, assuming all `NaNs` are equal, `min` and `max` are commutative and associative
+		/*
+			min(x, y)    == min(y, x)
+			min(x, y, z) == min(min(x, y), z) == min(x, min(y, z))
+		*/
+
+		// For (float) negative zero, NaN, and infinity the following rules apply:
+		/*
+			x        y    min(x, y)    max(x, y)
+
+			-0.0    0.0         -0.0          0.0    // negative zero is smaller than (non-negative) zero
+			-Inf      y         -Inf            y    // negative infinity is smaller than any other number
+			+Inf      y            y         +Inf    // positive infinity is larger than any other number
+			NaN      y          NaN          NaN    // if any argument is a NaN, the result is a NaN
+		*/
+
+		// For string arguments the result ... compared lexically byte-wise
+	}
+	minAndMax()
+
+	var allocationFunc = func() {
+		show("Allocation, `new` takes a type T, allocates storage for a variable of that type at run time")
+		// and returns a value of type *T pointing to it. The variable is initialized
+
+		// allocates storage for a variable of type S,
+		// initializes it (a=0, b=0.0),
+		// and returns a value of type *S containing the address of the location
+		type S struct {
+			a int
+			b float64
+		}
+		x := new(S)
+		show("example, x: ", x) // example, x: *main.S(&{0 0});
+	}
+	allocationFunc()
+
+	var handlingPanics = func() {
+		show("Handling panics, Two built-in functions, `panic` and `recover`")
+		// assist in reporting and handling run-time panics and program-defined error conditions
+		/*
+			func panic(interface{})
+			func recover() interface{}
+		*/
+
+		// an explicit call to `panic` or a run-time panic terminates the execution of current function F.
+		// Any functions deferred by F are then executed as usual.
+		// ... and so on up to any deferred by the top-level function in the executing goroutine.
+		// At that point, the program is terminated and the error condition is reported ...
+		// This termination sequence is called panicking.
+
+		// The `recover` function allows a program to manage behavior of a panicking goroutine.
+		// Suppose a function G defers a function D that calls `recover`
+		// and a panic occurs in a function on the same goroutine in which G is executing.
+		// If D returns normally, without starting a new panic, the panicking sequence stops.
+
+		// The return value of recover is nil when the goroutine is not panicking or recover was not called directly by a deferred function.
+		// Conversely, if a goroutine is panicking and recover was called directly by a deferred function,
+		// the return value of recover is guaranteed not to be nil
+
+		// example
+		// The protect function in the example below invokes the function argument g and protects callers from run-time panics raised by g
+		var protect = func(g func()) {
+			defer func() {
+				show("done") // Println executes normally even if there is a panic
+				if x := recover(); x != nil {
+					show("run time panic: ", x)
+				}
+			}()
+			show("start")
+			g()
+		}
+		protect(func() {
+			ch := sfs.MakeChannel[int](0, true)
+			show("kaboom ...")
+			ch <- 42
+		})
+		/*
+			start
+			kaboom ...
+			done
+			run time panic: runtime.plainError(send on closed channel);
+		*/
+	}
+	handlingPanics()
+
+	// Bootstrapping
+	/*
+		Current implementations provide several built-in functions useful during bootstrapping.
+		... are not guaranteed to stay in the language. They do not return a result.
+
+		Function   Behavior
+
+		print      prints all arguments; formatting of arguments is implementation-specific
+		println    like print but prints spaces between arguments and a newline at the end
+	*/
+	print("Bootstrapping, print ", show)
+	println("Bootstrapping, println", show)
+	// Bootstrapping, print 0x4b3e98Bootstrapping, println 0x4b3e98
+
+}
+
+func packagesChapter() {
+	show("\nPackages, A package ... is constructed from one or more source files that together declare ...")
+	// Go programs are constructed by linking together packages.
+	// A package ... is constructed from one or more source files that together declare constants,
+	// types, variables and functions belonging to the package and which are accessible in all files of the same package.
+	// Those elements may be exported and used in another package.
+
+	// Source file organization
+	// Each source file consists of a package clause defining the package to which it belongs,
+	// followed by a possibly empty set of import declarations ...
+	// followed by a possibly empty set of declarations of functions, ...
+
+	// Package clause
+	// A package clause begins each source file and defines the package to which the file belongs.
+	// `PackageClause  = "package" PackageName .`
+	// A set of files sharing the same PackageName form the implementation of a package.
+	// (implementation) all source files for a package inhabit the same directory.
+
+	// Import declarations
+	// An import declaration states that the source file ... depends on functionality of the imported package
+	// ... and enables access to exported identifiers of that package.
+	// The import names an identifier (PackageName) to be used for access and an ImportPath that specifies the package
+	/*
+		Import declaration          Local name of Sin
+
+		import   "lib/math"         math.Sin
+		import m "lib/math"         m.Sin
+		import . "lib/math"         Sin
+	*/
+	//  To import a package solely for its side-effects (initialization), use the blank identifier as explicit package name:
+	// `import _ "lib/math"`
+
+	// An example package (program, no any export)
+	show(`
+package main
+import "fmt"
+func generate(ch chan<- int) { ... }
+func filter(src <-chan int, dst chan<- int, prime int) { ... }
+func sieve() { ... }
+func main() { ...}
+`)
+
+}
+
+func programInitializationAndExecution() {
+	show("\nProgram initialization and execution")
+
+	// The zero value
+	// When storage is allocated for a variable, either through a declaration or a call of `new`,
+	// or when a new value is created, either through a composite literal or a call of `make`,
+	// and no explicit initialization is provided,
+	// the variable or value is given a default value.
+	// Each element ... is set to the zero value for its type:
+	// - false for booleans,
+	// - 0 for numeric types,
+	// - "" for strings, and
+	// - nil for pointers, functions, interfaces, slices, channels, and maps.
+	// This initialization is done recursively
+
+	// Package initialization
+	// Within a package, package-level variable initialization proceeds stepwise,
+	// with each step selecting the variable earliest in declaration order
+	// which has no dependencies on uninitialized variables ...
+	// until there are no variables ready for initialization
+
+	// Multiple variables on the left-hand side of a variable declaration
+	// initialized by single (multi-valued) expression on the right-hand side are initialized together
+
+	// The declaration order of variables declared in multiple files
+	// is determined by the order in which the files are presented to the compiler
+
+	// Variables may also be initialized using functions named `init`
+	// `func init() { … }`
+	// Multiple such functions may be defined per package, even within a single source file
+
+	// The entire package is initialized by assigning initial values to all its package-level variables followed by calling all init functions
+
+	// Program initialization
+	// The packages of a complete program are initialized stepwise, one package at a time
+	// If multiple packages import a package, the imported package will be initialized only once
+	// Given the list of all packages, sorted by import path, in each step the first uninitialized package ...
+
+	// Package initialization — variable initialization and the invocation of init functions —
+	// happens in a single goroutine, sequentially, one package at a time
+
+	// Program execution
+	// A complete program is created by linking a single, unimported package called the `main` package with all the packages it imports, transitively.
+	// The main package must have package name `main` and declare a function `main`
+
+	// When that function invocation returns, the program exits. It does not wait for other (non-main) goroutines to complete
+}
+
+func errorsChapter() {
+	show("\nErrors, The predeclared type error is defined")
+	// type error interface { Error() string }
+
+	// It is the conventional interface for representing an error condition,
+	// with the nil value representing no error
+}
+
+func runTimePanics() {
+	show("\nRun-time panics")
+	// Execution errors ... trigger a run-time panic equivalent to a call of the built-in function `panic`
+	// with a value of the implementation-defined interface type `runtime.Error`.
+	// That type satisfies the predeclared interface type `error`.
+}
+
+func systemConsiderations() {
+	show("\nSystem considerations")
+	/*
+	   Package unsafe
+	   Size and alignment guarantees
+	*/
+}
 
 func show(msg string, xs ...any) {
 	var line string = msg
