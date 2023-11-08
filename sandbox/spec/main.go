@@ -6,6 +6,7 @@ import (
 	sfs "spec/functions"
 	"time"
 	"unicode/utf8"
+	"unsafe"
 )
 
 func main() {
@@ -30,6 +31,7 @@ func main() {
 	errorsChapter()
 	runTimePanics()
 	systemConsiderations()
+	appendix()
 
 	show(`
 Viso gero!
@@ -3590,10 +3592,90 @@ func runTimePanics() {
 
 func systemConsiderations() {
 	show("\nSystem considerations")
-	/*
-	   Package unsafe
-	   Size and alignment guarantees
-	*/
+	var packageUnsafe = func() {
+		show("Package unsafe")
+		// "unsafe", provides facilities for low-level programming including operations that violate the type system.
+		// A package using unsafe must be vetted manually for type safety and may not be portable.
+
+		// The package provides the following interface:
+		/*
+			package unsafe
+
+			type ArbitraryType int  // shorthand for an arbitrary Go type; it is not a real type
+			type Pointer *ArbitraryType
+
+			func Alignof(variable ArbitraryType) uintptr
+			func Offsetof(selector ArbitraryType) uintptr
+			func Sizeof(variable ArbitraryType) uintptr
+
+			type IntegerType int  // shorthand for an integer type; it is not a real type
+			func Add(ptr Pointer, len IntegerType) Pointer
+			func Slice(ptr *ArbitraryType, len IntegerType) []ArbitraryType
+			func SliceData(slice []ArbitraryType) *ArbitraryType
+			func String(ptr *byte, len IntegerType) string
+			func StringData(str string) *byte
+		*/
+		var f float64
+		bits := *(*uint64)(unsafe.Pointer(&f))
+		show("bits: ", sfs.IntBits(bits))
+
+		// uintptr(unsafe.Pointer(&s)) + unsafe.Offsetof(s.f) == uintptr(unsafe.Pointer(&s.f))
+
+		// uintptr(unsafe.Pointer(&x)) % unsafe.Alignof(x) == 0
+
+		// The function `Slice` returns a slice whose underlying array starts at ptr and whose length and capacity are len
+		// Slice(ptr, len) is-equivalent-to (*[len]ArbitraryType)(unsafe.Pointer(ptr))[:]
+
+		// The function `SliceData` returns a pointer to the underlying array of the slice argument
+
+		// and so on
+
+	}
+	packageUnsafe()
+
+	var sizeAndAlignmentGuarantees = func() {
+		show("Size and alignment guarantees")
+		// A struct or array type has size zero if it contains no fields (or elements, respectively) that have a size greater than zero.
+		// Two distinct zero-size variables may have the same address in memory
+
+		/*
+			For the numeric types, the following sizes are guaranteed:
+
+			type                                 size in bytes
+
+			byte, uint8, int8                     1
+			uint16, int16                         2
+			uint32, int32, float32                4
+			uint64, int64, float64, complex64     8
+			complex128                           16
+		*/
+
+		/*
+			The following minimal alignment properties are guaranteed:
+
+			For a variable x of any type: unsafe.Alignof(x) is at least 1.
+			For a variable x of struct type: unsafe.Alignof(x) is the largest of all the values unsafe.Alignof(x.f) for each field f of x, but at least 1.
+			For a variable x of array type: unsafe.Alignof(x) is the same as the alignment of a variable of the array's element type.
+		*/
+	}
+	sizeAndAlignmentGuarantees()
+}
+
+func appendix() {
+	show("\nType unification rules")
+	// when two types are unified for assignability (≡A): in this case,
+	// the matching mode is `loose` at the top level but then changes to `exact` for element types,
+	// reflecting the fact that types don't have to be identical to be assignable
+
+	// Two types that are not bound type parameters unify exactly if any of following conditions is true:
+	// ...
+	// If both types are bound type parameters, they unify per the given matching modes if:
+	// ...
+	// A single bound type parameter P and another type T unify per the given matching modes if:
+	// ...
+	// Finally, two types that are not bound type parameters unify loosely (and per the element matching mode) if:
+	// ...
+
 }
 
 func show(msg string, xs ...any) {

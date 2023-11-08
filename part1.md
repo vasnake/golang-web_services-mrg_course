@@ -342,6 +342,12 @@ Bootstrapping:
 package `init` function. 
 > Multiple such functions may be defined per package, even within a single source file
 
+unsafe: адресная арифметика, размеры, выравнивание структур, etc. Не надо, но если очень хочется, то можно.
+
+Size and alignment:
+> A struct or array type has size zero if it contains no fields (or elements, respectively) that have a size greater than zero.
+Two distinct zero-size variables may have the same address in memory
+
 ### Переменные, базовые типы данных
 
 - [vars_1](week_01/vars_1.go)
