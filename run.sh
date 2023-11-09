@@ -2,15 +2,28 @@
 # alias gr='bash -x /mnt/c/Users/valik/data/github/golang-web_services-mrg_course/run.sh'
 PRJ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-APP_SELECTOR=${GO_APP_SELECTOR:-spec}
+APP_SELECTOR=${GO_APP_SELECTOR:-week01_test}
 
 go_run() {
     local selector="${1}"
     case $selector in
         hello_world | helloworld)   go_run_sandbox hello_world;;
         spec)                       go_run_sandbox spec;;
+        week01)                     go_run_sandbox week01;;
+        week01_test)                go_run_sandbox_test week01;;
         *)                          errorExit "Unknown program: ${selector}";;
     esac
+}
+
+go_run_sandbox_test() {
+    local module="${1}"
+    pushd ${PRJ_DIR}/sandbox
+    gofmt -w $module || exit
+    go vet $module
+    go test -v $module
+    local exit_code=$?
+    popd
+    return $exit_code
 }
 
 go_run_sandbox() {
