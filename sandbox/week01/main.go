@@ -605,10 +605,10 @@ func deferDemo() {
 
 	// defer put call on stack, actual call will be made before exit from block
 	defer fmt.Println("Work is done.")
-	defer fmt.Println("closing ...") // n.b. closing called before done
+	defer fmt.Println("closing ...") // n.b. closing called before `Work is done.`
 
 	defer fmt.Println(doStuff("before work ...")) // n.b. parameters are evaluated right here, doStuff called right now!
-	// doStuff: `before work ...` // but print "stuff `before work ...` len: 15 bytes" deferred
+	// doStuff: `before work ...` // but print "stuff `before work ...` len: 15 bytes" is deferred
 
 	defer doStuff("after work ...")
 
@@ -881,6 +881,7 @@ func interfaceEmpty() {
 		var p interfaces.Payer
 		var ok bool
 
+		// type assertion
 		if p, ok = in.(interfaces.Payer); !ok {
 			fmt.Printf("%T is not a Payer\n", in)
 			return
@@ -999,6 +1000,7 @@ func uniqueProgram() {
 	sortedInputUnique()
 }
 
+// Logic can be described as: drop duplicates from an already sorted input.
 func sortedInputUnique(input io.Reader, output io.Writer) error {
 	in := bufio.NewScanner(input)
 	var prev string

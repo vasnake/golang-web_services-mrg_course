@@ -605,10 +605,11 @@ GOPATH определяет корневую директорию, в котор
 - [data_map.txt](week_01/data_map.txt)
 
 Пример программы: получает на вход файл и выводит только уникальные строки из этого файла.
+Более точная спека: drop-duplicates.
 
 Два варианта: 
 - на мапке строка - уникальность; 
-- на предположении, что файл сортирован (check prev == current).
+- на предположении, что файл сортирован (check prev == current). Если обнаруживаем, что набор строк не сортирован - паника.
 
 ### Написание тестов для ПУ
 
@@ -623,6 +624,26 @@ GOPATH определяет корневую директорию, в котор
 `func TestSortedInput(t *testing.T) { ... }`
 
 Тесты запускаются `go test -v ./unique`
+
+### week 1 homework
+
+Дана готовая структура пакета `main`, реализующего поведение утилиты `tree`.
+Надо в пакет добавить реализацию функции, выполняющей обход дерева каталогов и выдающей строки для вывода пользователю.
+- [home work materials](week_01\materials.zip\week_1\99_hw\tree\)
+- [actual home work project](./sandbox/week01_homework/tree//hw1.md)
+
+```s
+pushd week01_homework/tree
+go mod init tree
+go mod tidy
+pushd ..
+go work init
+go work use ./tree/
+go vet tree
+gofmt -w tree
+go test -v tree
+go run tree . -f
+```
 
 ## part 1, week 2
 

@@ -15,4 +15,5 @@ use (
 	./hello_world
 	./spec
 	./week01
+	./week01_homework/tree
 )
