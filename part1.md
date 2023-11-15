@@ -643,6 +643,7 @@ go vet tree
 gofmt -w tree
 go test -v tree
 go run tree . -f
+cd tree && docker build -t mailgo_hw1 .
 ```
 
 ## part 1, week 2

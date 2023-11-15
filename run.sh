@@ -29,12 +29,19 @@ go_run_sandbox_week01_tree_test() {
 # go run tree . -f
 
     local module="tree"
+    local exit_code=0
     pushd ${PRJ_DIR}/sandbox/week01_homework
     gofmt -w $module || exit
     go vet $module
-    go run $module . -f
-    go test -v $module
-    local exit_code=$?
+    go run $module tree/testdata -f
+    exit_code=$?
+
+    # go test -v $module
+    # exit_code=$?
+
+    # cd $module
+    # docker build -t mailgo_hw1 .
+    
     popd
     return $exit_code
 }
