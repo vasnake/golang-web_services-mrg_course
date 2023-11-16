@@ -627,10 +627,12 @@ GOPATH определяет корневую директорию, в котор
 
 ### week 1 homework
 
+# YOU_ARE_HERE
+
 Дана готовая структура пакета `main`, реализующего поведение утилиты `tree`.
 Надо в пакет добавить реализацию функции, выполняющей обход дерева каталогов и выдающей строки для вывода пользователю.
-- [home work materials](week_01\materials.zip\week_1\99_hw\tree\)
-- [actual home work project](./sandbox/week01_homework/tree//hw1.md)
+- [homework materials](week_01\materials.zip\week_1\99_hw\tree\)
+- [actual homework project](./sandbox/week01_homework/tree//hw1.md)
 
 ```s
 pushd week01_homework/tree
