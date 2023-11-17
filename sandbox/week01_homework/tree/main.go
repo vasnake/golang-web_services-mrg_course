@@ -62,26 +62,13 @@ func dirTree(out io.Writer, path string, printFiles bool) error {
 		- nested elements aligned with one tab `	` for each level
 	*/
 
-	var treeLevel uint = 0
+	var parentPrefix = ""
 
 	// skip it, it is unimportant
 	path = strings.TrimSpace(path)
 	show("path: ", path)
 	var x = filepath.Join(path, "project")
 	show("joined dir: ", x)
-
-	// open (and close) dir
-	// f, err := os.Open(path)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// get content from dir
-	// items, err := f.Readdir(-1)
-	// f.Close()
-	// if err != nil {
-	// 	return err
-	// }
 
 	entries, err := readdir(path)
 	if err != nil {
@@ -90,34 +77,159 @@ func dirTree(out io.Writer, path string, printFiles bool) error {
 
 	entries = sortByName(entries)
 
-	// var dirs []string
-	// var files []string
-
 	for idx, entry := range entries {
 		isDir, name, size := entry.IsDir(), entry.Name(), entry.Size()
 		isLast := (idx + 1) == len(entries)
-		show("file (index, isDir, name, sizeBytes): ", idx, isDir, name, size)
-		outLine := formatEntry(name, isDir, size, treeLevel, isLast)
-		fmt.Fprintln(out, outLine)
+
+		prefix, text := formatEntry(name, isDir, size, parentPrefix, isLast)
+		fmt.Fprintf(out, "%s%s\n", prefix, text)
+
+		if isDir {
+			err = printDirTree(out, path, name, prefix, printFiles)
+			if err != nil {
+				return err
+			}
+		}
 	}
-
-	// sort.Strings(dirs)
-	// slices.Sort(dirs)
-	// show("dirs: ", dirs)
-	// show("files: ", files)
-
-	/*
-		joined dir: string(project);
-		dirs: []string([project static zline]);
-		files: []string([]);
-	*/
 
 	return nil
 }
 
-func formatEntry(name string, isDir bool, size int64, treeLevel uint, isLast bool) string {
-	defer panic("not implemented yet")
-	return name
+func printDirTree(out io.Writer, path, dirName, parentPrefix string, printFiles bool) error {
+	path = filepath.Join(path, dirName)
+
+	entries, err := readdir(path)
+	if err != nil {
+		return err
+	}
+
+	entries = sortByName(entries)
+
+	for idx, entry := range entries {
+		isDir, name, size := entry.IsDir(), entry.Name(), entry.Size()
+		isLast := (idx + 1) == len(entries)
+
+		prefix, text := formatEntry(name, isDir, size, parentPrefix, isLast)
+		fmt.Fprintf(out, "%s%s\n", prefix, text)
+
+		if isDir {
+			err = printDirTree(out, path, name, prefix, printFiles)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func formatEntry(name string, isDir bool, size int64, parentPrefix string, isLast bool) (prefix, text string) {
+	/*
+		Example output:
+
+		├───project
+		│	└───gopher.png (70372b)
+		├───static
+		│	├───a_lorem
+		│	│	├───dolor.txt (empty)
+		│	├───css
+		│	│	└───body.css (28b)
+		...
+		│			└───gopher.png (70372b)
+
+		- path should point to a directory,
+		- directory items must be sorted,
+		- output all dir items in sorted order, w/o distinction file/dir
+		- last element prefix is `└───`
+		- other elements prefix is `├───`
+		- nested elements aligned with one tab `	` for each level
+
+		https://pkg.go.dev/fmt
+
+		got:
+		├───project
+		├───├───file.txt (19b)
+		├───└───gopher.png (70372b)
+		├───static
+		├───├───a_lorem
+		├───├───├───dolor.txt (empty)
+		├───├───├───gopher.png (70372b)
+		├───├───└───ipsum
+		├───├───└───└───gopher.png (70372b)
+		├───├───css
+		├───├───└───body.css (28b)
+		├───├───empty.txt (empty)
+		├───├───html
+		├───├───└───index.html (57b)
+		├───├───js
+		├───├───└───site.js (10b)
+		├───└───z_lorem
+		├───└───├───dolor.txt (empty)
+		├───└───├───gopher.png (70372b)
+		├───└───└───ipsum
+		├───└───└───└───gopher.png (70372b)
+		├───zline
+		├───├───empty.txt (empty)
+		├───└───lorem
+		├───└───├───dolor.txt (empty)
+		├───└───├───gopher.png (70372b)
+		├───└───└───ipsum
+		├───└───└───└───gopher.png (70372b)
+		└───zzfile.txt (empty)
+
+		expected:
+		├───project
+		│	├───file.txt (19b)
+		│	└───gopher.png (70372b)
+		├───static
+		│	├───a_lorem
+		│	│	├───dolor.txt (empty)
+		│	│	├───gopher.png (70372b)
+		│	│	└───ipsum
+		│	│		└───gopher.png (70372b)
+		│	├───css
+		│	│	└───body.css (28b)
+		│	├───empty.txt (empty)
+		│	├───html
+		│	│	└───index.html (57b)
+		│	├───js
+		│	│	└───site.js (10b)
+		│	└───z_lorem
+		│		├───dolor.txt (empty)
+		│		├───gopher.png (70372b)
+		│		└───ipsum
+		│			└───gopher.png (70372b)
+		├───zline
+		│	├───empty.txt (empty)
+		│	└───lorem
+		│		├───dolor.txt (empty)
+		│		├───gopher.png (70372b)
+		│		└───ipsum
+		│			└───gopher.png (70372b)
+		└───zzfile.txt (empty)
+
+	*/
+
+	var namePrefix = "├───"
+	if isLast {
+		namePrefix = "└───"
+	}
+
+	namePrefix = parentPrefix + namePrefix
+
+	var namePostfix = ""
+	if !isDir {
+		var sizeText = "empty"
+		if size > 0 {
+			sizeText = fmt.Sprintf("%db", size)
+		}
+
+		namePostfix = fmt.Sprintf(" (%s)", sizeText)
+	}
+
+	prefix = namePrefix
+	text = fmt.Sprintf("%s%s", name, namePostfix)
+	return
 }
 
 func readdir(path string) ([]fs.FileInfo, error) {
@@ -144,7 +256,7 @@ func readDir(path string) ([]fs.DirEntry, error) {
 
 	defer file.Close()
 
-	entries, err := file.ReadDir(0) // DirEntry nave no size, need to read from disk again, it is stupid
+	entries, err := file.ReadDir(0) // DirEntry nave no size attribute, we will need to read from disk again, it is stupid
 	if err != nil {
 		return nil, err
 	}
