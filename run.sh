@@ -1,5 +1,5 @@
 #!/bin/bash
-# alias gr='bash -x /mnt/c/Users/valik/data/github/golang-web_services-mrg_course/run.sh'
+# alias gr='bash -vxe /mnt/c/Users/valik/data/github/golang-web_services-mrg_course/run.sh'
 PRJ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 APP_SELECTOR=${GO_APP_SELECTOR:-week01_tree_test}
@@ -33,15 +33,17 @@ go_run_sandbox_week01_tree_test() {
     pushd ${PRJ_DIR}/sandbox/week01_homework
     gofmt -w $module || exit
     go vet $module
+
     go run $module tree/testdata -f
+    go run $module tree/testdata
     exit_code=$?
 
-    # go test -v $module
-    # exit_code=$?
+    go test -v $module
+    exit_code=$?
 
-    # cd $module
-    # docker build -t mailgo_hw1 .
-    
+    cd $module
+    docker build -t mailgo_hw1 .
+
     popd
     return $exit_code
 }

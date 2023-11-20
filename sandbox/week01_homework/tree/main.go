@@ -21,13 +21,45 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-
-	// "slices"
-	// "sort"
 	"strings"
 )
 
+/*
+	Example output:
+
+	├───project
+	│	└───gopher.png (70372b)
+	├───static
+	│	├───a_lorem
+	│	│	├───dolor.txt (empty)
+	│	├───css
+	│	│	└───body.css (28b)
+	...
+	│			└───gopher.png (70372b)
+
+	- path should point to a directory,
+	- output all dir items in sorted order, w/o distinction file/dir
+	- last element prefix is `└───`
+	- other elements prefix is `├───`
+	- nested elements aligned with one tab `	` for each level
+*/
+
+const (
+	EOL   = "\n"
+	TRUNK = "│"
+
+	BRANCHING_TRUNK        = "├───"
+	BRANCHING_TRUNK_SYMBOL = "├"
+
+	LAST_BRANCH        = "└───"
+	LAST_BRANCH_SYMBOL = "└"
+
+	TRUNC_TAB = "│\t"
+	LAST_TAB  = "\t"
+)
+
 func main() {
+	// This code is given, I don't think I should touch it
 	out := os.Stdout
 	if !(len(os.Args) == 2 || len(os.Args) == 3) {
 		panic("usage go run main.go . [-f]")
@@ -41,66 +73,24 @@ func main() {
 }
 
 func dirTree(out io.Writer, path string, printFiles bool) error {
-	/*
-		Example output:
+	// Function to implement, signature is given, don't touch it.
 
-		├───project
-		│	└───gopher.png (70372b)
-		├───static
-		│	├───a_lorem
-		│	│	├───dolor.txt (empty)
-		│	├───css
-		│	│	└───body.css (28b)
-		...
-		│			└───gopher.png (70372b)
-
-		- path should point to a directory,
-		- directory items must be sorted,
-		- output all dir items in sorted order, w/o distinction file/dir
-		- last element prefix is `└───`
-		- other elements prefix is `├───`
-		- nested elements aligned with one tab `	` for each level
-	*/
-
-	var parentPrefix = ""
-
-	// skip it, it is unimportant
-	path = strings.TrimSpace(path)
-	show("path: ", path)
-	var x = filepath.Join(path, "project")
-	show("joined dir: ", x)
-
-	entries, err := readdir(path)
-	if err != nil {
-		return err
-	}
-
-	entries = sortByName(entries)
-
-	for idx, entry := range entries {
-		isDir, name, size := entry.IsDir(), entry.Name(), entry.Size()
-		isLast := (idx + 1) == len(entries)
-
-		prefix, text := formatEntry(name, isDir, size, parentPrefix, isLast)
-		fmt.Fprintf(out, "%s%s\n", prefix, text)
-
-		if isDir {
-			err = printDirTree(out, path, name, prefix, printFiles)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
+	var pathSubdir, parentPrefix = "", ""
+	return printDirTree(out, path, pathSubdir, parentPrefix, printFiles)
 }
 
 func printDirTree(out io.Writer, path, dirName, parentPrefix string, printFiles bool) error {
-	path = filepath.Join(path, dirName)
+	if dirName != "" { // On first call dirName = ""
+		path = filepath.Join(path, dirName)
+	}
 
 	entries, err := readdir(path)
 	if err != nil {
 		return err
+	}
+
+	if !printFiles {
+		entries = dropFiles(entries)
 	}
 
 	entries = sortByName(entries)
@@ -110,7 +100,7 @@ func printDirTree(out io.Writer, path, dirName, parentPrefix string, printFiles 
 		isLast := (idx + 1) == len(entries)
 
 		prefix, text := formatEntry(name, isDir, size, parentPrefix, isLast)
-		fmt.Fprintf(out, "%s%s\n", prefix, text)
+		fmt.Fprintf(out, "%s%s%s", prefix, text, EOL)
 
 		if isDir {
 			err = printDirTree(out, path, name, prefix, printFiles)
@@ -125,56 +115,37 @@ func printDirTree(out io.Writer, path, dirName, parentPrefix string, printFiles 
 
 func formatEntry(name string, isDir bool, size int64, parentPrefix string, isLast bool) (prefix, text string) {
 	/*
-		Example output:
-
-		├───project
-		│	└───gopher.png (70372b)
-		├───static
-		│	├───a_lorem
-		│	│	├───dolor.txt (empty)
-		│	├───css
-		│	│	└───body.css (28b)
-		...
-		│			└───gopher.png (70372b)
-
-		- path should point to a directory,
-		- directory items must be sorted,
-		- output all dir items in sorted order, w/o distinction file/dir
-		- last element prefix is `└───`
-		- other elements prefix is `├───`
-		- nested elements aligned with one tab `	` for each level
-
 		https://pkg.go.dev/fmt
 
 		got:
 		├───project
-		├───├───file.txt (19b)
-		├───└───gopher.png (70372b)
+		│       ├───file.txt (19b)
+		│       └───gopher.png (70372b)
 		├───static
-		├───├───a_lorem
-		├───├───├───dolor.txt (empty)
-		├───├───├───gopher.png (70372b)
-		├───├───└───ipsum
-		├───├───└───└───gopher.png (70372b)
-		├───├───css
-		├───├───└───body.css (28b)
-		├───├───empty.txt (empty)
-		├───├───html
-		├───├───└───index.html (57b)
-		├───├───js
-		├───├───└───site.js (10b)
-		├───└───z_lorem
-		├───└───├───dolor.txt (empty)
-		├───└───├───gopher.png (70372b)
-		├───└───└───ipsum
-		├───└───└───└───gopher.png (70372b)
+		│       ├───a_lorem
+		│       │       ├───dolor.txt (empty)
+		│       │       ├───gopher.png (70372b)
+		│       │       └───ipsum
+		│       │               └───gopher.png (70372b)
+		│       ├───css
+		│       │       └───body.css (28b)
+		│       ├───empty.txt (empty)
+		│       ├───html
+		│       │       └───index.html (57b)
+		│       ├───js
+		│       │       └───site.js (10b)
+		│       └───z_lorem
+		│               ├───dolor.txt (empty)
+		│               ├───gopher.png (70372b)
+		│               └───ipsum
+		│                       └───gopher.png (70372b)
 		├───zline
-		├───├───empty.txt (empty)
-		├───└───lorem
-		├───└───├───dolor.txt (empty)
-		├───└───├───gopher.png (70372b)
-		├───└───└───ipsum
-		├───└───└───└───gopher.png (70372b)
+		│       ├───empty.txt (empty)
+		│       └───lorem
+		│               ├───dolor.txt (empty)
+		│               ├───gopher.png (70372b)
+		│               └───ipsum
+		│                       └───gopher.png (70372b)
 		└───zzfile.txt (empty)
 
 		expected:
@@ -207,29 +178,76 @@ func formatEntry(name string, isDir bool, size int64, parentPrefix string, isLas
 		│		└───ipsum
 		│			└───gopher.png (70372b)
 		└───zzfile.txt (empty)
-
 	*/
 
-	var namePrefix = "├───"
+	var namePrefix = BRANCHING_TRUNK
 	if isLast {
-		namePrefix = "└───"
+		namePrefix = LAST_BRANCH
+	}
+
+	if endsWith(parentPrefix, BRANCHING_TRUNK) {
+		parentPrefix = replaceTail(parentPrefix, len(BRANCHING_TRUNK), TRUNC_TAB)
+	} else if endsWith(parentPrefix, LAST_BRANCH) {
+		parentPrefix = replaceTail(parentPrefix, len(LAST_BRANCH), LAST_TAB)
 	}
 
 	namePrefix = parentPrefix + namePrefix
 
-	var namePostfix = ""
+	// result
+	prefix = namePrefix
+	text = formatName(name, isDir, size)
+	return
+}
+
+func endsWith(text, subtext string) bool {
+	var start = len(text) - len(subtext)
+	return start >= 0 && text[start:] == subtext
+}
+
+func replaceTail(text string, tailLen int, trg string) string {
+	var start = len(text) - tailLen
+	if start >= 0 {
+		return text[0:start] + trg
+	}
+	return trg
+}
+
+func formatName(name string, isDir bool, size int64) string {
+	/*
+		Result examples
+		- `lorem`: directory
+		- `dolor.txt (empty)`: empty file
+		- `gopher.png (70372b)`: regular file
+	*/
+	var suffix = ""
 	if !isDir {
 		var sizeText = "empty"
 		if size > 0 {
 			sizeText = fmt.Sprintf("%db", size)
 		}
 
-		namePostfix = fmt.Sprintf(" (%s)", sizeText)
+		suffix = fmt.Sprintf(" (%s)", sizeText)
 	}
 
-	prefix = namePrefix
-	text = fmt.Sprintf("%s%s", name, namePostfix)
-	return
+	return fmt.Sprintf("%s%s", name, suffix)
+}
+
+func dropFiles(entries []fs.FileInfo) []fs.FileInfo {
+	var dirsCount uint = 0
+	for _, entry := range entries {
+		if entry.IsDir() {
+			dirsCount += 1
+		}
+	}
+
+	var dirs = make([]fs.FileInfo, 0, dirsCount)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			dirs = append(dirs, entry)
+		}
+	}
+
+	return dirs
 }
 
 func readdir(path string) ([]fs.FileInfo, error) {
@@ -248,6 +266,7 @@ func readdir(path string) ([]fs.FileInfo, error) {
 	return entries, nil
 }
 
+// readDir is a fast (relatively) but useless (here) function. It is here only for educational purposes.
 func readDir(path string) ([]fs.DirEntry, error) {
 	file, err := os.Open(path)
 	if err != nil {
