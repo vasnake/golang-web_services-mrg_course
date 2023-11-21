@@ -1,6 +1,9 @@
 package main
 
 /*
+Web services on Go, week 1, homework, `tree` program.
+
+mkdir -p week01_homework/tree
 pushd week01_homework/tree
 go mod init tree
 go mod tidy
@@ -11,7 +14,13 @@ go vet tree
 gofmt -w tree
 go test -v tree
 go run tree . -f
+go run tree ./tree/testdata
 cd tree && docker build -t mailgo_hw1 .
+
+https://en.wikipedia.org/wiki/Tree_(command)
+https://mama.indstate.edu/users/ice/tree/
+https://stackoverflow.com/questions/32151776/visualize-tree-in-bash-like-the-output-of-unix-tree
+
 */
 
 import (

@@ -1,4 +1,5 @@
 # docker build -t mailgo_hw1 .
 FROM golang:1.21
+WORKDIR /project
 COPY . .
 RUN go test -v
