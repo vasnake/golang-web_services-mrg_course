@@ -1,7 +1,8 @@
 package main
 
 /*
-Web services on Go, week 1, homework, `tree` program.
+Course `Web services on Go`, week 1, homework, `tree` program.
+See: week_01\materials.zip\week_1\99_hw\tree
 
 mkdir -p week01_homework/tree
 pushd week01_homework/tree
@@ -54,24 +55,19 @@ import (
 */
 
 const (
-	EOL   = "\n"
-	TRUNK = "│"
-
-	BRANCHING_TRUNK        = "├───"
-	BRANCHING_TRUNK_SYMBOL = "├"
-
-	LAST_BRANCH        = "└───"
-	LAST_BRANCH_SYMBOL = "└"
-
-	TRUNC_TAB = "│\t"
-	LAST_TAB  = "\t"
+	EOL             = "\n"
+	BRANCHING_TRUNK = "├───"
+	LAST_BRANCH     = "└───"
+	TRUNC_TAB       = "│\t"
+	LAST_TAB        = "\t"
+	EMPTY_FILE      = "empty"
 )
 
 func main() {
 	// This code is given, I don't think I should touch it
 	out := os.Stdout
 	if !(len(os.Args) == 2 || len(os.Args) == 3) {
-		panic("usage go run main.go . [-f]")
+		panic("usage: go run main.go . [-f]")
 	}
 	path := os.Args[1]
 	printFiles := len(os.Args) == 3 && os.Args[2] == "-f"
@@ -81,18 +77,24 @@ func main() {
 	}
 }
 
+// dirTree: top-level `tree` program implementation.
+// It is write `path` dir listing to `out`. If `prinFiles` is set, files is listed along with directories.
 func dirTree(out io.Writer, path string, printFiles bool) error {
 	// Function to implement, signature is given, don't touch it.
 
-	var pathSubdir, parentPrefix = "", ""
-	return printDirTree(out, path, pathSubdir, parentPrefix, printFiles)
+	// TODO: export RECURSIVE_TREE=no
+
+	var parentPrefix = ""
+	return printDirTreeRecur(out, path, parentPrefix, printFiles)
 }
 
-func printDirTree(out io.Writer, path, dirName, parentPrefix string, printFiles bool) error {
-	if dirName != "" { // On first call dirName = ""
-		path = filepath.Join(path, dirName)
-	}
+// fmt.Errorf(“while doing foo: %v”, err)
 
+// printDirTreeRecur: recursive implementation of a `tree` program. Parameters:
+// `out`: result, where to write directory tree. `path`: directory to process.
+// `parentPrefix`: text representing tree leaf or branch, w/o file actual data.
+// `printFiles`: define option for writing files (not directories) to result.
+func printDirTreeRecur(out io.Writer, path, parentPrefix string, printFiles bool) error {
 	entries, err := readdir(path)
 	if err != nil {
 		return err
@@ -109,55 +111,25 @@ func printDirTree(out io.Writer, path, dirName, parentPrefix string, printFiles 
 		isLast := (idx + 1) == len(entries)
 
 		prefix, text := formatEntry(name, isDir, size, parentPrefix, isLast)
-		fmt.Fprintf(out, "%s%s%s", prefix, text, EOL)
+		// fmt.Fprintf(out, "%s%s%s", prefix, text, EOL) // could be a little faster
+		fmt.Fprint(out, prefix+text+EOL)
 
 		if isDir {
-			err = printDirTree(out, path, name, prefix, printFiles)
+			err = printDirTreeRecur(out, filepath.Join(path, name), prefix, printFiles)
 			if err != nil {
 				return err
 			}
 		}
 	}
 
-	return nil
+	return nil // no errors
 }
 
 func formatEntry(name string, isDir bool, size int64, parentPrefix string, isLast bool) (prefix, text string) {
 	/*
 		https://pkg.go.dev/fmt
 
-		got:
-		├───project
-		│       ├───file.txt (19b)
-		│       └───gopher.png (70372b)
-		├───static
-		│       ├───a_lorem
-		│       │       ├───dolor.txt (empty)
-		│       │       ├───gopher.png (70372b)
-		│       │       └───ipsum
-		│       │               └───gopher.png (70372b)
-		│       ├───css
-		│       │       └───body.css (28b)
-		│       ├───empty.txt (empty)
-		│       ├───html
-		│       │       └───index.html (57b)
-		│       ├───js
-		│       │       └───site.js (10b)
-		│       └───z_lorem
-		│               ├───dolor.txt (empty)
-		│               ├───gopher.png (70372b)
-		│               └───ipsum
-		│                       └───gopher.png (70372b)
-		├───zline
-		│       ├───empty.txt (empty)
-		│       └───lorem
-		│               ├───dolor.txt (empty)
-		│               ├───gopher.png (70372b)
-		│               └───ipsum
-		│                       └───gopher.png (70372b)
-		└───zzfile.txt (empty)
-
-		expected:
+		Complete text, set of entries example (expected):
 		├───project
 		│	├───file.txt (19b)
 		│	└───gopher.png (70372b)
@@ -189,23 +161,22 @@ func formatEntry(name string, isDir bool, size int64, parentPrefix string, isLas
 		└───zzfile.txt (empty)
 	*/
 
-	var namePrefix = BRANCHING_TRUNK
-	if isLast {
-		namePrefix = LAST_BRANCH
-	}
-
 	if endsWith(parentPrefix, BRANCHING_TRUNK) {
-		parentPrefix = replaceTail(parentPrefix, len(BRANCHING_TRUNK), TRUNC_TAB)
+		prefix = replaceTail(parentPrefix, len(BRANCHING_TRUNK), TRUNC_TAB)
 	} else if endsWith(parentPrefix, LAST_BRANCH) {
-		parentPrefix = replaceTail(parentPrefix, len(LAST_BRANCH), LAST_TAB)
+		prefix = replaceTail(parentPrefix, len(LAST_BRANCH), LAST_TAB)
+	} else {
+		prefix = parentPrefix
 	}
 
-	namePrefix = parentPrefix + namePrefix
+	if isLast {
+		prefix += LAST_BRANCH
+	} else {
+		prefix += BRANCHING_TRUNK
+	}
 
-	// result
-	prefix = namePrefix
 	text = formatName(name, isDir, size)
-	return
+	return // prefix, text
 }
 
 func endsWith(text, subtext string) bool {
@@ -213,12 +184,14 @@ func endsWith(text, subtext string) bool {
 	return start >= 0 && text[start:] == subtext
 }
 
-func replaceTail(text string, tailLen int, trg string) string {
+func replaceTail(text string, tailLen int, newTail string) (result string) {
 	var start = len(text) - tailLen
 	if start >= 0 {
-		return text[0:start] + trg
+		result = text[0:start] + newTail
+	} else {
+		result = newTail
 	}
-	return trg
+	return
 }
 
 func formatName(name string, isDir bool, size int64) string {
@@ -226,11 +199,11 @@ func formatName(name string, isDir bool, size int64) string {
 		Result examples
 		- `lorem`: directory
 		- `dolor.txt (empty)`: empty file
-		- `gopher.png (70372b)`: regular file
+		- `gopher.png (70372b)`: regular file, size in bytes
 	*/
-	var suffix = ""
+	var suffix = "" // if `name` is a directory
 	if !isDir {
-		var sizeText = "empty"
+		var sizeText = EMPTY_FILE // if file is empty
 		if size > 0 {
 			sizeText = fmt.Sprintf("%db", size)
 		}
@@ -238,21 +211,24 @@ func formatName(name string, isDir bool, size int64) string {
 		suffix = fmt.Sprintf(" (%s)", sizeText)
 	}
 
-	return fmt.Sprintf("%s%s", name, suffix)
+	return name + suffix
 }
 
 func dropFiles(entries []fs.FileInfo) []fs.FileInfo {
-	var dirsCount uint = 0
-	for _, entry := range entries {
-		if entry.IsDir() {
+	// I think two slice enumerations should be more effective than x memory reallocations in case when result slice size is unknown
+	var dirsCount uint = 0 // result slice size
+	for idx := range entries {
+		if entries[idx].IsDir() {
 			dirsCount += 1
 		}
 	}
 
-	var dirs = make([]fs.FileInfo, 0, dirsCount)
-	for _, entry := range entries {
-		if entry.IsDir() {
-			dirs = append(dirs, entry)
+	var dirs = make([]fs.FileInfo, dirsCount)
+	var dirsIdx uint = 0
+	for entriesIdx := range entries {
+		if entries[entriesIdx].IsDir() {
+			dirs[dirsIdx] = entries[entriesIdx]
+			dirsIdx += 1
 		}
 	}
 
@@ -267,7 +243,7 @@ func readdir(path string) ([]fs.FileInfo, error) {
 
 	defer file.Close()
 
-	entries, err := file.Readdir(0)
+	entries, err := file.Readdir(0) // 0: read all entries
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +251,8 @@ func readdir(path string) ([]fs.FileInfo, error) {
 	return entries, nil
 }
 
-// readDir is a fast (relatively) but useless (here) function. It is here only for educational purposes.
+// readDir is fast (relatively) but useless (here) function. It is here only for educational purposes.
+// DirEntry nave no `size` attribute, we will need to read from disk again, it is stupid.
 func readDir(path string) ([]fs.DirEntry, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -284,7 +261,7 @@ func readDir(path string) ([]fs.DirEntry, error) {
 
 	defer file.Close()
 
-	entries, err := file.ReadDir(0) // DirEntry nave no size attribute, we will need to read from disk again, it is stupid
+	entries, err := file.ReadDir(0)
 	if err != nil {
 		return nil, err
 	}

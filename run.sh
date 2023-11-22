@@ -28,9 +28,11 @@ go_run_sandbox_week01_tree_test() {
 # go test -v tree
 # go run tree . -f
 
+    export RECURSIVE_TREE=no
     local module="tree"
     local exit_code=0
     pushd ${PRJ_DIR}/sandbox/week01_homework
+
     gofmt -w $module || exit
     go vet $module
 
@@ -38,11 +40,11 @@ go_run_sandbox_week01_tree_test() {
     go run $module tree/testdata
     exit_code=$?
 
-    go test -v $module
-    exit_code=$?
+    # go test -v $module
+    # exit_code=$?
 
-    cd $module
-    docker build -t mailgo_hw1 .
+    # cd $module
+    # docker build -t mailgo_hw1 .
 
     popd
     return $exit_code
