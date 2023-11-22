@@ -61,6 +61,9 @@ const (
 	TRUNC_TAB       = "│\t"
 	LAST_TAB        = "\t"
 	EMPTY_FILE      = "empty"
+
+	USE_RECURSION_ENV_KEY = "RECURSIVE_TREE"
+	USE_RECURSION_ENV_VAL = "YES"
 )
 
 func main() {
@@ -82,13 +85,59 @@ func main() {
 func dirTree(out io.Writer, path string, printFiles bool) error {
 	// Function to implement, signature is given, don't touch it.
 
-	// TODO: export RECURSIVE_TREE=no
-
+	var useRecursion = strings.ToUpper(os.Getenv(USE_RECURSION_ENV_KEY)) == strings.ToUpper(USE_RECURSION_ENV_VAL)
 	var parentPrefix = ""
-	return printDirTreeRecur(out, path, parentPrefix, printFiles)
+	if useRecursion {
+		return printDirTreeRecur(out, path, parentPrefix, printFiles)
+	} else {
+		return printDirTreeQueue(out, path, printFiles)
+		// return fmt.Errorf("While doing `dirTree` first call: `RECURSIVE_TREE=%v`", os.Getenv(USE_RECURSION_ENV_KEY))
+	}
 }
 
-// fmt.Errorf(“while doing foo: %v”, err)
+func printDirTreeQueue(out io.Writer, path string, printFiles bool) error {
+	var parentPrefix = ""
+
+	var getEntries = func(dirPath string) ([]os.FileInfo, error) {
+		entries, err := readdir(dirPath)
+		if err != nil {
+			return nil, err
+		}
+
+		if !printFiles {
+			entries = dropFiles(entries)
+		}
+
+		return sortByName(entries), nil
+	}
+
+	entries, err := getEntries(path)
+	if err != nil {
+		return err
+	}
+
+	for len(entries) > 0 {
+		// TODO: track path to current dir; track prefix
+		var entry = entries[0]
+		entries = entries[1:]
+
+		isDir, name, size := entry.IsDir(), entry.Name(), entry.Size()
+		isLast := len(entries) == 0
+
+		prefix, text := formatEntry(name, isDir, size, parentPrefix, isLast)
+		fmt.Fprint(out, prefix+text+EOL)
+
+		if isDir {
+			newEntries, err := getEntries(filepath.Join(path, name))
+			if err != nil {
+				return err
+			}
+			entries = append(newEntries, entries...)
+		}
+	}
+
+	return nil // no errors
+}
 
 // printDirTreeRecur: recursive implementation of a `tree` program. Parameters:
 // `out`: result, where to write directory tree. `path`: directory to process.
