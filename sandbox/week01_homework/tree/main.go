@@ -61,6 +61,7 @@ const (
 	TRUNC_TAB       = "│\t"
 	LAST_TAB        = "\t"
 	EMPTY_FILE      = "empty"
+	ROOT_PREFIX     = ""
 
 	USE_RECURSION_ENV_KEY = "RECURSIVE_TREE"
 	USE_RECURSION_ENV_VAL = "YES"
@@ -80,8 +81,8 @@ func main() {
 	}
 }
 
-// dirTree: top-level `tree` program implementation.
-// It is write `path` dir listing to `out`. If `prinFiles` is set, files is listed along with directories.
+// dirTree: `tree` program implementation, top-level function, signature is fixed.
+// Write `path` dir listing to `out`. If `prinFiles` is set, files is listed along with directories.
 func dirTree(out io.Writer, path string, printFiles bool) error {
 	// Function to implement, signature is given, don't touch it.
 
@@ -89,16 +90,19 @@ func dirTree(out io.Writer, path string, printFiles bool) error {
 	show("Recursion option: (key, expectedVal, actualVal): ", USE_RECURSION_ENV_KEY, USE_RECURSION_ENV_VAL, useRecursionEvv)
 	var useRecursion = strings.ToUpper(useRecursionEvv) == strings.ToUpper(USE_RECURSION_ENV_VAL)
 
-	var parentPrefix = ""
 	if useRecursion {
 		show("Print tree using recursion ...")
-		return printDirTreeRecur(out, path, parentPrefix, printFiles)
+		return printDirTreeRecur(out, path, ROOT_PREFIX, printFiles)
 	} else {
 		show("Print tree using stack, no recursion ...")
 		return printDirTreeStack(out, path, printFiles)
 	}
 }
 
+// printDirTreeStack: non-recursive implementation of a `tree` program. Parameters:
+// `out`: result, where to write the directory tree.
+// `path`: directory to process.
+// `printFiles`: if true than files (as not directories) printed to result.
 func printDirTreeStack(out io.Writer, path string, printFiles bool) error {
 
 	type dirEntry struct {
@@ -137,7 +141,7 @@ func printDirTreeStack(out io.Writer, path string, printFiles bool) error {
 		return myEntries, nil
 	}
 
-	entries, err := getEntries(path, "") // root prefix
+	entries, err := getEntries(path, ROOT_PREFIX)
 	if err != nil {
 		return err
 	}
@@ -147,8 +151,8 @@ func printDirTreeStack(out io.Writer, path string, printFiles bool) error {
 		var entry = entries[0]
 		entries = entries[1:]
 
-		prefix, text := formatEntry(entry.name, entry.isDir, entry.size, entry.parentPrefix, entry.isLast)
-		fmt.Fprint(out, prefix+text+EOL)
+		prefix, entryDescr := formatEntry(entry.name, entry.isDir, entry.size, entry.parentPrefix, entry.isLast)
+		fmt.Fprint(out, prefix+entryDescr+EOL)
 
 		if entry.isDir {
 			// push new items to stack
@@ -164,9 +168,10 @@ func printDirTreeStack(out io.Writer, path string, printFiles bool) error {
 }
 
 // printDirTreeRecur: recursive implementation of a `tree` program. Parameters:
-// `out`: result, where to write directory tree. `path`: directory to process.
+// `out`: result, where to write the directory tree.
+// `path`: directory to process.
 // `parentPrefix`: text representing tree leaf or branch, w/o file actual data.
-// `printFiles`: define option for writing files (not directories) to result.
+// `printFiles`: if true than files (as not directories) will be printed to result.
 func printDirTreeRecur(out io.Writer, path, parentPrefix string, printFiles bool) error {
 	entries, err := readdir(path)
 	if err != nil {
@@ -183,9 +188,8 @@ func printDirTreeRecur(out io.Writer, path, parentPrefix string, printFiles bool
 		isDir, name, size := entry.IsDir(), entry.Name(), entry.Size()
 		isLast := (idx + 1) == len(entries)
 
-		prefix, text := formatEntry(name, isDir, size, parentPrefix, isLast)
-		// fmt.Fprintf(out, "%s%s%s", prefix, text, EOL) // could be a little faster
-		fmt.Fprint(out, prefix+text+EOL)
+		prefix, entryDescr := formatEntry(name, isDir, size, parentPrefix, isLast)
+		fmt.Fprint(out, prefix+entryDescr+EOL)
 
 		if isDir {
 			err = printDirTreeRecur(out, filepath.Join(path, name), prefix, printFiles)
@@ -198,10 +202,8 @@ func printDirTreeRecur(out io.Writer, path, parentPrefix string, printFiles bool
 	return nil // no errors
 }
 
-func formatEntry(name string, isDir bool, size int64, parentPrefix string, isLast bool) (prefix, text string) {
+func formatEntry(name string, isDir bool, size int64, parentPrefix string, isLast bool) (prefix, entryDescr string) {
 	/*
-		https://pkg.go.dev/fmt
-
 		Complete text, set of entries example (expected):
 		├───project
 		│	├───file.txt (19b)
@@ -234,12 +236,48 @@ func formatEntry(name string, isDir bool, size int64, parentPrefix string, isLas
 		└───zzfile.txt (empty)
 	*/
 
-	if endsWith(parentPrefix, BRANCHING_TRUNK) {
-		prefix = replaceTail(parentPrefix, len(BRANCHING_TRUNK), TRUNC_TAB)
-	} else if endsWith(parentPrefix, LAST_BRANCH) {
-		prefix = replaceTail(parentPrefix, len(LAST_BRANCH), LAST_TAB)
-	} else {
-		prefix = parentPrefix
+	// For educational purposes only: review three options for string tail processing
+	var tailProcessingOption = 3
+	switch tailProcessingOption {
+	case 1:
+		{
+			// native string processing
+			var ok bool
+			parentPrefix, ok = strings.CutSuffix(parentPrefix, BRANCHING_TRUNK)
+			if ok {
+				prefix = parentPrefix + TRUNC_TAB
+			} else {
+				parentPrefix, ok = strings.CutSuffix(parentPrefix, LAST_BRANCH)
+				if ok {
+					prefix = parentPrefix + LAST_TAB
+				} else {
+					prefix = parentPrefix
+				}
+			}
+		}
+	case 2:
+		{
+			// custom generic string tail processing
+			if endsWith(parentPrefix, BRANCHING_TRUNK) {
+				prefix = replaceTail(parentPrefix, len(BRANCHING_TRUNK), TRUNC_TAB)
+			} else if endsWith(parentPrefix, LAST_BRANCH) {
+				prefix = replaceTail(parentPrefix, len(LAST_BRANCH), LAST_TAB)
+			} else {
+				prefix = parentPrefix
+			}
+		}
+	case 3:
+		{
+			// custom condensed string tail processing
+			var notFound bool
+			prefix, notFound = replaceSuffix(parentPrefix, BRANCHING_TRUNK, TRUNC_TAB)
+			if notFound {
+				prefix, notFound = replaceSuffix(parentPrefix, LAST_BRANCH, LAST_TAB)
+				if notFound {
+					prefix = parentPrefix
+				}
+			}
+		}
 	}
 
 	if isLast {
@@ -248,13 +286,13 @@ func formatEntry(name string, isDir bool, size int64, parentPrefix string, isLas
 		prefix += BRANCHING_TRUNK
 	}
 
-	text = formatName(name, isDir, size)
-	return // prefix, text
+	entryDescr = formatName(name, isDir, size)
+
+	return prefix, entryDescr
 }
 
 func endsWith(text, subtext string) bool {
-	var start = len(text) - len(subtext)
-	return start >= 0 && text[start:] == subtext
+	return strings.HasSuffix(text, subtext)
 }
 
 func replaceTail(text string, tailLen int, newTail string) (result string) {
@@ -267,8 +305,18 @@ func replaceTail(text string, tailLen int, newTail string) (result string) {
 	return
 }
 
+func replaceSuffix(text, oldSuffix, newSuffix string) (result string, notFound bool) {
+	text, found := strings.CutSuffix(text, oldSuffix)
+	if found {
+		return text + newSuffix, false
+	} else {
+		return text, true
+	}
+}
+
 func formatName(name string, isDir bool, size int64) string {
 	/*
+		https://pkg.go.dev/fmt
 		Result examples
 		- `lorem`: directory
 		- `dolor.txt (empty)`: empty file

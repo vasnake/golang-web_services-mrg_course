@@ -647,6 +647,7 @@ go test -v tree
 go run tree . -f
 cd tree && docker build -t mailgo_hw1 .
 ```
+Реализовал два варианта: рекурсивный и нет (стек).
 
 ## part 1, week 2
 
@@ -1036,6 +1037,8 @@ Unmarshal в пустой интерфейс.
 - `ngrok.io` как прокси для вывода бота в интернет. Можете заюзать heroku или другие облачные решения для запуска сервисов.
 
 ## links, info
+
+- [Package `fmt` implements formatted I/O with functions analogous to C's printf and scanf](https://pkg.go.dev/fmt)
 
 Материалы для дополнительного чтения на английском:
 * https://go.dev/ref/spec - спецификация по языку
