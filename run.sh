@@ -2,7 +2,7 @@
 # alias gr='bash -vxe /mnt/c/Users/valik/data/github/golang-web_services-mrg_course/run.sh'
 PRJ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-APP_SELECTOR=${GO_APP_SELECTOR:-week01_tree_test}
+APP_SELECTOR=${GO_APP_SELECTOR:-week02}
 
 go_run() {
     local selector="${1}"
@@ -12,22 +12,12 @@ go_run() {
         week01)                     go_run_sandbox week01;;
         week01_test)                go_run_sandbox_test week01;;
         week01_tree_test)           go_run_sandbox_week01_tree_test;;
+        week02)                     go_run_sandbox week02;;
         *)                          errorExit "Unknown program: ${selector}";;
     esac
 }
 
 go_run_sandbox_week01_tree_test() {
-# pushd week01_homework/tree
-# go mod init tree
-# go mod tidy
-# pushd ..
-# go work init
-# go work use ./tree/
-# go vet tree
-# gofmt -w tree
-# go test -v tree
-# go run tree . -f
-
     local module="tree"
     local exit_code=0
     pushd ${PRJ_DIR}/sandbox/week01_homework
@@ -53,23 +43,31 @@ go_run_sandbox_week01_tree_test() {
 
 go_run_sandbox_test() {
     local module="${1}"
+    local exit_code=0
     pushd ${PRJ_DIR}/sandbox
+
     gofmt -w $module || exit
     go vet $module
+
     go test -v $module
-    local exit_code=$?
+    exit_code=$?
+
     popd
     return $exit_code
 }
 
 go_run_sandbox() {
     local module="${1}"
+    local exit_code=0
     pushd ${PRJ_DIR}/sandbox
+
     gofmt -w $module || exit
-    go vet $module
+    go vet $module    
     # go vet -stringintconv=false spec
-    go run $module
-    local exit_code=$?
+
+    go run $module    
+    exit_code=$?
+
     popd
     return $exit_code
 }
@@ -82,7 +80,6 @@ errorExit() {
 go_run ${APP_SELECTOR}
 exit_code=$?
 echo "Exit code: ${exit_code}"
-
 exit $exit_code
 
 installGo() {

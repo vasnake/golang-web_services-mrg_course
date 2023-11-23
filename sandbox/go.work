@@ -16,4 +16,5 @@ use (
 	./spec
 	./week01
 	./week01_homework/tree
+	./week02
 )
