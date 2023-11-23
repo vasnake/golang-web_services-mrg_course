@@ -85,20 +85,32 @@ func main() {
 func dirTree(out io.Writer, path string, printFiles bool) error {
 	// Function to implement, signature is given, don't touch it.
 
-	var useRecursion = strings.ToUpper(os.Getenv(USE_RECURSION_ENV_KEY)) == strings.ToUpper(USE_RECURSION_ENV_VAL)
+	var useRecursionEvv = os.Getenv(USE_RECURSION_ENV_KEY)
+	show("Recursion option: (key, expectedVal, actualVal): ", USE_RECURSION_ENV_KEY, USE_RECURSION_ENV_VAL, useRecursionEvv)
+	var useRecursion = strings.ToUpper(useRecursionEvv) == strings.ToUpper(USE_RECURSION_ENV_VAL)
+
 	var parentPrefix = ""
 	if useRecursion {
+		show("Print tree using recursion ...")
 		return printDirTreeRecur(out, path, parentPrefix, printFiles)
 	} else {
-		return printDirTreeQueue(out, path, printFiles)
-		// return fmt.Errorf("While doing `dirTree` first call: `RECURSIVE_TREE=%v`", os.Getenv(USE_RECURSION_ENV_KEY))
+		show("Print tree using stack, no recursion ...")
+		return printDirTreeStack(out, path, printFiles)
 	}
 }
 
-func printDirTreeQueue(out io.Writer, path string, printFiles bool) error {
-	var parentPrefix = ""
+func printDirTreeStack(out io.Writer, path string, printFiles bool) error {
 
-	var getEntries = func(dirPath string) ([]os.FileInfo, error) {
+	type dirEntry struct {
+		name         string
+		isDir        bool
+		size         int64
+		isLast       bool
+		parentPrefix string
+		parentPath   string
+	}
+
+	var getEntries = func(dirPath, parentPrefix string) ([]dirEntry, error) {
 		entries, err := readdir(dirPath)
 		if err != nil {
 			return nil, err
@@ -108,27 +120,39 @@ func printDirTreeQueue(out io.Writer, path string, printFiles bool) error {
 			entries = dropFiles(entries)
 		}
 
-		return sortByName(entries), nil
+		entries = sortByName(entries)
+
+		var myEntries = make([]dirEntry, len(entries))
+		for idx := range entries {
+			myEntries[idx] = dirEntry{
+				name:         entries[idx].Name(),
+				isDir:        entries[idx].IsDir(),
+				size:         entries[idx].Size(),
+				isLast:       idx == (len(entries) - 1),
+				parentPrefix: parentPrefix,
+				parentPath:   dirPath,
+			}
+		}
+
+		return myEntries, nil
 	}
 
-	entries, err := getEntries(path)
+	entries, err := getEntries(path, "") // root prefix
 	if err != nil {
 		return err
 	}
 
 	for len(entries) > 0 {
-		// TODO: track path to current dir; track prefix
+		// pop item from stack
 		var entry = entries[0]
 		entries = entries[1:]
 
-		isDir, name, size := entry.IsDir(), entry.Name(), entry.Size()
-		isLast := len(entries) == 0
-
-		prefix, text := formatEntry(name, isDir, size, parentPrefix, isLast)
+		prefix, text := formatEntry(entry.name, entry.isDir, entry.size, entry.parentPrefix, entry.isLast)
 		fmt.Fprint(out, prefix+text+EOL)
 
-		if isDir {
-			newEntries, err := getEntries(filepath.Join(path, name))
+		if entry.isDir {
+			// push new items to stack
+			newEntries, err := getEntries(filepath.Join(entry.parentPath, entry.name), prefix)
 			if err != nil {
 				return err
 			}

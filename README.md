@@ -37,4 +37,4 @@ Consequently, there are no constants denoting the IEEE-754 negative zero, infini
 - [Implementing a bignum calculator with Rob Pike](https://youtu.be/PXoG0WX0r_E)
 - [Lexical Scanning in Go - Rob Pike](https://www.youtube.com/watch?v=HxaD_trXwRE)
 - [Advanced Topics in Programming Languages: Concurrency/message passing Newsqueak](https://youtu.be/hB05UFqOtFA), prime sieve on channels
-
+- [3.5 Years, 500k Lines of Go (Part 1)][https://npf.io/2017/03/3.5yrs-500k-lines-of-go/] `return fmt.Errorf("While doing foo: %v", err.Error())`
