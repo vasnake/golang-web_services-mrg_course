@@ -9,12 +9,16 @@
 
 ## homework
 
+### float numbers
+
 > Numeric constants represent exact values of arbitrary precision and do not overflow.
 Consequently, there are no constants denoting the IEEE-754 negative zero, infinity, and not-a-number values.
 
 Напиши библиотечные функции:
 - Предикат `IsInvalidFloat`, используемый в фильтрации коллекции чисел. Инвалид: inf, nan
 - Сравнения двух чисел float, с учетом дельты, +/- zero, nan, +/- inf
+
+### int numbers bits
 
 > Two's complement is achieved by:
 - Step 1: starting with the equivalent positive number.
@@ -26,6 +30,10 @@ Consequently, there are no constants denoting the IEEE-754 negative zero, infini
 и 1) надо отобразить диапазон значений на uint32. 2) надо сохранить битовое представление.
 
 Напиши конвертеры: (u)int => bitstring, bitstring => u(int).
+
+### concurrency patterns
+
+Напиши параллельную обработку по трем паттернам https://habr.com/ru/companies/timeweb/articles/770912/
 
 ## Info, links
 
