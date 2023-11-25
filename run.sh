@@ -2,7 +2,7 @@
 # alias gr='bash -vxe /mnt/c/Users/valik/data/github/golang-web_services-mrg_course/run.sh'
 PRJ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-APP_SELECTOR=${GO_APP_SELECTOR:-week02}
+APP_SELECTOR=${GO_APP_SELECTOR:-spec}
 
 go_run() {
     local selector="${1}"
@@ -62,8 +62,8 @@ go_run_sandbox() {
     pushd ${PRJ_DIR}/sandbox
 
     gofmt -w $module || exit
-    go vet $module    
-    # go vet -stringintconv=false spec
+    # go vet $module
+    go vet -stringintconv=false $module
 
     go run $module    
     exit_code=$?

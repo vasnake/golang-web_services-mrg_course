@@ -167,6 +167,13 @@ Some identifiers are predeclared.
 > If a variable has not yet been assigned a value, its value is the zero value for its type.
 Variables of `interface` type also have a distinct dynamic type, which is the (non-interface) type of the value assigned to the variable at run time ...
 
+Вот тут (variable of interface type) возникает очень интересная проблема
+> [Why is my nil error value not equal to nil?](https://go.dev/doc/faq#nil_error)
+Вкратце: `error` это интерфейс, поэтому при проверке на ошибки получают interface value и сравнивают его с predefined `nil`.
+Если ошибка (которой нет, nil) была получена из кода, где, по дороге, на нее навесили тип отличный от `error`, то
+interface value будет `(SomeType, nil)` и это `!= nil`. Ибо `nil: (nil, nil)`.
+[details](https://go.dev/play/p/CRZ_caKYCBR).
+
 Строки: последовательность символов (рун), Unicode code-points. Длина строки в рунах != длине строки в байтах.
 Если надо работать с коллекцией байт или рун, то надо явно привести тип (`[]rune(str)` or `[]byte(str)`).
 Такое приведение типа создает копию данных, где иммутабельность уже не соблюдается.

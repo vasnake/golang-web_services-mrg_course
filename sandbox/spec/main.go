@@ -33,6 +33,8 @@ func main() {
 	systemConsiderations()
 	appendix()
 
+	nilErrorNotNil()
+
 	show(`
 Viso gero!
 `)
@@ -3676,6 +3678,99 @@ func appendix() {
 	// Finally, two types that are not bound type parameters unify loosely (and per the element matching mode) if:
 	// ...
 
+}
+
+////////////////////////////////// why nil != nil /////////////////////////////////////
+
+type StructError struct {
+	errorCode int
+}
+
+func (e *StructError) Error() string { // error interface
+	return fmt.Sprintf("code: %d", e.errorCode)
+}
+
+func nilErrorNotNil() {
+	// Why is my nil error value not equal to nil?
+	// https://go.dev/doc/faq#nil_error
+	// https://t.me/golang_digest/136
+	// https://go.dev/play/p/CRZ_caKYCBR
+	show("\nnilErrorNotNil, nil =! nil demo ...")
+	// The key is: predefined `nil` value: <nil>(<nil>)
+	// That means: type is nil and value is nil. It's very important.
+	// Second important thing: interface value is a very strange thing. Grep spec for `interface`.
+
+	var doStuff = func() *StructError {
+		// TLDR: problem is: bad API design, should be `func() error`
+		return nil // return typed nil: *main.StructError(<nil>)
+	}
+	var doStuffAgain = func() error {
+		// TLDR: problem is: declared result type is interface but actual result type is *main.StructError
+		var result *StructError = doStuff() // got typed nil: *main.StructError(<nil>)
+		if result != nil {
+			// You think this condition should be true? Wrong, you won't see the next line in output
+			show("should be nil, but no: ", result)
+		} else {
+			// But this works as it should! Why? Because predefined `nil` is casted to *StructError type before comparison.
+			show("doStuffAgain, ok, got nil: ", result)
+			// doStuffAgain, ok, got nil: *main.StructError(<nil>);
+		}
+		return result // (oops) return typed nil: *main.StructError(<nil>)
+	}
+	var doStuffTheRightWay = func() error {
+		err := doStuff() // got typed nil: *main.StructError(<nil>)
+		if err != nil {
+			show("should never happend: ", err)
+			return err
+		} else {
+			show("doStuffTheRightWay, no errors here: ", err)
+			return nil // there, see? You return untyped nil and func result type is interface, no problem here.
+		}
+	}
+
+	var err error
+	// n.b. `error` is an interface, interface value encoded as a tuple (type, value).
+	// There only one case when interface_value == nil, it is when both type and value are nil.
+
+	err = doStuff() // expecting nil, but ...
+	// TLDR: problem is: err is an interface type and actual value is a *StructError type
+	if err != nil {
+		show("While doing doStuff, got `error`: ", err, doStuff(), nil)
+		// While doing doStuffRight, got `error`: *main.StructError(<nil>); *main.StructError(<nil>); <nil>(<nil>);
+		// What happend: func returned nil pointer to a struct; interface value `err` got that as a tuple (type: StructError, value: nil).
+		// That interface_value != predeclared_nil, end-of-story.
+	} else {
+		show("No errors, life is good 1.") // no, not this time
+	}
+
+	err = doStuffAgain() // expecting nil, but ...
+	// TLDR: no problem here, problem inside `doStuffAgain`
+	if err != nil {
+		show("While doing doStuffAgain, got `error`: ", err, doStuffAgain(), nil)
+		// While doing doStuffAgain, got `error`: *main.StructError(<nil>); *main.StructError(<nil>); <nil>(<nil>);
+	} else {
+		show("No errors, life is good 2.") // no, again
+	}
+
+	err = doStuffTheRightWay() // expecting nil, getting nil, ok.
+	if err != nil {
+		show("While doing doStuffTheRightWay, got `error`: ", err, doStuffTheRightWay(), nil)
+	} else { // yes, exactly as expected
+		show("No errors, life is good 3. ", err)
+		// No errors, life is good 3. <nil>(<nil>);
+	}
+
+	show("nilErrorNotNil, done.")
+	/*
+		nilErrorNotNil, nil =! nil demo ...
+		While doing doStuff, got `error`: *main.StructError(<nil>); *main.StructError(<nil>); <nil>(<nil>);
+		doStuffAgain, ok, got nil: *main.StructError(<nil>);
+		doStuffAgain, ok, got nil: *main.StructError(<nil>);
+		While doing doStuffAgain, got `error`: *main.StructError(<nil>); *main.StructError(<nil>); <nil>(<nil>);
+		doStuffTheRightWay, no errors here: *main.StructError(<nil>);
+		No errors, life is good 3. <nil>(<nil>);
+		nilErrorNotNil, done.
+	*/
 }
 
 func show(msg string, xs ...any) {
