@@ -537,6 +537,136 @@ LOOP: // labeled infinite loop (if context is broken)
 	*/
 }
 
+func async_work() {
+	// get 3 pages and for each page (async) comments
+	show("program started ...")
+
+	var getComments = func() chan string {
+		// make a channel and start a work that send a message to that channel.
+
+		// буферизированный канал, in case no one wants to read it
+		result := make(chan string, 1)
+
+		// async task
+		go func(out chan<- string) {
+			// getting page comments imitation
+			time.Sleep(200 * time.Millisecond)
+			var comments = "32 комментария"
+			show("getComments, async operation finished, return comments: ", comments)
+			out <- comments
+		}(result)
+
+		return result
+	}
+
+	// get page data and (async) comments for that page
+	var getPage = func() {
+		commentsChan := getComments() // start comments retrieval, async
+
+		// getting page imitation
+		time.Sleep(100 * time.Millisecond) // I'm working, don't touch me ...
+		show("getPage, got page data: ", "foo")
+
+		// return // here could be the case where unbuffered channel would cause a deadlock
+
+		// wait for getComments finish
+		commentsData := <-commentsChan // got comments
+		show("getPage, page comments: ", commentsData)
+	}
+
+	// for 3 pages get comments in async mode
+	for i := 0; i < 3; i++ {
+		getPage()
+	}
+
+	show("end of program.")
+}
+
+func workerpool() {
+	show("program started ...")
+
+	const workersPoolSize = 3
+
+	var messages = []string{
+		"Январь", "Февраль", "Март",
+		"Апрель", "Май", "Июнь",
+		"Июль", "Август", "Сентябрь",
+		"Октябрь", "Ноябрь", "Декабрь",
+	}
+
+	runtime.GOMAXPROCS(0) // попробуйте: 0 = все доступные; 1 = just one
+
+	var formatWork = func(workerNo int, input string) string {
+		return fmt.Sprintln(
+			strings.Repeat("  ", workerNo), "█",
+			strings.Repeat("  ", workersPoolSize-workerNo), "worker",
+			workerNo,
+			"recieved", input,
+		)
+	}
+
+	var printFinishWork = func(workerNo int) {
+		fmt.Println(
+			strings.Repeat("  ", workerNo), "█",
+			strings.Repeat("  ", workersPoolSize-workerNo), "worker",
+			workerNo, "finished",
+		)
+	}
+
+	var startWorker = func(workerNo int, jobsChan <-chan string) {
+		show("worker x started, x: ", workerNo)
+		// start nothing, just read from channel and print recieved messages
+		for job := range jobsChan {
+			fmt.Printf(formatWork(workerNo, job))
+			runtime.Gosched() // cooperate
+		}
+		// channel closed
+		printFinishWork(workerNo)
+	}
+
+	var jobsChan = make(chan string, 0) // попробуйте увеличить размер канала
+	show("main, start async workers ...")
+	for i := 0; i < workersPoolSize; i++ {
+		go startWorker(i, jobsChan)
+	}
+	time.Sleep(100 * time.Millisecond) // give them some startup time
+
+	show("main, sending data to workers ...")
+	for _, msg := range messages {
+		jobsChan <- msg
+	}
+	show("main, all work is done, closing jobs queue ...")
+	close(jobsChan) // попробуйте закомментировать: worker don't stop, memory leak or deadlock
+
+	time.Sleep(100 * time.Millisecond)
+	show("end of program.")
+	/*
+	   2023-11-26T16:04:09.230Z: program started ...
+	   2023-11-26T16:04:09.230Z: main, start async workers ...
+	   2023-11-26T16:04:09.230Z: worker x started, x: int(2);
+	   2023-11-26T16:04:09.230Z: worker x started, x: int(0);
+	   2023-11-26T16:04:09.230Z: worker x started, x: int(1);
+	   2023-11-26T16:04:09.331Z: main, sending data to workers ...
+	      █      worker 1 recieved Март
+	        █    worker 2 recieved Январь
+	    █        worker 0 recieved Февраль
+	      █      worker 1 recieved Апрель
+	        █    worker 2 recieved Май
+	    █        worker 0 recieved Июнь
+	      █      worker 1 recieved Июль
+	        █    worker 2 recieved Август
+	    █        worker 0 recieved Сентябрь
+	      █      worker 1 recieved Октябрь
+	        █    worker 2 recieved Ноябрь
+	    █        worker 0 recieved Декабрь
+	   2023-11-26T16:04:09.331Z: main, all work is done, closing jobs queue ...
+	        █    worker 2 finished
+	    █        worker 0 finished
+	      █      worker 1 finished
+	   2023-11-26T16:04:09.431Z: end of program.
+	*/
+}
+
 func main() {
 	// goroutinesDemo()
 	// chan_1()
@@ -548,10 +678,16 @@ func main() {
 	// tickDemo()
 	// afterfunc()
 	// context_cancel()
-	context_timeout()
+	// context_timeout()
+	// async_work()
+	workerpool()
+}
 
-	var err = fmt.Errorf("While doing `main`: %v", "not implemented")
-	panic(err)
+func demoTemplate() {
+	show("program started ...")
+	// var err = fmt.Errorf("While doing %s: %v", "demo", "not implemented")
+	// panic(err)
+	show("end of program.")
 }
 
 func show(msg string, xs ...any) {

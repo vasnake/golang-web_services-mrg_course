@@ -58,6 +58,37 @@ go work init
 go work use ./hello_world/
 ```
 
+> Since the two modules are in the same workspace it’s easy to make a change in one module and use it in another.
+https://go.dev/doc/tutorial/workspaces
+```s
+$ mkdir workspace
+$ cd workspace
+
+$ mkdir hello
+$ cd hello
+
+$ go mod init example.com/hello
+
+$ cat > hello.go << EOT
+package main
+func main() { }
+EOT
+
+$ go run .
+
+$ cd .. # workspace
+
+$ go work init ./hello # The `use` directive tells Go that the module in the `hello` directory should be main modules when doing a build
+$ go run ./hello
+
+$ # create example/hello module ...
+$ go work use ./example/hello
+
+$ # use example/hello/... package in hello/main code
+$ go run ./hello
+```
+workspaces.
+
 [snb/hello_world](./sandbox/hello_world/main.go):
 В общем, мои грабли оказались таковы: в vscode у меня воркспейс был из одной рут-директории `desktop`,
 создание проекта и модуля в `desktop/sandbox/hello_world` привело к ругани gopls.
@@ -781,8 +812,6 @@ https://en.wikipedia.org/wiki/Communicating_sequential_processes#Comparison_with
 
 ### Асинхронное получение данных
 
-# I_AM_HERE
-
 - [async_work](week_02/async_work.go)
 
 Практическое применение горутин и каналов: распараллеливание считывания статей и комментариев к ним на сайте.
@@ -795,9 +824,11 @@ https://en.wikipedia.org/wiki/Communicating_sequential_processes#Comparison_with
 
 ### `sync.Waitgroup` -- ожидание завершения работы
 
+# I_AM_HERE
+
 - [waitgroup](week_02/waitgroup.go)
 
-До сих пор использовали ввод с клавиатуры, чтобы программа не завершилась раньше своих воркеров. Теперь так делать не нужно.
+До сих пор мы использовали ввод с клавиатуры, чтобы программа не завершилась раньше своих воркеров. Теперь так делать не нужно.
 
 Ресурс `wg := &sync.WaitGroup{}`, увеличивается `wg.Add(1)` при добавлении воркеров и уменьшается `defer wg.Done()` при удалении воркеров.
 Можно использовать для ожидания `wg.Wait()` завершения всех воркеров.
