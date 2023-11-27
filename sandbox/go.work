@@ -17,4 +17,5 @@ use (
 	./week01
 	./week01_homework/tree
 	./week02
+	./week02_homework/signer
 )

@@ -824,8 +824,6 @@ https://en.wikipedia.org/wiki/Communicating_sequential_processes#Comparison_with
 
 ### `sync.Waitgroup` -- ожидание завершения работы
 
-# I_AM_HERE
-
 - [waitgroup](week_02/waitgroup.go)
 
 До сих пор мы использовали ввод с клавиатуры, чтобы программа не завершилась раньше своих воркеров. Теперь так делать не нужно.
@@ -833,25 +831,38 @@ https://en.wikipedia.org/wiki/Communicating_sequential_processes#Comparison_with
 Ресурс `wg := &sync.WaitGroup{}`, увеличивается `wg.Add(1)` при добавлении воркеров и уменьшается `defer wg.Done()` при удалении воркеров.
 Можно использовать для ожидания `wg.Wait()` завершения всех воркеров.
 
+Примитивы синхронизации, [sync package](https://pkg.go.dev/sync),
+[sync/atomic package](https://pkg.go.dev/sync/atomic).
+
 ### Ограничение по ресурсам
 
 - [ratelim](week_02/ratelim.go)
 
-Использование буферизованного канала как ограничителя. Как буфер исчерпался, новая работа не поступает.
-Перед стартом работы, воркер пытается записать сообщение в канал квоты. Если в буфере место ещё есть, воркер запишет
-сообщение и сможет продолжить работу.
+Использование буферизованного канала (квота) как ограничителя.
+Как буфер исчерпался, новая работа не начинается.
+Перед стартом работы, воркер пытается записать сообщение в канал квоты.
+Если в буфере место ещё есть, воркер запишет сообщение и сможет продолжить работу.
 На выходе воркер считывает сообщение из канала квоты, освобождая место в буфере.
+
+Почему `struct{}` считается хорошим вариантом сообщения в канале (когда важен только сам факт наличия сообщения)?
+> Using a channel of empty structure will only increment a counter in the channel but not assign memory, copy elements ...
+https://mariadesouza.com/2019/01/12/empty-struct/
+
+> the empty struct has a width of zero. It occupies zero bytes of storage
+https://dave.cheney.net/2014/03/25/the-empty-struct
+https://pkg.go.dev/github.com/bradfitz/iter#example-N
 
 ### Ситуация гонки на примере конкурентной записи в map
 
 - [race_1](week_02/race_1.go)
 
-Пять воркеров конкурентно пишут в одну мапку. Мапка по ходу операций перестраивается и разные воркеры начинают работать с разными копиями данных.
+X воркеров конкурентно пишут в одну мапку.
+Мапка по ходу операций перестраивается и разные воркеры начинают работать с разными копиями данных.
 Кто из них победит? Программа падает с fatal error.
 
 `go run -race ...` для диагностики.
 
-Что же делать?  Ставить блокировки, ...
+Что же делать? Ставить блокировки?
 
 ### `sync.Mutex` для синхронизации данных
 
@@ -867,8 +878,48 @@ https://en.wikipedia.org/wiki/Communicating_sequential_processes#Comparison_with
 - [atomic_1](week_02/atomic_1.go)
 - [atomic_2](week_02/atomic_2.go)
 
-Для атомарного изменения одной переменной (регистра ЦП) использовать Mutex слишком дорого.
+Для атомарного изменения одной переменной, счетчика например (регистра ЦП) использовать Mutex слишком дорого.
 Есть альтернатива `atomic.AddInt32(&totalOperations, 1)`.
+
+### week 2 homework
+
+Есть пакет `main`, он требует добавления кода. Есть тесты. Подробности в `*.md` файлах.
+Вкратце: программа реализует "пайплайн" набора джобов, с распараллеливанием работы.
+Каждая джоба читает из канала `in` и пишет в канал `out`.
+- [homework materials](week_02/w2_materials.zip/2/99_hw/signer/hw2.md), [extra](week_02/w2_materials.zip/2/99_hw/wp_extra/wp_extra.md)
+- [actual homework project](./sandbox/week02_homework/signer/hw2.md)
+- [actual homework project, extra](./sandbox/week02_homework/wp_extra/wp_extra.md)
+
+```s
+pushd sandbox # workspace
+mkdir -p week02_homework/signer
+
+pushd week02_homework/signer
+go mod init signer
+
+cat > signer.go << EOT
+package main
+func ExecutePipeline(jobs ...job) { panic("not yet") }
+var SingleHash job = func(in, out chan interface{}) { panic("not yet") }
+var MultiHash job = func(in, out chan interface{}) { panic("not yet") }
+var CombineResults job = func(in, out chan interface{}) { panic("not yet") }
+func main() { panic("not yet") }
+EOT
+
+go mod tidy
+
+popd # workspace
+# go work init
+go work use ./week02_homework/signer
+
+go vet signer
+gofmt -w ./week02_homework/signer
+go test -v -race signer
+go run signer
+```
+signer app.
+
+# I_AM_HERE
 
 ## part 1, week 3
 
@@ -1134,6 +1185,31 @@ Unmarshal в пустой интерфейс.
 * https://youtu.be/MzTcsI6tn-0 - как организовать код / Ashley McNamara + Brian Ketelsen. Go best practices
 * https://medium.com/@benbjohnson/standard-package-layout-7cdbc8391fc1 - статья на предыдущую тему / Standard Package Layout
 * https://dave.cheney.net/practical-go/presentations/qcon-china.html - Practical Go: Real world advice for writing maintainable Go programs / Dave Cheney dave@cheney.net Version 12c316-Dirty, 2019-04-24
+
+На русском:
+* https://habrahabr.ru/post/141853/ - как работают горутины
+* https://habrahabr.ru/post/308070/ - как работают каналы
+* https://habrahabr.ru/post/333654/ - как работает планировщик ( https://rakyll.org/scheduler/ )
+* https://habrahabr.ru/post/271789/ - танцы с мютексами
+* https://habr.com/ru/company/avito/blog/466495/ - как не ошибиться с конкурентностью в go
+
+На английском:
+* https://blog.golang.org/race-detector
+* https://blog.golang.org/pipelines
+* https://blog.golang.org/advanced-go-concurrency-patterns
+* https://blog.golang.org/go-concurrency-patterns-timing-out-and
+* https://talks.golang.org/2012/concurrency.slide#1
+* https://www.goinggo.net/2017/10/the-behavior-of-channels.html
+* http://marcio.io/2015/07/handling-1-million-requests-per-minute-with-golang/ - рассказ про оптимизацию воркер пула
+* http://www.tapirgames.com/blog/golang-channel
+* http://www.tapirgames.com/blog/golang-channel-closing
+* https://github.com/golang/go/wiki/CommonMistakes
+
+Видео:
+* https://www.youtube.com/watch?v=5buaPyJ0XeQ - классное выступление Dave Cheney про функции первого класса и использование их с горутинами, очень рекомендую, оно небольшое
+* https://www.youtube.com/watch?v=f6kdp27TYZs - Google I/O 2012 - Go Concurrency Patterns - очень рекомендую
+* https://www.youtube.com/watch?v=rDRa23k70CU&list=PLDWZ5uzn69eyM81omhIZLzvRhTOXvpeX9&index=15 - ещё одно хорошее видео про паттерны конкуренции в го
+* https://www.youtube.com/watch?v=KAWeC9evbGM - видео Андрея Смирнова с конференции Highload - в нём вы можете получить более детальную информацию по теме вводного видео (методы обработки запросов и плюсы неблокирующего подхода), о том, что там творится на системном уровне. На русском, не про go
 
 linter tools
 * https://pkg.go.dev/cmd/vet

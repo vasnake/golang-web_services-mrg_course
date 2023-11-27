@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -667,6 +669,329 @@ func workerpool() {
 	*/
 }
 
+func waitgroupDemo() {
+	show("program started ...")
+
+	const (
+		iterationsCount = 7
+		goroutinesCount = 3
+	)
+
+	var formatWork = func(workerNo, iterNo int) string {
+		return fmt.Sprintln(
+			strings.Repeat("  ", workerNo), "█",
+			strings.Repeat("  ", goroutinesCount-workerNo),
+			"worker", workerNo,
+			"iter", iterNo, strings.Repeat("■", iterNo),
+		)
+	}
+
+	var startWorker = func(workerNo int, wg *sync.WaitGroup) {
+		show("worker x, starting, x: ", workerNo)
+
+		// on exit decrement counter
+		defer wg.Done() // wg.Add(-1)
+
+		// working ...
+		for j := 0; j < iterationsCount; j++ {
+			fmt.Printf(formatWork(workerNo, j))
+			time.Sleep(99 * time.Millisecond) // попробуйте убрать этот sleep
+		}
+
+		show("worker x, done. x: ", workerNo)
+	}
+
+	var main = func() {
+		waitGroup := &sync.WaitGroup{} // just a counter wrapper. no copy!
+
+		show("main, start workers ...")
+		for i := 0; i < goroutinesCount; i++ {
+			// wg.Add before starting goroutine
+			waitGroup.Add(1)
+			go startWorker(i, waitGroup)
+		}
+
+		// time.Sleep(time.Millisecond)
+		show("main, wait for workers ...")
+		waitGroup.Wait() // for counter == 0
+		show("main, done.")
+	}
+
+	main()
+	show("end of program.")
+	/*
+	   2023-11-27T10:50:49.404Z: program started ...
+	   2023-11-27T10:50:49.404Z: main, start workers ...
+	   2023-11-27T10:50:49.404Z: main, wait for workers ...
+	   2023-11-27T10:50:49.404Z: worker x, starting, x: int(2);
+	        █    worker 2 iter 0
+	   2023-11-27T10:50:49.404Z: worker x, starting, x: int(0);
+	    █        worker 0 iter 0
+	   2023-11-27T10:50:49.405Z: worker x, starting, x: int(1);
+	      █      worker 1 iter 0
+	        █    worker 2 iter 1 ■
+	    █        worker 0 iter 1 ■
+	      █      worker 1 iter 1 ■
+	      █      worker 1 iter 2 ■■
+	    █        worker 0 iter 2 ■■
+	        █    worker 2 iter 2 ■■
+	        █    worker 2 iter 3 ■■■
+	    █        worker 0 iter 3 ■■■
+	      █      worker 1 iter 3 ■■■
+	      █      worker 1 iter 4 ■■■■
+	    █        worker 0 iter 4 ■■■■
+	        █    worker 2 iter 4 ■■■■
+	      █      worker 1 iter 5 ■■■■■
+	        █    worker 2 iter 5 ■■■■■
+	    █        worker 0 iter 5 ■■■■■
+	      █      worker 1 iter 6 ■■■■■■
+	    █        worker 0 iter 6 ■■■■■■
+	        █    worker 2 iter 6 ■■■■■■
+	   2023-11-27T10:50:50.103Z: worker x, done. x: int(1);
+	   2023-11-27T10:50:50.103Z: worker x, done. x: int(2);
+	   2023-11-27T10:50:50.103Z: worker x, done. x: int(0);
+	   2023-11-27T10:50:50.103Z: main, done.
+	   2023-11-27T10:50:50.103Z: end of program.
+	*/
+}
+
+func ratelim() {
+	// It's not a rate limit demo, it is a concurrency limit demo
+	show("program started ...")
+
+	type ZeroWidthMessage struct{}
+	var signal ZeroWidthMessage
+	const (
+		iterationsCount = 5
+		goroutinesCount = 4
+		quotaLimit      = 2
+	)
+
+	var formatWork = func(workerNo, iterNo int) string {
+		return fmt.Sprintln(
+			strings.Repeat("  ", workerNo), "█",
+			strings.Repeat("  ", goroutinesCount-workerNo),
+			"worker", workerNo,
+			"iter", iterNo, strings.Repeat("■", iterNo),
+		)
+	}
+
+	var doWork = func(workerNo int, wg *sync.WaitGroup, quotaChan chan ZeroWidthMessage) {
+		defer wg.Done() // decrement workers counter
+
+		show("worker x, waiting for quota, x: ", workerNo)
+		quotaChan <- signal                // take slot; buffered chan, size of the buffer = number of concurrent tasks
+		defer func() { _ = <-quotaChan }() // free slot
+		show("worker x, start working, x: ", workerNo)
+
+		for j := 0; j < iterationsCount; j++ {
+			fmt.Printf(formatWork(workerNo, j))
+
+			// share resources, don't be greedy
+			if (j+1)%3 == 0 {
+				show("worker x, releasing slot, x: ", workerNo)
+				_ = <-quotaChan // ratelim.go, возвращаем слот
+				// runtime.Gosched() // даём поработать другим горутинам
+				time.Sleep(10 * time.Millisecond)
+				show("worker x, waiting for quota, x: ", workerNo)
+				quotaChan <- signal // ratelim.go, wait for quota
+			}
+		}
+
+		show("worker x, stop working, x: ", workerNo)
+	}
+
+	var main = func() {
+		waitGroup := &sync.WaitGroup{}
+		quotaChan := make(chan ZeroWidthMessage, quotaLimit)
+		defer close(quotaChan)
+
+		show("main, starting workers ...")
+		for i := 0; i < goroutinesCount; i++ {
+			waitGroup.Add(1)
+			go doWork(i, waitGroup, quotaChan)
+		}
+
+		// time.Sleep(time.Millisecond) // why?
+		show("main, waiting for workers ...")
+		waitGroup.Wait()
+		show("main, all workers are finished.")
+	}
+
+	main()
+	show("end of program.")
+	/*
+	   2023-11-27T11:55:35.523Z: program started ...
+	   2023-11-27T11:55:35.523Z: main, starting workers ...
+	   2023-11-27T11:55:35.523Z: main, waiting for workers ...
+	   2023-11-27T11:55:35.523Z: worker x, waiting for quota, x: int(3);
+	   2023-11-27T11:55:35.523Z: worker x, start working, x: int(3);
+	          █    worker 3 iter 0
+	          █    worker 3 iter 1 ■
+	          █    worker 3 iter 2 ■■
+	   2023-11-27T11:55:35.523Z: worker x, releasing slot, x: int(3);
+	   2023-11-27T11:55:35.523Z: worker x, waiting for quota, x: int(0);
+	   2023-11-27T11:55:35.523Z: worker x, start working, x: int(0);
+	    █          worker 0 iter 0
+	    █          worker 0 iter 1 ■
+	    █          worker 0 iter 2 ■■
+	   2023-11-27T11:55:35.523Z: worker x, releasing slot, x: int(0);
+	   2023-11-27T11:55:35.523Z: worker x, waiting for quota, x: int(1);
+	   2023-11-27T11:55:35.523Z: worker x, start working, x: int(1);
+	      █        worker 1 iter 0
+	      █        worker 1 iter 1 ■
+	      █        worker 1 iter 2 ■■
+	   2023-11-27T11:55:35.523Z: worker x, releasing slot, x: int(1);
+	   2023-11-27T11:55:35.523Z: worker x, waiting for quota, x: int(2);
+	   2023-11-27T11:55:35.523Z: worker x, start working, x: int(2);
+	        █      worker 2 iter 0
+	        █      worker 2 iter 1 ■
+	        █      worker 2 iter 2 ■■
+	   2023-11-27T11:55:35.523Z: worker x, releasing slot, x: int(2);
+	   2023-11-27T11:55:35.533Z: worker x, waiting for quota, x: int(3);
+	          █    worker 3 iter 3 ■■■
+	          █    worker 3 iter 4 ■■■■
+	   2023-11-27T11:55:35.533Z: worker x, stop working, x: int(3);
+	   2023-11-27T11:55:35.533Z: worker x, waiting for quota, x: int(2);
+	   2023-11-27T11:55:35.533Z: worker x, waiting for quota, x: int(1);
+	      █        worker 1 iter 3 ■■■
+	        █      worker 2 iter 3 ■■■
+	        █      worker 2 iter 4 ■■■■
+	   2023-11-27T11:55:35.533Z: worker x, stop working, x: int(2);
+	      █        worker 1 iter 4 ■■■■
+	   2023-11-27T11:55:35.533Z: worker x, waiting for quota, x: int(0);
+	   2023-11-27T11:55:35.533Z: worker x, stop working, x: int(1);
+	    █          worker 0 iter 3 ■■■
+	    █          worker 0 iter 4 ■■■■
+	   2023-11-27T11:55:35.534Z: worker x, stop working, x: int(0);
+	   2023-11-27T11:55:35.534Z: main, all workers are finished.
+	   2023-11-27T11:55:35.534Z: end of program.
+	*/
+}
+
+func race_1() {
+	// go run -race week02 # program should fail
+	show("program started ...")
+	const workersCount = 33
+
+	var counters = map[int]int{}
+
+	wg := &sync.WaitGroup{}
+	wg.Add(workersCount)
+
+	show("main, starting workers ...")
+	for i := 0; i < workersCount; i++ {
+		// start async workers, each updating map values
+		go func(workerNo int) {
+			show("worker x started, x: ", workerNo)
+			defer wg.Done()
+			for j := 0; j < 55; j++ {
+				var key = workerNo*10 + j
+				// write to global map (not a good idea)
+				counters[key]++
+			}
+		}(i)
+	}
+
+	show("main, wait for workers ...")
+	wg.Wait()
+	show("main, workers finished, result: ", counters)
+
+	show("end of program.")
+	/*
+	   2023-11-27T13:51:34.536Z: program started ...
+	   2023-11-27T13:51:34.536Z: main, starting workers ...
+	   2023-11-27T13:51:34.536Z: main, wait for workers ...
+	   2023-11-27T13:51:34.536Z: worker x started, x: int(32);
+	   2023-11-27T13:51:34.536Z: worker x started, x: int(15);
+	   2023-11-27T13:51:34.536Z: worker x started, x: int(26);
+	   fatal error: concurrent map writes
+	*/
+}
+
+func race_2() {
+	show("program started ...")
+
+	var counters = map[int]int{}
+	countersMutex := &sync.Mutex{}
+	wg := &sync.WaitGroup{}
+	const workersCount = 33
+
+	wg.Add(workersCount)
+	for i := 0; i < workersCount; i++ {
+		go func(counters map[int]int, workerNo int, mutex *sync.Mutex) {
+			defer wg.Done()
+			for j := 0; j < 55; j++ {
+				// sequential write
+				mutex.Lock()
+				counters[workerNo*10+j]++
+				mutex.Unlock()
+			}
+		}(counters, i, countersMutex)
+	}
+
+	wg.Wait()
+	show("result: ", counters)
+
+	show("end of program.")
+}
+
+func atomic_1() {
+	show("program started ...")
+
+	var totalOperations int32 = 0
+	var inc = func() {
+		totalOperations++
+	}
+
+	var main = func() {
+		// async increment global counter (not a good idea)
+		for i := 0; i < 1000; i++ {
+			go inc()
+		}
+
+		time.Sleep(333 * time.Millisecond)
+		show("expected 1000, got: ", totalOperations)
+	}
+
+	main()
+	show("end of program.")
+	/*
+	   2023-11-27T14:18:22.894Z: program started ...
+	   2023-11-27T14:18:23.249Z: expected 1000, got: int32(964);
+	   2023-11-27T14:18:23.249Z: end of program.
+	*/
+}
+
+func atomic_2() {
+	show("program started ...")
+
+	var totalOperations int32
+	atomicTotalOperations := new(atomic.Int32)
+
+	var inc = func() {
+		atomic.AddInt32(&totalOperations, 1)
+		atomicTotalOperations.Add(1)
+	}
+
+	var main = func() {
+		for i := 0; i < 1000; i++ {
+			go inc()
+		}
+
+		time.Sleep(333 * time.Millisecond)
+		show("expected 1000, got: ", totalOperations, atomicTotalOperations)
+	}
+
+	main()
+	show("end of program.")
+	/*
+	   2023-11-27T14:30:13.111Z: program started ...
+	   2023-11-27T14:30:13.446Z: expected 1000, got: int32(1000); *atomic.Int32(&{{} 1000});
+	   2023-11-27T14:30:13.446Z: end of program.
+	*/
+}
+
 func main() {
 	// goroutinesDemo()
 	// chan_1()
@@ -680,7 +1005,13 @@ func main() {
 	// context_cancel()
 	// context_timeout()
 	// async_work()
-	workerpool()
+	// workerpool()
+	// waitgroupDemo()
+	// ratelim()
+	// race_1()
+	// race_2()
+	// atomic_1()
+	atomic_2()
 }
 
 func demoTemplate() {
