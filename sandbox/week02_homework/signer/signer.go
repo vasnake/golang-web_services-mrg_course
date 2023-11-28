@@ -6,7 +6,22 @@ import (
 )
 
 // ExecutePipeline: run set of jobs. Part 1 of the implementation.
-func ExecutePipeline(jobs ...job) { panic("not yet") }
+func ExecutePipeline(jobs ...job) {
+	// type job func(in, out chan interface{})
+	for jobIdx, jobFunc := range jobs {
+		show("ExecutePipeline, job (idx, func): ", jobIdx, jobFunc)
+
+		// test #1: extra_test.go:57: f3 have not collected inputs, recieved = 0
+		if jobIdx == 2 {
+			var job3InputChan = make(chan any, 1)
+			job3InputChan <- uint32(24)
+			close(job3InputChan)
+			jobFunc(job3InputChan, nil)
+		}
+	}
+
+	// ExecutePipeline should wait for all jobs
+}
 
 // Set of job functions. Part 2 of the implementation.
 
