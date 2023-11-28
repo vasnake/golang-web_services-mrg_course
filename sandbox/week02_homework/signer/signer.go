@@ -9,8 +9,57 @@ import (
 	"time"
 )
 
+type Pipe chan any
+
 // ExecutePipeline: run set of jobs.
 func ExecutePipeline(jobs ...job) {
+	// implementation notes:
+	// type job func(in, out chan interface{})
+	// first in = nil; last out = nil; 'next in' = 'previous out'
+	// close channels when the first job finished (all input data processed)
+	show("ExecutePipeline, creating pipeline from n jobs, n: ", len(jobs))
+
+	if len(jobs) < 1 {
+		var err = fmt.Errorf("While doing %s: %v", "ExecutePipeline", "number of jobs < 1")
+		panic(err)
+	}
+
+	var createPipe = func() Pipe {
+		var pipe = make(Pipe)
+		show("ExecutePipeline, added new pipe: ", pipe)
+		return pipe
+	}
+
+	var lastPipe Pipe = nil
+
+	for jobIdx, jobFunc := range jobs {
+		var inPipe Pipe = nil
+		if jobIdx > 0 {
+			inPipe = lastPipe
+		}
+		lastPipe = createPipe()
+
+		show("ExecutePipeline, starting job, (idx, func, outPipe): ", jobIdx, jobFunc, lastPipe)
+
+		// async
+		go func(ipPipe, outPipe Pipe, jobFunc job, jobIdx int) {
+			show("job id started, (id, pipe): ", jobIdx, outPipe)
+			jobFunc(inPipe, outPipe)
+			close(outPipe)
+			show("job id done, (id, pipe): ", jobIdx, outPipe)
+		}(inPipe, lastPipe, jobFunc, jobIdx)
+	}
+
+	show("ExecutePipeline, wait for the last pipe: ", lastPipe)
+	for x := range lastPipe {
+		show("ExecutePipeline, got pipeline output: ", x)
+	}
+	show("ExecutePipeline, pipeline done.")
+}
+
+// ExecutePipeline_invalid is NOT-working first attempt to create a pipeline executor.
+// For educational purposes only.
+func ExecutePipeline_invalid(jobs ...job) {
 	// implementation notes:
 	// type job func(in, out chan interface{})
 	// first in = nil; last out = nil; 'next in' = 'previous out'
@@ -22,26 +71,27 @@ func ExecutePipeline(jobs ...job) {
 		panic(err)
 	}
 
-	var firstJob func()                          // run after launching all others
-	var currInput, currOutput chan any           // current job pipes
-	var pipes = make([]chan any, 0, len(jobs)-1) // all pipes
+	var firstJob func()                      // run after launching all others
+	var pipes = make([]Pipe, 0, len(jobs)-1) // all pipes
 
 	defer func() {
 		// close all pipes after firstJob is finished
 		for idx, pipe := range pipes {
-			show("ExecutePipeline, closing pipe, idx: ", idx)
+			show("ExecutePipeline, closing pipe, (idx, pipe): ", idx, pipe)
 			close(pipe)
 		}
 	}()
 
-	var createPipe = func() chan any {
-		var pipe = make(chan any)
+	var createPipe = func() Pipe {
+		var pipe = make(Pipe)
 		pipes = append(pipes, pipe)
+		show("ExecutePipeline, added new pipe: ", pipe, pipes)
 		return pipe
 	}
 
 	for jobIdx, jobFunc := range jobs {
 		show("ExecutePipeline, processing job, (idx, func): ", jobIdx, jobFunc)
+		var currInput, currOutput Pipe
 
 		if jobIdx == 0 {
 			show("ExecutePipeline, creating first job ...")
@@ -77,24 +127,48 @@ func ExecutePipeline(jobs ...job) {
 
 // Set of job functions. Part 2 of the implementation.
 
+/*
+2023-11-28T16:24:25.272Z: ExecutePipeline, pipeline done.
+    main_test.go:157: execition too long
+        Got: 8.080864273s
+        Expected: <3s
+--- FAIL: TestSigner (8.08s)
+*/
+
 var MultiHash job = func(in, out chan interface{}) {
+	show("MultiHash, started ...")
 	for inVal := range in {
-		out <- computeMultiHash(inVal.(string)) // type assertion: should be replaced with type switch or Sprintf
+		show("MultiHash, in value: ", inVal)
+		var outVal = computeMultiHash(inVal.(string)) // type assertion: should be replaced with type switch or Sprintf
+		show("MultiHash, out value: ", outVal)
+		out <- outVal
 	}
+	show("MultiHash, done.")
 }
 
 var SingleHash job = func(in, out chan interface{}) {
+	show("SingleHash, started ...")
 	for inVal := range in {
-		out <- computeSingleHash(strconv.Itoa(inVal.(int))) // type assertion: should be replaced with type switch or Sprintf
+		show("SingleHash, in value: ", inVal)
+		var outVal = computeSingleHash(strconv.Itoa(inVal.(int))) // type assertion: should be replaced with type switch or Sprintf
+		show("SingleHash, out value: ", outVal)
+		out <- outVal
 	}
+	show("SingleHash, done.")
 }
 
 var CombineResults job = func(in, out chan interface{}) {
+	show("CombineResults, started ...")
 	var messages = make([]string, 0, 64)
 	for inVal := range in {
+		show("CombineResults, in value: ", inVal)
 		messages = append(messages, inVal.(string)) // type assertion: should be replaced with type switch or Sprintf
 	}
-	out <- computeCombineResults(messages)
+	show("CombineResults, collected messages: ", messages)
+	var outVal = computeCombineResults(messages)
+	show("CombineResults, out value: ", outVal)
+	out <- outVal
+	show("CombineResults, done.")
 }
 
 func computeMultiHash(text string) string {
