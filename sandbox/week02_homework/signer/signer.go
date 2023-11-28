@@ -8,26 +8,79 @@ import (
 // ExecutePipeline: run set of jobs. Part 1 of the implementation.
 func ExecutePipeline(jobs ...job) {
 	// type job func(in, out chan interface{})
-	for jobIdx, jobFunc := range jobs {
-		show("ExecutePipeline, job (idx, func): ", jobIdx, jobFunc)
+	// first in = nil; last out = nil; 'next in' = 'previous out'
+	// close channels when the first job finished (all input data processed)
 
-		// test #1: extra_test.go:57: f3 have not collected inputs, recieved = 0
-		if jobIdx == 2 {
-			var job3InputChan = make(chan any, 1)
-			job3InputChan <- uint32(24)
-			close(job3InputChan)
-			jobFunc(job3InputChan, nil)
+	if len(jobs) < 1 {
+		var err = fmt.Errorf("While doing %s: %v", "ExecutePipeline", "number of jobs < 1")
+		panic(err)
+	}
+
+	var firstJob func() // run after launching all others
+	var currInput, currOutput chan any
+	var pipes = make([]chan any, 0, len(jobs)-1)
+
+	defer func() {
+		// close all pipes after firstJob is finished
+		for idx, pipe := range pipes {
+			show("ExecutePipeline, closing pipe, idx: ", idx)
+			close(pipe)
+		}
+	}()
+
+	var createPipe = func() chan any {
+		var pipe = make(chan any)
+		pipes = append(pipes, pipe)
+		return pipe
+	}
+
+	for jobIdx, jobFunc := range jobs {
+		show("ExecutePipeline, processing job, (idx, func): ", jobIdx, jobFunc)
+
+		if jobIdx == 0 {
+			show("ExecutePipeline, creating first job ...")
+			currInput = nil
+			currOutput = createPipe()
+			var firstOutput = currOutput
+			var firstJobFunc = jobFunc
+			firstJob = func() { firstJobFunc(nil, firstOutput) }
+		} else { // second and next and next ...
+			currInput = currOutput
+			if (jobIdx + 1) == len(jobs) {
+				show("ExecutePipeline, creating last job ...")
+				currOutput = nil
+			} else {
+				show("ExecutePipeline, creating job, idx: ", jobIdx)
+				currOutput = createPipe()
+			}
+
+			show("ExecutePipeline, starting async job, idx: ", jobIdx)
+			go jobFunc(currInput, currOutput)
 		}
 	}
 
-	// ExecutePipeline should wait for all jobs
+	// ExecutePipeline should wait for first job
+	show("ExecutePipeline, start first job ...")
+	firstJob()
+	show("ExecutePipeline, first job done.")
 }
 
 // Set of job functions. Part 2 of the implementation.
 
-var SingleHash job = func(in, out chan interface{}) { panic("not yet") }
 var MultiHash job = func(in, out chan interface{}) { panic("not yet") }
+var SingleHash job = func(in, out chan interface{}) { panic("not yet") }
 var CombineResults job = func(in, out chan interface{}) { panic("not yet") }
+
+/*
+panic: not yet
+
+goroutine 22 [running]:
+signer.glob..func6(0x0?, 0x0?)
+        /mnt/c/Users/valik/data/github/golang-web_services-mrg_course/sandbox/week02_homework/signer/signer.go:71 +0x25
+created by signer.ExecutePipeline in goroutine 20
+        /mnt/c/Users/valik/data/github/golang-web_services-mrg_course/sandbox/week02_homework/signer/signer.go:58 +0x345
+
+*/
 
 func main() {
 	show("program started ...")
