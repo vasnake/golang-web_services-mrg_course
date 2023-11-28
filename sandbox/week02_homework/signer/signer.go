@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -83,13 +84,17 @@ var MultiHash job = func(in, out chan interface{}) {
 }
 
 var SingleHash job = func(in, out chan interface{}) {
-	var err = fmt.Errorf("While doing %s: %v", "SingleHash", "not implemented")
-	panic(err)
+	for inVal := range in {
+		out <- computeSingleHash(strconv.Itoa(inVal.(int))) // type assertion: should be replaced with type switch or Sprintf
+	}
 }
 
 var CombineResults job = func(in, out chan interface{}) {
-	var err = fmt.Errorf("While doing %s: %v", "CombineResults", "not implemented")
-	panic(err)
+	var messages = make([]string, 0, 64)
+	for inVal := range in {
+		messages = append(messages, inVal.(string)) // type assertion: should be replaced with type switch or Sprintf
+	}
+	out <- computeCombineResults(messages)
 }
 
 func computeMultiHash(text string) string {
@@ -101,22 +106,63 @@ func computeMultiHash(text string) string {
 		где data - то что пришло на вход (и ушло на выход из SingleHash)
 	*/
 	const partsCount = 6
+	var crc32 = DataSignerCrc32
 	var parts = [partsCount]string{}
 	var wait = &sync.WaitGroup{}
 
 	var computePart = func(idx int, text string) {
-		parts[idx] = DataSignerCrc32(strconv.Itoa(idx) + text)
+		parts[idx] = crc32(strconv.Itoa(idx) + text)
 		wait.Done()
 	}
 
+	// async
 	wait.Add(partsCount)
 	for idx := 0; idx < partsCount; idx++ {
-		// async
 		go computePart(idx, text)
 	}
 	wait.Wait()
 
 	return strings.Join(parts[:], "")
+}
+
+func computeSingleHash(text string) string {
+	/*
+	   SingleHash считает значение crc32(data)+"~"+crc32(md5(data))
+	   ( конкатенация двух строк через ~),
+	   где data - то что пришло на вход (по сути - числа из первой функции)
+	*/
+	var crc32 = DataSignerCrc32
+	var md5 = DataSignerMd5
+	var firstPart, secondPart string
+	var wait = &sync.WaitGroup{}
+
+	var computeFirstPart = func() {
+		firstPart = crc32(text)
+		wait.Done()
+	}
+
+	var computeSecondPart = func() {
+		secondPart = crc32(md5(text))
+		wait.Done()
+	}
+
+	// async
+	wait.Add(2)
+	go computeFirstPart()
+	go computeSecondPart()
+	wait.Wait()
+
+	return firstPart + "~" + secondPart
+}
+
+func computeCombineResults(lines []string) string {
+	/*
+	   CombineResults получает все результаты,
+	   сортирует (https://golang.org/pkg/sort/),
+	   объединяет отсортированный результат через _ (символ подчеркивания) в одну строку
+	*/
+	slices.Sort(lines)
+	return strings.Join(lines, "_")
 }
 
 func main() {
