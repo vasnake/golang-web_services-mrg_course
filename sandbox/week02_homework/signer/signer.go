@@ -2,23 +2,28 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+	"sync"
 	"time"
 )
 
-// ExecutePipeline: run set of jobs. Part 1 of the implementation.
+// ExecutePipeline: run set of jobs.
 func ExecutePipeline(jobs ...job) {
+	// implementation notes:
 	// type job func(in, out chan interface{})
 	// first in = nil; last out = nil; 'next in' = 'previous out'
 	// close channels when the first job finished (all input data processed)
+	show("ExecutePipeline, creating pipeline from x jobs, x: ", len(jobs))
 
 	if len(jobs) < 1 {
 		var err = fmt.Errorf("While doing %s: %v", "ExecutePipeline", "number of jobs < 1")
 		panic(err)
 	}
 
-	var firstJob func() // run after launching all others
-	var currInput, currOutput chan any
-	var pipes = make([]chan any, 0, len(jobs)-1)
+	var firstJob func()                          // run after launching all others
+	var currInput, currOutput chan any           // current job pipes
+	var pipes = make([]chan any, 0, len(jobs)-1) // all pipes
 
 	defer func() {
 		// close all pipes after firstJob is finished
@@ -41,16 +46,20 @@ func ExecutePipeline(jobs ...job) {
 			show("ExecutePipeline, creating first job ...")
 			currInput = nil
 			currOutput = createPipe()
+
+			// create-and-save first-job-closure
 			var firstOutput = currOutput
 			var firstJobFunc = jobFunc
 			firstJob = func() { firstJobFunc(nil, firstOutput) }
+
 		} else { // second and next and next ...
 			currInput = currOutput
+
 			if (jobIdx + 1) == len(jobs) {
 				show("ExecutePipeline, creating last job ...")
 				currOutput = nil
 			} else {
-				show("ExecutePipeline, creating job, idx: ", jobIdx)
+				show("ExecutePipeline, creating intermediate job, idx: ", jobIdx)
 				currOutput = createPipe()
 			}
 
@@ -59,28 +68,56 @@ func ExecutePipeline(jobs ...job) {
 		}
 	}
 
-	// ExecutePipeline should wait for first job
+	// ExecutePipeline should wait for the first job
 	show("ExecutePipeline, start first job ...")
 	firstJob()
-	show("ExecutePipeline, first job done.")
+	show("ExecutePipeline, first job done. Pipeline done.")
 }
 
 // Set of job functions. Part 2 of the implementation.
 
-var MultiHash job = func(in, out chan interface{}) { panic("not yet") }
-var SingleHash job = func(in, out chan interface{}) { panic("not yet") }
-var CombineResults job = func(in, out chan interface{}) { panic("not yet") }
+var MultiHash job = func(in, out chan interface{}) {
+	for inVal := range in {
+		out <- computeMultiHash(inVal.(string)) // type assertion: should be replaced with type switch or Sprintf
+	}
+}
 
-/*
-panic: not yet
+var SingleHash job = func(in, out chan interface{}) {
+	var err = fmt.Errorf("While doing %s: %v", "SingleHash", "not implemented")
+	panic(err)
+}
 
-goroutine 22 [running]:
-signer.glob..func6(0x0?, 0x0?)
-        /mnt/c/Users/valik/data/github/golang-web_services-mrg_course/sandbox/week02_homework/signer/signer.go:71 +0x25
-created by signer.ExecutePipeline in goroutine 20
-        /mnt/c/Users/valik/data/github/golang-web_services-mrg_course/sandbox/week02_homework/signer/signer.go:58 +0x345
+var CombineResults job = func(in, out chan interface{}) {
+	var err = fmt.Errorf("While doing %s: %v", "CombineResults", "not implemented")
+	panic(err)
+}
 
-*/
+func computeMultiHash(text string) string {
+	/*
+		MultiHash считает значение crc32(th+data)):
+		(конкатенация цифры, приведённой к строке и строки),
+		где th=0..5 ( т.е. 6 хешей на каждое входящее значение ),
+		потом берёт конкатенацию результатов в порядке расчета (0..5),
+		где data - то что пришло на вход (и ушло на выход из SingleHash)
+	*/
+	const partsCount = 6
+	var parts = [partsCount]string{}
+	var wait = &sync.WaitGroup{}
+
+	var computePart = func(idx int, text string) {
+		parts[idx] = DataSignerCrc32(strconv.Itoa(idx) + text)
+		wait.Done()
+	}
+
+	wait.Add(partsCount)
+	for idx := 0; idx < partsCount; idx++ {
+		// async
+		go computePart(idx, text)
+	}
+	wait.Wait()
+
+	return strings.Join(parts[:], "")
+}
 
 func main() {
 	show("program started ...")

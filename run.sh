@@ -26,12 +26,13 @@ go_run_sandbox_week02_signer_test() {
     gofmt -w $module || exit
     go vet $module
 
-    go run $module
+    # go run $module
     # go run -race $module
-    exit_code=$?
+    # exit_code=$?
 
-    go test -v $module
+    # go test -v $module
     # go test -v -race $module
+    go test -v $module -run "TestMultiHash"
     exit_code=$?
 
     popd
