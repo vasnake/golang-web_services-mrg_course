@@ -919,6 +919,7 @@ func race_2() {
 
 	wg.Add(workersCount)
 	for i := 0; i < workersCount; i++ {
+		// async
 		go func(counters map[int]int, workerNo int, mutex *sync.Mutex) {
 			defer wg.Done()
 			for j := 0; j < 55; j++ {

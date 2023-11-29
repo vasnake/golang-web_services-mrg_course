@@ -127,34 +127,44 @@ func ExecutePipeline_invalid(jobs ...job) {
 
 // Set of job functions. Part 2 of the implementation.
 
-/*
-2023-11-28T16:24:25.272Z: ExecutePipeline, pipeline done.
-    main_test.go:157: execition too long
-        Got: 8.080864273s
-        Expected: <3s
---- FAIL: TestSigner (8.08s)
-*/
+var SingleHash job = func(in, out chan interface{}) {
+	show("SingleHash, started ...")
+
+	var wait = &sync.WaitGroup{}
+
+	var asyncFunc = func(inVal string) {
+		out <- computeSingleHash(inVal)
+		wait.Done()
+	}
+
+	for inVal := range in {
+		show("SingleHash, in value: ", inVal)
+		wait.Add(1)
+		go asyncFunc(strconv.Itoa(inVal.(int))) // type assertion: should be replaced with type switch or Sprintf
+	}
+
+	wait.Wait()
+	show("SingleHash, done.")
+}
 
 var MultiHash job = func(in, out chan interface{}) {
 	show("MultiHash, started ...")
+
+	var wait = &sync.WaitGroup{}
+
+	var asyncFunc = func(inVal string) {
+		out <- computeMultiHash(inVal)
+		wait.Done()
+	}
+
 	for inVal := range in {
 		show("MultiHash, in value: ", inVal)
-		var outVal = computeMultiHash(inVal.(string)) // type assertion: should be replaced with type switch or Sprintf
-		show("MultiHash, out value: ", outVal)
-		out <- outVal
+		wait.Add(1)
+		asyncFunc(inVal.(string))
 	}
-	show("MultiHash, done.")
-}
 
-var SingleHash job = func(in, out chan interface{}) {
-	show("SingleHash, started ...")
-	for inVal := range in {
-		show("SingleHash, in value: ", inVal)
-		var outVal = computeSingleHash(strconv.Itoa(inVal.(int))) // type assertion: should be replaced with type switch or Sprintf
-		show("SingleHash, out value: ", outVal)
-		out <- outVal
-	}
-	show("SingleHash, done.")
+	wait.Wait()
+	show("MultiHash, done.")
 }
 
 var CombineResults job = func(in, out chan interface{}) {
@@ -169,6 +179,43 @@ var CombineResults job = func(in, out chan interface{}) {
 	show("CombineResults, out value: ", outVal)
 	out <- outVal
 	show("CombineResults, done.")
+}
+
+func computeSingleHash(text string) string {
+	/*
+	   SingleHash считает значение crc32(data)+"~"+crc32(md5(data))
+	   ( конкатенация двух строк через ~),
+	   где data - то что пришло на вход (по сути - числа из первой функции)
+	*/
+	var crc32 = DataSignerCrc32
+	var firstPart, secondPart string
+	var wait = &sync.WaitGroup{}
+
+	var computeFirstPart = func() {
+		firstPart = crc32(text)
+		wait.Done()
+	}
+
+	var computeSecondPart = func() {
+		secondPart = crc32(md5WithMutex(text))
+		wait.Done()
+	}
+
+	// async
+	wait.Add(2)
+	go computeFirstPart()
+	go computeSecondPart()
+	wait.Wait()
+
+	return firstPart + "~" + secondPart
+}
+
+var md5Mutex = &sync.Mutex{}
+var md5WithMutex = func(text string) string {
+	md5Mutex.Lock()
+	var result = DataSignerMd5(text)
+	md5Mutex.Unlock()
+	return result
 }
 
 func computeMultiHash(text string) string {
@@ -197,36 +244,6 @@ func computeMultiHash(text string) string {
 	wait.Wait()
 
 	return strings.Join(parts[:], "")
-}
-
-func computeSingleHash(text string) string {
-	/*
-	   SingleHash считает значение crc32(data)+"~"+crc32(md5(data))
-	   ( конкатенация двух строк через ~),
-	   где data - то что пришло на вход (по сути - числа из первой функции)
-	*/
-	var crc32 = DataSignerCrc32
-	var md5 = DataSignerMd5
-	var firstPart, secondPart string
-	var wait = &sync.WaitGroup{}
-
-	var computeFirstPart = func() {
-		firstPart = crc32(text)
-		wait.Done()
-	}
-
-	var computeSecondPart = func() {
-		secondPart = crc32(md5(text))
-		wait.Done()
-	}
-
-	// async
-	wait.Add(2)
-	go computeFirstPart()
-	go computeSecondPart()
-	wait.Wait()
-
-	return firstPart + "~" + secondPart
 }
 
 func computeCombineResults(lines []string) string {
