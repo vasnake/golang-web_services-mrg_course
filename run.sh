@@ -34,10 +34,10 @@ go_run_sandbox_week02_signer_test() {
     # go test -v $module -run "TestMultiHash"
     # go test -v $module -run "TestSingleHash"
     # go test -v $module -run 'Test.*Results'
-    go test -v $module -run TestSigner
+    # go test -v $module -run TestSigner
     # go test -v $module
-    # go test -v -race $module
-    # go test -v -race -parallel 8 -failfast $module
+    time go test -v -race $module
+    # time go test -v -race -parallel 8 -failfast $module
     exit_code=$?
 
     popd

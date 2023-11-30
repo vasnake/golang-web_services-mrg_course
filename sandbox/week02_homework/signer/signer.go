@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-type Pipe chan any
+type Pipe = chan any
 
 // ExecutePipeline: run set of jobs.
 func ExecutePipeline(jobs ...job) {
@@ -25,7 +25,7 @@ func ExecutePipeline(jobs ...job) {
 	}
 
 	var createPipe = func() Pipe {
-		var pipe = make(Pipe)
+		var pipe = make(Pipe, 100) // let's try buffered pipes
 		show("ExecutePipeline, added new pipe: ", pipe)
 		return pipe
 	}
@@ -33,20 +33,20 @@ func ExecutePipeline(jobs ...job) {
 	var lastPipe Pipe = nil
 
 	for jobIdx, jobFunc := range jobs {
-		var inPipe Pipe = nil
+		var inPipe Pipe = nil // current job input pipe, nil for first job, prev. job output as current input for non-first jobs
 		if jobIdx > 0 {
 			inPipe = lastPipe
 		}
-		lastPipe = createPipe()
+		lastPipe = createPipe() // current job output pipe
 
-		show("ExecutePipeline, starting job, (idx, func, outPipe): ", jobIdx, jobFunc, lastPipe)
+		show("ExecutePipeline, starting job (idx, func, outPipe): ", jobIdx, jobFunc, lastPipe)
 
-		// async
-		go func(ipPipe, outPipe Pipe, jobFunc job, jobIdx int) {
-			show("job id started, (id, pipe): ", jobIdx, outPipe)
+		// start async job
+		go func(inPipe, outPipe Pipe, jobFunc job, jobIdx int) {
+			show("job id started, (id, in-pipe, out-pipe, func): ", jobIdx, inPipe, outPipe, jobFunc)
 			jobFunc(inPipe, outPipe)
-			close(outPipe)
-			show("job id done, (id, pipe): ", jobIdx, outPipe)
+			close(outPipe) // signal: job done
+			show("job id done, id: ", jobIdx)
 		}(inPipe, lastPipe, jobFunc, jobIdx)
 	}
 
@@ -57,114 +57,47 @@ func ExecutePipeline(jobs ...job) {
 	show("ExecutePipeline, pipeline done.")
 }
 
-// ExecutePipeline_invalid is NOT-working first attempt to create a pipeline executor.
-// For educational purposes only.
-func ExecutePipeline_invalid(jobs ...job) {
-	// implementation notes:
-	// type job func(in, out chan interface{})
-	// first in = nil; last out = nil; 'next in' = 'previous out'
-	// close channels when the first job finished (all input data processed)
-	show("ExecutePipeline, creating pipeline from x jobs, x: ", len(jobs))
-
-	if len(jobs) < 1 {
-		var err = fmt.Errorf("While doing %s: %v", "ExecutePipeline", "number of jobs < 1")
-		panic(err)
-	}
-
-	var firstJob func()                      // run after launching all others
-	var pipes = make([]Pipe, 0, len(jobs)-1) // all pipes
-
-	defer func() {
-		// close all pipes after firstJob is finished
-		for idx, pipe := range pipes {
-			show("ExecutePipeline, closing pipe, (idx, pipe): ", idx, pipe)
-			close(pipe)
-		}
-	}()
-
-	var createPipe = func() Pipe {
-		var pipe = make(Pipe)
-		pipes = append(pipes, pipe)
-		show("ExecutePipeline, added new pipe: ", pipe, pipes)
-		return pipe
-	}
-
-	for jobIdx, jobFunc := range jobs {
-		show("ExecutePipeline, processing job, (idx, func): ", jobIdx, jobFunc)
-		var currInput, currOutput Pipe
-
-		if jobIdx == 0 {
-			show("ExecutePipeline, creating first job ...")
-			currInput = nil
-			currOutput = createPipe()
-
-			// create-and-save first-job-closure
-			var firstOutput = currOutput
-			var firstJobFunc = jobFunc
-			firstJob = func() { firstJobFunc(nil, firstOutput) }
-
-		} else { // second and next and next ...
-			currInput = currOutput
-
-			if (jobIdx + 1) == len(jobs) {
-				show("ExecutePipeline, creating last job ...")
-				currOutput = nil
-			} else {
-				show("ExecutePipeline, creating intermediate job, idx: ", jobIdx)
-				currOutput = createPipe()
-			}
-
-			show("ExecutePipeline, starting async job, idx: ", jobIdx)
-			go jobFunc(currInput, currOutput)
-		}
-	}
-
-	// ExecutePipeline should wait for the first job
-	show("ExecutePipeline, start first job ...")
-	firstJob()
-	show("ExecutePipeline, first job done. Pipeline done.")
-}
-
 // Set of job functions. Part 2 of the implementation.
 
-var SingleHash job = func(in, out chan interface{}) {
-	show("SingleHash, started ...")
-
-	var wait = &sync.WaitGroup{}
-
-	var asyncFunc = func(inVal string) {
-		out <- computeSingleHash(inVal)
-		wait.Done()
+var SingleHash job = func(in, out Pipe) {
+	var inConv = func(x any) string {
+		return strconv.Itoa(x.(int)) // type assertion: should be replaced with type switch or Sprintf
 	}
 
-	for inVal := range in {
-		show("SingleHash, in value: ", inVal)
-		wait.Add(1)
-		go asyncFunc(strconv.Itoa(inVal.(int))) // type assertion: should be replaced with type switch or Sprintf
-	}
-
-	wait.Wait()
-	show("SingleHash, done.")
+	selectedHash(in, out, inConv, computeSingleHash, "SingleHash")
 }
 
-var MultiHash job = func(in, out chan interface{}) {
-	show("MultiHash, started ...")
+var MultiHash job = func(in, out Pipe) {
+	var inConv = func(x any) string {
+		return x.(string) // type assertion: should be replaced with type switch or Sprintf
+	}
+
+	selectedHash(in, out, inConv, computeMultiHash, "MultiHash")
+}
+
+var selectedHash = func(in, out Pipe, inConv func(any) string, computeHash func(string) string, funcTag string) {
+	show(funcTag + ", started ...")
 
 	var wait = &sync.WaitGroup{}
 
-	var asyncFunc = func(inVal string) {
-		out <- computeMultiHash(inVal)
+	var doCompute = func(inVal string, out Pipe) {
+		var outVal = computeHash(inVal)
+		show(funcTag+" async, computed (in => out): ", inVal, outVal)
+		out <- outVal
+		show(funcTag + " async, done.")
 		wait.Done()
 	}
 
 	for inVal := range in {
-		show("MultiHash, in value: ", inVal)
+		show(funcTag+", in value: ", inVal)
 		wait.Add(1)
-		asyncFunc(inVal.(string))
+		// async
+		go doCompute(inConv(inVal), out)
 	}
 
+	show(funcTag + ", waiting ...")
 	wait.Wait()
-	show("MultiHash, done.")
+	show(funcTag + ", done.")
 }
 
 var CombineResults job = func(in, out chan interface{}) {
