@@ -33,7 +33,7 @@ func ExecutePipeline(jobs ...job) {
 	var lastPipe Pipe = nil
 
 	for jobIdx, jobFunc := range jobs {
-		var inPipe Pipe = nil // current job input pipe, nil for first job, prev. job output as current input for non-first jobs
+		var inPipe Pipe = nil // current job input pipe, nil for the first job; prev. job output as current input for non-first jobs
 		if jobIdx > 0 {
 			inPipe = lastPipe
 		}
@@ -64,7 +64,7 @@ var SingleHash job = func(in, out Pipe) {
 		return strconv.Itoa(x.(int)) // type assertion: should be replaced with type switch or Sprintf
 	}
 
-	selectedHash(in, out, inConv, computeSingleHash, "SingleHash")
+	hashingJob(in, out, inConv, computeSingleHash, "SingleHash")
 }
 
 var MultiHash job = func(in, out Pipe) {
@@ -72,10 +72,10 @@ var MultiHash job = func(in, out Pipe) {
 		return x.(string) // type assertion: should be replaced with type switch or Sprintf
 	}
 
-	selectedHash(in, out, inConv, computeMultiHash, "MultiHash")
+	hashingJob(in, out, inConv, computeMultiHash, "MultiHash")
 }
 
-var selectedHash = func(in, out Pipe, inConv func(any) string, computeHash func(string) string, funcTag string) {
+var hashingJob = func(in, out Pipe, inConv func(any) string, computeHash func(string) string, funcTag string) {
 	show(funcTag + ", started ...")
 
 	var wait = &sync.WaitGroup{}
@@ -191,8 +191,8 @@ func computeCombineResults(lines []string) string {
 
 func main() {
 	show("program started ...")
-	// var err = fmt.Errorf("While doing %s: %v", "demo", "not implemented")
-	// panic(err)
+	var err = fmt.Errorf("While doing %s: %v", "main", "not implemented")
+	defer panic(err)
 	show("end of program.")
 }
 

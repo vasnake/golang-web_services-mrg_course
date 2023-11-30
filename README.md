@@ -35,6 +35,10 @@ Consequently, there are no constants denoting the IEEE-754 negative zero, infini
 
 Напиши параллельную обработку по трем паттернам https://habr.com/ru/companies/timeweb/articles/770912/
 
+### week 2, dynamic workers pool
+
+[week 2, extra homework](./sandbox/week02_homework/wp_extra/wp_extra.md)
+
 ## Info, links
 
 - `Communicating Sequential Processes` by Tony Hoare
