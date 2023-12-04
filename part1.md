@@ -386,6 +386,59 @@ Size and alignment:
 > A struct or array type has size zero if it contains no fields (or elements, respectively) that have a size greater than zero.
 Two distinct zero-size variables may have the same address in memory
 
+#### go.mod
+
+https://go.dev/ref/mod#glossary
+
+A `module` is a collection of packages that are released, versioned, and distributed together
+
+A `module` is identified by a `module path`, which is declared in a `go.mod` file, together with information about the module’s dependencies
+
+The `module root directory` is the directory that contains the `go.mod` file
+
+The `main module` is the module containing the directory where the `go` command is invoked
+
+A `module path` is the canonical name for a module, declared with the module directive in the module’s `go.mod` file. A module’s path is the prefix for `package paths` within the module
+
+Each `package` within a `module` is a collection of source files in the same directory that are compiled together.
+A `package path` is the `module path` joined with the subdirectory containing the package
+
+Typically, a `module path` consists of a repository root path, a directory within the repository (usually empty), and a major version suffix (only for major version 2 or higher)
+
+If the module is released at major version 2 or higher, the `module path` must end with a `major version suffix` like `/v2`
+
+A `version` identifies an immutable snapshot of a module, which may be either a `release` or a `pre-release`. Each version starts with the letter `v`, followed by a `semantic version` https://semver.org/spec/v2.0.0.html
+
+The `patch version` may be followed by an optional pre-release string starting with a `hyphen`. The pre-release string or patch version may be followed by a `build metadata` string starting with a `plus`. For example, `v0.0.0`, `v1.12.134`, `v8.0.5-pre`, and `v2.0.9+meta` are valid versions.
+
+A version is considered `unstable` if its major version is `0` or it has a `pre-release suffix`
+Unstable versions are not subject to compatibility requirements
+
+A `pseudo-version` is a specially formatted `pre-release` version that encodes information about a specific `revision` in a version control repository
+
+A module may be checked out at a specific `branch`, `tag`, or `revision` using a `version query`. `go get example.com/mod@master`
+
+Module versions are distributed as `.zip files`. There is rarely any need to interact directly with these files, since the `go` command creates, downloads, and extracts them automatically 
+
+The `module cache` is the directory where the `go` command stores downloaded module files. The module cache is distinct from the `build cache`, which contains compiled packages and other build artifacts
+The default location of the module cache is `$GOPATH/pkg/mod`. To use a different location, set the `GOMODCACHE` environment variable.
+
+A `workspace` is a collection of modules on disk that are used as the `main modules` when running `minimal version selection` (`MVS`)
+Go uses an algorithm called `Minimal version selection` (MVS) to select a set of module versions to use when building packages
+`MVS` operates on a directed graph of modules, specified with `go.mod` files
+`MVS` starts at the `main modules` (special vertices in the graph that have no version) and traverses the graph
+
+Most `go` commands may run in `Module-aware` mode or `GOPATH` mode
+If `GO111MODULE`=off, the go command ignores `go.mod` files and runs in `GOPATH` mode
+
+When using modules, the `go` command typically satisfies dependencies by downloading modules from their sources into the `module cache`, then loading packages from those downloaded copies
+
+`Vendoring` may be used to allow interoperation with older versions of Go, or to ensure that all files used for a `build` are `stored` in a single file tree.
+
+The `go mod vendor` command constructs a directory named `vendor` in the `main module’s root directory` containing copies of all packages needed
+
+If the `vendor` directory is present in the main module’s root directory, it will be used automatically
+
 ### Переменные, базовые типы данных
 
 - [vars_1](week_01/vars_1.go)
@@ -923,12 +976,31 @@ Extra задание (динамический пул воркеров) без �
 
 ## part 1, week 3
 
-# I_AM_HERE
+Работа с динамическими данными и производительность.
+[Код, домашки, литература](week_03/part1_week3.zip)
 
-Работа с динамическими данными и производительность
-[Код, домашки, литература](week_03/part1_week3.zip) https://cloud.mail.ru/public/2iXh/RC437wn11
+```s
+    pushd sandbox
+    mkdir -p week03 && pushd ./week03
+
+    cat > main.go << EOT
+package main
+func main() { panic("not implemented yet") }
+EOT
+
+    go mod init week03
+    go mod tidy
+    popd # to sandbox
+    go work use ./week03/
+    go vet week03
+    gofmt -w week03
+    go run week03
+```
+[week 3 playground](./sandbox/week03/main.go)
 
 ### Распаковываем JSON
+
+# I_AM_HERE
 
 - [json](week_03/json.go)
 - [struct_tags](week_03/struct_tags.go)
