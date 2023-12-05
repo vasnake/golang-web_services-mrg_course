@@ -93,9 +93,13 @@ go_run_sandbox() {
     go vet $module
     # go vet -stringintconv=false $module
 
-    go run $module
+    # go run $module
     # go run -race $module
-    exit_code=$?
+    # exit_code=$?
+
+    # https://pkg.go.dev/cmd/go#hdr-Testing_flags
+    # go test -bench . $module
+    go test -bench . -benchmem $module
 
     popd
     return $exit_code

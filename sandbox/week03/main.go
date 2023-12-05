@@ -425,13 +425,41 @@ func unpackDemo() {
 	*/
 }
 
+func unpack_testBench() {
+	show("program started ...")
+
+	show(`
+	go test -bench . week03
+BenchmarkGenerated-8     3871654               303.0 ns/op
+BenchmarkReflect-8       1778101               671.4 ns/op
+
+	go test -bench . -benchmem week03
+BenchmarkGenerated-8     3889042               302.2 ns/op           152 B/op          8 allocs/op
+BenchmarkReflect-8       1770966               668.3 ns/op           320 B/op         14 allocs/op
+
+BenchmarkGenerated-8     4248238               269.5 ns/op           104 B/op          7 allocs/op
+BenchmarkReflect-8       1851026               643.7 ns/op           272 B/op         13 allocs/op
+
+	go test -bench . -benchmem -cpuprofile=cpu.out -memprofile=mem.out -memprofilerate=1 unpack_bench_test.go
+
+	go tool pprof main.test.exe cpu.out
+	go tool pprof main.test.exe mem.out
+
+	go get github.com/uber/go-torch
+	go-torch main.test.exe cpu.out
+`)
+
+	show("end of program.")
+}
+
 func main() {
 	// jsonDemo()
 	// struct_tags()
 	// dynamicDemo()
 	// reflect_1()
 	// reflect_2()
-	unpackDemo()
+	// unpackDemo()
+	unpack_testBench()
 
 	// var err = fmt.Errorf("While doing %s: %v", "main", "not implemented")
 	// panic(err)
