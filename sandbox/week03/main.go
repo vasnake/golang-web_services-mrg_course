@@ -452,6 +452,81 @@ BenchmarkReflect-8       1851026               643.7 ns/op           272 B/op   
 	show("end of program.")
 }
 
+func json_testBench() {
+	show("program started ...")
+	show(`
+	go test -bench . -benchmem week03
+BenchmarkEncodeStandart-8        5975536               178.5 ns/op            64 B/op          1 allocs/op
+BenchmarkEncodeEasyjson-8       12441440                99.50 ns/op          128 B/op          1 allocs/op
+
+BenchmarkDecodeStandart-8        1328102               930.1 ns/op           240 B/op          6 allocs/op
+BenchmarkDecodeEasyjson-8        5343252               212.5 ns/op            16 B/op          2 allocs/op
+	`)
+	show("end of program.")
+}
+
+func string_testBench() {
+	show("program started ...")
+	show(`
+	go test -bench . -benchmem string_test.go
+BenchmarkRegExpRaw-8              802430              1354 ns/op            2031 B/op         18 allocs/op
+BenchmarkRegExpCompiled-8       29952919                35.77 ns/op            0 B/op          0 allocs/op
+BenchmarkStrContains-8          100000000               10.74 ns/op            0 B/op          0 allocs/op
+
+	go test -bench . -benchmem -cpuprofile=cpu.out -memprofile=mem.out -memprofilerate=1 string_test.go
+
+	go tool pprof main.test.exe cpu.out
+	go tool pprof main.test.exe mem.out
+
+	go tool pprof -svg -inuse_space main.test.exe mem.out > mem_is.svg
+	go tool pprof -svg -inuse_objects main.test.exe mem.out > mem_io.svg
+	go tool pprof -svg main.test.exe cpu.out > cpu.svg
+
+	go tool pprof -png main.test.exe cpu.out > cpu.png
+	`)
+	show("end of program.")
+}
+
+func sliceAppend_testBench() {
+	show("program started ...")
+	show(`
+	go test -bench . -benchmem week03
+BenchmarkAppendNaive-8            283210              4215 ns/op           25208 B/op         12 allocs/op
+BenchmarkAppendPrealloc-8        2246162               554.4 ns/op             0 B/op          0 allocs/op
+
+	go test -bench . -benchmem -cpuprofile=cpu.out -memprofile=mem.out -memprofilerate=1 pool_test.go
+
+	go tool pprof main.test.exe cpu.out
+	go tool pprof main.test.exe mem.out
+
+	go tool pprof -svg -inuse_space main.test.exe mem.out > mem_is.svg
+	go tool pprof -svg -inuse_objects main.test.exe mem.out > mem_io.svg
+	go tool pprof -svg main.test.exe cpu.out > cpu.svg
+	go tool pprof -png main.test.exe cpu.out > cpu.png
+	`)
+	show("end of program.")
+}
+
+func memPool_testBench() {
+	show("program started ...")
+	show(`
+	go test -bench '.*Mem.*' -benchmem week03
+BenchmarkAllocMemNaive-8         1777189               635.9 ns/op          1610 B/op          4 allocs/op
+BenchmarkAllocMemFromPool-8      3476630               326.7 ns/op            24 B/op          1 allocs/op
+	`)
+	show("end of program.")
+}
+
+func xml_textBench() {
+	show("program started ...")
+	show(`
+	go test -bench '.*Xml.*' -benchmem week03
+BenchmarkXmlDoc-8          19297             61374 ns/op           22232 B/op        562 allocs/op
+BenchmarkXmlStream-8       21369             54730 ns/op           19208 B/op        526 allocs/op
+	`)
+	show("end of program.")
+}
+
 func main() {
 	// jsonDemo()
 	// struct_tags()
@@ -459,7 +534,12 @@ func main() {
 	// reflect_1()
 	// reflect_2()
 	// unpackDemo()
-	unpack_testBench()
+	// unpack_testBench()
+	// json_testBench()
+	// string_testBench()
+	// sliceAppend_testBench()
+	// memPool_testBench()
+	xml_textBench()
 
 	// var err = fmt.Errorf("While doing %s: %v", "main", "not implemented")
 	// panic(err)

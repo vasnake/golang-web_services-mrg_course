@@ -98,8 +98,10 @@ go_run_sandbox() {
     # exit_code=$?
 
     # https://pkg.go.dev/cmd/go#hdr-Testing_flags
-    # go test -bench . $module
-    go test -bench . -benchmem $module
+    # go test -bench . -benchmem $module
+    # go test -bench '.*Mem.*' -benchmem $module
+    go test -bench '.*Xml.*' -benchmem $module
+    # go test -v -cover $module
 
     popd
     return $exit_code

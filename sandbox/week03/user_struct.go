@@ -13,7 +13,24 @@ type User struct {
 	Flags    int
 }
 
+// easyjson:json
+type UserV2 struct {
+	Id       int
+	RealName string
+	Login    string
+	Flags    int
+	Status   int
+}
+
 // other stuff to make parsing interesting
+
+type Client struct {
+	Id       int
+	RealName string
+	Login    string
+	Flags    int
+	Status   int
+}
 
 type Avatar struct {
 	ID  int
