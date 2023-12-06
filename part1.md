@@ -1105,7 +1105,42 @@ https://www.google.com/search?q=go+tool+pprof+illustrated&tbm=vid
 Поточная обработка данных, на примере xml. `encoding/xml`.
 Читаем по токенам, обрабатываем: `xml.NewDecoder(bytes.NewReader(data)).Token()`
 
+### week 3 homework
+
 # I_AM_HERE
+
+Есть пакет `main`, он требует добавления кода в функцию FastSearch. Есть тесты. Подробности в `*.md` файлах.
+Вкратце: задание на оптимизацию (быстрее, меньше памяти, аллокаций) уже существующей (baseline) функции. Научиться работать с pprof.
+- [homework materials](week_03/part1_week3.zip/part1_week3/99_hw/hw3.md)
+- [actual homework project](./sandbox/week03_homework/finder/hw3.md)
+
+> Для выполнения задания необходимо чтобы один из параметров ( ns/op, B/op, allocs/op ) был быстрее чем baseline ( fast < solution ) и ещё один лучше baseline + 20%.
+
+```s
+    pushd sandbox # workspace
+    mkdir -p week03_homework/finder
+
+    pushd week03_homework/finder
+    go mod init finder
+
+    cat > finder.go << EOT
+package main
+func main() { panic("not yet") }
+EOT
+
+    go mod tidy
+
+    popd # workspace
+    # go work init
+    go work use ./week03_homework/finder
+
+    go vet finder
+    gofmt -w ./week03_homework/finder
+    go run finder
+    go test -v finder
+    go test -bench . -benchmem finder    
+```
+finder lib.
 
 ## part 1, week 4
 

@@ -19,4 +19,5 @@ use (
 	./week02
 	./week02_homework/signer
 	./week03
+	./week03_homework/finder
 )
