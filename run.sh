@@ -29,7 +29,7 @@ go_run_sandbox_week03_finder_test() {
     go vet $module
 
     go test -v $module
-    # go test -bench . -benchmem $module
+    go test -bench . -benchmem $module
     exit_code=$?
 
     # go tool pprof -http=:8083 /path/to/bin /path/to/out

@@ -1142,6 +1142,13 @@ EOT
 ```
 finder lib.
 
+```s
+# go test -bench . -benchmem $module
+BenchmarkSlow-8               46          30084826 ns/op        20196022 B/op     189848 allocs/op
+BenchmarkFast-8               78          16459328 ns/op          722669 B/op      12314 allocs/op
+```
+bench results.
+
 ## part 1, week 4
 
 Основы HTTP

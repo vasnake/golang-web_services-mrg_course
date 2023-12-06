@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,16 +12,79 @@ import (
 )
 
 // FastSearch should be 20% (at least) better (resource-wise, faster) than SlowSearch.
+//
 // Check: `go test -v $module; go test -bench . -benchmem $module`
 func FastSearch(out io.Writer) {
-	defer panic(`
-	Task outline:
-	For each line from file:
-	- transform json => Record, where Record is (list-of-browsers, user-name, user-email)
-	- loop over browsers: update global-set-of-unique-browsers, set MSIE-on-Android flag
-	- if MSIE-on-Android: update result (print to out)
-	print-to-out: len(global-set-of-unique-browsers)
-	`)
+	/*
+		defer panic(`
+		Task outline:
+		For each line from file:
+		- transform json => Record, where Record is (list-of-browsers, user-name, user-email)
+		- loop over browsers: update global-set-of-unique-browsers, set MSIE-on-Android flag
+		- if MSIE-on-Android: update result (print to out)
+		print-to-out: len(global-set-of-unique-browsers)
+		`)
+	*/
+
+	var browsersSet = make(map[string]struct{}, 256)
+
+	var processBrowsersList = func(browsers []string) bool {
+		var isAndroid, isMSIE bool
+		for _, browser := range browsers {
+			ok1 := strings.Contains(browser, "Android")
+			ok2 := strings.Contains(browser, "MSIE")
+			if ok1 {
+				isAndroid = true
+			}
+			if ok2 {
+				isMSIE = true
+			}
+			if ok1 || ok2 {
+				browsersSet[browser] = struct{}{}
+			}
+		}
+		return isAndroid && isMSIE
+	}
+
+	var printRecord = func(out io.Writer, record *Record, recNo int) {
+		email := strings.ReplaceAll(record.Email, "@", " [at] ")
+		fmt.Fprintf(out, "[%d] %s <%s>\n", recNo, record.Name, email)
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	scannerRef := bufio.NewScanner(file)
+
+	var record = Record{}
+	var recNo int = -1
+
+	fmt.Fprintln(out, "found users:")
+	for scannerRef.Scan() {
+		recNo += 1
+		if err := getRecord(scannerRef, &record); err != nil {
+			panic(err)
+		}
+
+		if processBrowsersList(record.Browsers) {
+			printRecord(out, &record, recNo)
+		}
+	}
+
+	fmt.Fprintln(out, "\nTotal unique browsers", len(browsersSet))
+}
+
+type Record struct {
+	Browsers []string
+	Email    string
+	Name     string
+}
+
+func getRecord(scannerRef *bufio.Scanner, record *Record) error {
+	return json.Unmarshal(scannerRef.Bytes(), &record)
 }
 
 func FastSearch_ExplainedSlowSearch(out io.Writer) {
