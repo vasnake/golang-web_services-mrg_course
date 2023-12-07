@@ -1107,10 +1107,8 @@ https://www.google.com/search?q=go+tool+pprof+illustrated&tbm=vid
 
 ### week 3 homework
 
-# I_AM_HERE
-
-Есть пакет `main`, он требует добавления кода в функцию FastSearch. Есть тесты. Подробности в `*.md` файлах.
-Вкратце: задание на оптимизацию (быстрее, меньше памяти, аллокаций) уже существующей (baseline) функции. Научиться работать с pprof.
+Есть пакет `main`, он требует добавления кода в функцию `FastSearch`. Есть тесты. Подробности в `*.md` файлах.
+Вкратце: задание на оптимизацию (быстрее, меньше памяти, аллокаций) уже существующей (baseline) функции. Научиться работать с `pprof`.
 - [homework materials](week_03/part1_week3.zip/part1_week3/99_hw/hw3.md)
 - [actual homework project](./sandbox/week03_homework/finder/hw3.md)
 
@@ -1148,6 +1146,8 @@ BenchmarkSlow-8               46          30084826 ns/op        20196022 B/op   
 BenchmarkFast-8               78          16459328 ns/op          722669 B/op      12314 allocs/op
 ```
 bench results.
+
+# I_AM_HERE
 
 ## part 1, week 4
 
