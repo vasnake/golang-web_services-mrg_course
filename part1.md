@@ -1202,33 +1202,28 @@ EOT
 
 ### Работа с параметрами запросов
 
-- [get](week_04/get.go) Как считать параметры из объекта `Request`. Параметры переданы через GET, PUT, POST -- всяко.
+- [get](week_04/get.go) Как прочитать параметры из объекта `Request`. Параметры переданы через GET, PUT, POST -- всяко.
+- [post](week_04/post.go) `if r.Method == http.MethodPost { loginFormValue := r.FormValue("login") }`, получение данных из POST формы.
 
-# I_AM_HERE
+- [cookies](week_04/cookies.go) Cookie, чтение, запись, устаревание.
+Бизнес-логика логин/логаут с использованием cookie как идентификатора сессии пользователя.
 
-- [post](week_04/post.go)
-- [cookies](week_04/cookies.go)
-- [headers](week_04/headers.go)
-
-- `http.MethodPost`, получение данных из формы, POST
-- Логин/логаут с использованием cookie (кука как идентификатор сессии пользователя)
-- Установка и чтение заголовков, header
+- [headers](week_04/headers.go) Установка и чтение заголовков HTTP, header.
 
 ### Обслуживание статичных данных
 
-- [static](week_04/static.go)
-
-- `http.FileServer` реализует выдачу статичных файлов (без их интерпретации). В проде не надо, для локальной разработки (пет-проектов) может пригодиться.
+- [static](week_04/static.go) `http.FileServer` реализует выдачу статичных файлов (без их интерпретации).
+В проде так не надо, для локальной разработки (пет-проектов) сойдет.
 
 ### Загрузка файлов формы
 
-- [file_upload](week_04/file_upload.go)
-
-- Два варианта:
-    `Request.FormFile` даёт нам загруженный в форму файл.
-    `Request.Body` даёт нам байты, загруженные через POST.
+- [file_upload](week_04/file_upload.go) Два варианта выгрузки файла:
+    `Request.FormFile` даёт нам загруженный в форму (POST Multipart) файл.
+    `io.ReadAll(Request.Body)` даёт нам байты тела запроса, загруженные через POST.
 
 ### HTTP-запросы во внешние сервисы
+
+# I_AM_HERE
 
 - [request](week_04/request.go)
 

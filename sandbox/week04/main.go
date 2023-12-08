@@ -2,7 +2,10 @@ package main
 
 import (
 	"bufio"
+	"crypto/md5"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"time"
@@ -301,6 +304,217 @@ func get_paramsDemo() {
 	*/
 }
 
+func postFormDemo() {
+	show("program started ...")
+
+	var loginFormTmpl = []byte(`
+	<html> <body> <form action="/" method="post">
+		Login: <input type="text" name="login">
+		Password: <input type="password" name="password">
+		<input type="submit" value="Login please ...">
+	</form> </body> </html>
+	`)
+
+	var loginFormHandler = func(w http.ResponseWriter, r *http.Request) {
+		// Show form only when requested with GET (not POST)
+		if r.Method != http.MethodPost {
+			w.Write(loginFormTmpl)
+			return
+		}
+
+		// if requested with POST
+
+		// parse form data explicitly
+		// r.ParseForm()
+		// loginFormValue := r.Form["login"][0]
+
+		// or implicitly
+		loginFormValue := r.FormValue("login")
+
+		fmt.Fprintln(w, "User login: ", loginFormValue)
+	}
+
+	http.HandleFunc("/", loginFormHandler)
+
+	const addrStr = ":8080"
+	show("Starting server at: ", addrStr)
+	show("Open url http://localhost:8080/")
+	err := http.ListenAndServe(addrStr, nil)
+	show("end of program. ", err)
+}
+
+func cookiesDemo() {
+	show("program started ...")
+
+	var mainPage = func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+		sessionCookieRef, err := r.Cookie("session_id")
+		if err == http.ErrNoCookie {
+			fmt.Fprintln(w, "You need to login: ")
+			fmt.Fprintln(w, `<a href="/login">login</a>`)
+		} else {
+			fmt.Fprintln(w, "Welcome, `"+sessionCookieRef.Value+"`. Now logout: ")
+			fmt.Fprintln(w, `<a href="/logout">logout</a>`)
+		}
+	}
+
+	var loginPage = func(w http.ResponseWriter, r *http.Request) {
+		// Imagine that you check user credentials already, now set session cookie:
+		cookie := http.Cookie{
+			Name:    "session_id",
+			Value:   "Foo Bar",
+			Expires: time.Now().Add(10 * time.Minute),
+		}
+		http.SetCookie(w, &cookie)
+		http.Redirect(w, r, "/", http.StatusFound)
+	}
+
+	var logoutPage = func(w http.ResponseWriter, r *http.Request) {
+		sessionCookieRef, err := r.Cookie("session_id")
+		if err == http.ErrNoCookie {
+			http.Redirect(w, r, "/", http.StatusFound)
+		} else {
+			sessionCookieRef.Expires = time.Now().AddDate(0, 0, -1) // expire yesterday
+			http.SetCookie(w, sessionCookieRef)
+			http.Redirect(w, r, "/", http.StatusFound)
+		}
+	}
+
+	http.HandleFunc("/login", loginPage)
+	http.HandleFunc("/logout", logoutPage)
+	http.HandleFunc("/", mainPage)
+
+	const addrStr = ":8080"
+	show("Starting server at: ", addrStr)
+	show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
+	err := http.ListenAndServe(addrStr, nil)
+	show("end of program. ", err)
+}
+
+func headersDemo() {
+	show("program started ...")
+
+	var handler = func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("RequestID", "d41d8cd98f00b204")
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		fmt.Fprintln(w, "You browser UA is:", r.UserAgent())
+		fmt.Fprintln(w, "You `Accept`:", r.Header.Get("Accept"))
+	}
+
+	http.HandleFunc("/", handler)
+
+	const addrStr = ":8080"
+	show("Starting server at: ", addrStr)
+	show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
+	err := http.ListenAndServe(addrStr, nil)
+	show("end of program. ", err)
+}
+
+func staticServeDemo() {
+	show("program started ...")
+
+	var rootHandlerFunc = func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`
+			Hello World! <br />
+			<img src="/data/img/gopher.png" />
+		`))
+	}
+
+	// TLDR: `/data/img/gopher.png` => `./week04/static/img/gopher.png`
+	// when looking for `/data/img/gopher.png`:
+	// - strip `/data/`
+	// - read `img/gopher.png` in `./week04/static` directory
+	staticHandler := http.StripPrefix(
+		"/data/",
+		http.FileServer(http.Dir("./week04/static")),
+	)
+
+	http.HandleFunc("/", rootHandlerFunc)
+	http.Handle("/data/", staticHandler)
+
+	const addrStr = ":8080"
+	show("Starting server at: ", addrStr)
+	show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
+	err := http.ListenAndServe(addrStr, nil)
+	show("end of program. ", err)
+}
+
+func file_uploadDemo() {
+	show("program started ...")
+
+	var uploadFormTmpl = []byte(`
+	<html> <body> <form action="/upload" method="post" enctype="multipart/form-data">
+		Image: <input type="file" name="my_file">
+		<input type="submit" value="Upload selected file ...">
+	</form> </body> </html>
+	`)
+
+	var mainPage = func(w http.ResponseWriter, r *http.Request) {
+		w.Write(uploadFormTmpl)
+	}
+
+	var uploadFormHandler = func(w http.ResponseWriter, r *http.Request) {
+		// method: post
+
+		// process first 5 MB
+		if err := r.ParseMultipartForm(5 * 1024 * 1024); err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		file, fileHeaderRef, err := r.FormFile("my_file")
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		defer file.Close()
+
+		fmt.Fprintf(w, "Filename: %v\n", fileHeaderRef.Filename)
+		fmt.Fprintf(w, "Header: %#v\n", fileHeaderRef.Header)
+
+		// some file processing
+		hash := md5.New()
+		io.Copy(hash, file)
+		fmt.Fprintf(w, "md5: %x\n", hash.Sum(nil))
+	}
+
+	var uploadRawContentHandler = func(w http.ResponseWriter, r *http.Request) {
+		// curl -v -X POST -H "Content-Type: application/json" -d '{"id": 42, "user": "Foo Bar"}' http://localhost:8080/raw_body
+
+		bodyBytes, err := io.ReadAll(r.Body)
+		defer r.Body.Close()
+
+		// some bytes processing
+		type Params struct {
+			ID   int
+			User string
+		}
+		decodedContent := &Params{}
+		if err = json.Unmarshal(bodyBytes, decodedContent); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		fmt.Fprintf(w, "content-type %#v\n", r.Header.Get("Content-Type"))
+		fmt.Fprintf(w, "params %#v\n", decodedContent)
+	}
+
+	// render upload form
+	http.HandleFunc("/", mainPage)
+	// upload file using form
+	http.HandleFunc("/upload", uploadFormHandler)
+	// upload raw data using POST
+	http.HandleFunc("/raw_body", uploadRawContentHandler)
+
+	const addrStr = ":8080"
+	show("Starting server at: ", addrStr)
+	show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
+	err := http.ListenAndServe(addrStr, nil)
+	show("end of program. ", err)
+}
+
 func main() {
 	// net_listen()
 	// httpDemo()
@@ -308,7 +522,12 @@ func main() {
 	// servehttpDemo()
 	// muxDemo()
 	// serversDemo()
-	get_paramsDemo()
+	// get_paramsDemo()
+	// postFormDemo()
+	// cookiesDemo()
+	// headersDemo()
+	// staticServeDemo()
+	file_uploadDemo()
 }
 
 func demoTemplate() {
