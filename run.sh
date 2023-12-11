@@ -122,6 +122,7 @@ go_run_sandbox() {
     # go test -bench '.*Mem.*' -benchmem $module
     # go test -bench '.*Xml.*' -benchmem $module
     # go test -v -cover $module
+    # go test -v $module
 
     popd
     return $exit_code

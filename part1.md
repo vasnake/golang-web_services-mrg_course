@@ -1215,7 +1215,7 @@ EOT
 - [static](week_04/static.go) `http.FileServer` реализует выдачу статичных файлов (без их интерпретации).
 В проде так не надо, для локальной разработки (пет-проектов) сойдет.
 
-### Загрузка файлов формы
+### Upload файлов
 
 - [file_upload](week_04/file_upload.go) Два варианта выгрузки файла:
     `Request.FormFile` даёт нам загруженный в форму (POST Multipart) файл.
@@ -1223,37 +1223,28 @@ EOT
 
 ### HTTP-запросы во внешние сервисы
 
-# I_AM_HERE
+- [request](week_04/request.go) Три варианта (разные уровни API) запроса по HTTP, с точки зрения клиента:
+`http.Get(uri); http.DefaultClient.Do(req); httpClient.Do(req)`.
 
-- [request](week_04/request.go)
+### Тестирование обработчиков HTTP-запросов/ответов
 
-- Три варианта (уровня API) запрос-ответ по HTTP, с точки зрения клиента.
+- [request_test](week_04/request_test.go) `go test -v $module`. Тестирование функций сервера (хендлера): подстановка моков риквеста и респонса: `httptest.NewRequest`, `httptest.NewRecorder`.
+- [server_test](week_04/server_test.go) Тестирование функций зависящих от внешнего сервиса: мокать внешний сервис `httptest.NewServer(http.HandlerFunc(ExtApiHandlerMock))`.
 
-### Тестирование HTTP-запросов и ответов
+### Шаблоны inline, шаблоны из файлов
 
-- [request_test](week_04/request_test.go)
-- [server_test](week_04/server_test.go)
-
-- Тестирование функций хендлера с подстановкой моков риквеста и респонса: `httptest.NewRequest`, `httptest.NewRecorder`, `go test ...`.
-- Тестирование функции зависящей от внешнего сервиса, мокать внешний сервис.
-
-### Inline-шаблоны и шаблоны из файлов
-
-- [inline](week_04/inline.go)
-- [file](week_04/file.go), [users.html](week_04/users.html)
-
-- `text/template` пакет для парсинга и вывода шаблонов (формирование текста ответа сервисом).
-- `html/template` шаблонизатор с автоматической экранизацией выводимого html кода.
+- [inline](week_04/inline.go) `text/template` пакет для парсинга и вывода шаблонов (формирование текста ответа сервисом).
+- [file](week_04/file.go), [users.html](week_04/users.html) шаблон из файла, рендеринг с автоматической экранизацией выводимого html кода.
 
 ### Вызов методов и функций из шаблонов
 
-- [method.go](week_04/method.go), [method.html](week_04/method.html)
-- [func.go](week_04/func.go), [func.html](week_04/func.html)
+- [method.go](week_04/method.go), [method.html](week_04/method.html) В шаблон передана структура, хотим там (в шаблоне) вызвать её метод (без параметров).
 
-- В шаблон передана структура, хотим там (в шаблоне) вызвать её метод (без параметров).
-- `template.FuncMap` регистрация фунций, если методов структур нам недостаточно. В шаблоне вызываем регистрированные фунции.
+- [func.go](week_04/func.go), [func.html](week_04/func.html) `template.FuncMap` для регистрации фунций, если методов структур нам недостаточно. В шаблоне вызываем регистрированные фунции (параметр - текущий объект `.`).
 
 ### Профилирование через pprof
+
+# I_AM_HERE
 
 - [pprof_1.go](week_04/pprof_1.go), [pprof_1.sh](week_04/pprof_1.sh)
 

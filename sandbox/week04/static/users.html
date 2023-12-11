@@ -1,0 +1,11 @@
+<html>
+<body>
+	<h1>Users</h1>
+	{{range .Users}}
+    {{.ID}} 
+		<b>{{.Name}}</b>
+		{{if .Active}}active{{end}}
+		<br />
+	{{end}}
+</body>
+</html>

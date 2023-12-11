@@ -1,0 +1,11 @@
+<html>
+<body>
+	<h1>Users</h1>
+	{{range .Users}}
+    {{.ID}}
+		<b>{{.Name}}</b>
+		{{.PrintActive}} <!-- call struct method -->
+		<br />
+	{{end}}
+</body>
+</html>

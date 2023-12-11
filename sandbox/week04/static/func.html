@@ -1,0 +1,16 @@
+<html>
+<body>
+	<h1>Users</h1>
+	{{range .Users}}
+    {{.ID}}
+		<b>{{.Name}}</b>,
+    id {{.ID}}
+		{{if OddUser .}} <!-- call registered function with user value as parameter -->
+			is odd
+    {{else}}
+      is even
+		{{end}}
+		<br />
+	{{end}}
+</body>
+</html>

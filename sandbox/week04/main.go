@@ -2,12 +2,16 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/url"
+	"strconv"
+	"text/template"
 	"time"
 )
 
@@ -515,6 +519,348 @@ func file_uploadDemo() {
 	show("end of program. ", err)
 }
 
+func requestDemo() {
+	show("program started ...")
+
+	// async, run the server with 2 endpoints
+	var runHttpServer = func() {
+		// register server root handler
+		http.HandleFunc(
+			"/",
+			func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintf(w, "root handler, incoming request r: %#v\n", r)
+				fmt.Fprintf(w, "root handler, r.Url: %#v\n", r.URL)
+			},
+		)
+
+		// register server `raw_body` handler
+		http.HandleFunc(
+			"/raw_body",
+			func(w http.ResponseWriter, r *http.Request) {
+				bodyBytes, err := io.ReadAll(r.Body)
+				defer r.Body.Close() // baware of leaks
+				if err != nil {
+					http.Error(w, err.Error(), 500)
+					return
+				}
+				fmt.Fprintf(w, "`raw_body` handler, raw body %s\n", string(bodyBytes))
+			},
+		)
+
+		// run
+		const addrStr = ":8080"
+		show("Starting server at: ", addrStr)
+		show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
+		err := http.ListenAndServe(addrStr, nil)
+		show("end of server. ", err)
+	}
+
+	var execGetQuery = func(uri string) {
+		if len(uri) < 1 {
+			uri = "http://127.0.0.1:8080/?param1=123&param2=test"
+		}
+
+		resp, err := http.Get(uri)
+		if err != nil {
+			show("While doing http.Get, got error: ", err)
+			return
+		}
+		defer resp.Body.Close() // beware of leaks
+
+		respBody, err := io.ReadAll(resp.Body)
+		show("http.Get, response.Body: ", string(respBody), err)
+	}
+
+	var execLowLevelGetQuery = func(uri string) {
+		if len(uri) < 1 {
+			uri = "http://127.0.0.1:8080/?id=42"
+		}
+
+		// prepare request
+		req := &http.Request{
+			Method: http.MethodGet,
+			Header: http.Header{
+				"User-Agent": {"coursera/golang"},
+			},
+		}
+		req.URL, _ = url.Parse(uri) // id=42
+		req.URL.Query().Set("user", "Foo")
+
+		// ask service
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			show("While doing http.DefaultClient.Do, got error: ", err)
+			return
+		}
+		defer resp.Body.Close() // beware of leaks
+
+		respBody, err := io.ReadAll(resp.Body)
+		show("Low-level GET (http.DefaultClient.Do), responce.Body: ", string(respBody), err)
+	}
+
+	var execLowLowLevelPostQuery = func(uri string) {
+		if len(uri) < 1 {
+			uri = "http://127.0.0.1:8080/raw_body"
+		}
+
+		// define request using low-level API
+
+		transportRef := &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+				DualStack: true,
+			}).DialContext,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+
+		clientRef := &http.Client{
+			Timeout:   time.Second * 10,
+			Transport: transportRef,
+		}
+
+		bodyData := `{"id": 24, "user": "Bar"}`
+		bodyBytesRef := bytes.NewBufferString(bodyData)
+
+		reqRef, _ := http.NewRequest(http.MethodPost, uri, bodyBytesRef)
+		reqRef.Header.Add("Content-Type", "application/json")
+		reqRef.Header.Add("Content-Length", strconv.Itoa(len(bodyData)))
+
+		// ask service
+
+		respRef, err := clientRef.Do(reqRef)
+		if err != nil {
+			show("While doing http.Client.Do, got error: ", err)
+			return
+		}
+		defer respRef.Body.Close() // beware of leaks
+
+		respBodyBytes, err := io.ReadAll(respRef.Body)
+		show("LowLow-level POST (http.Client.Do), responce.Body: ", string(respBodyBytes), err)
+	}
+
+	go runHttpServer() // async service
+	time.Sleep(100 * time.Millisecond)
+
+	execGetQuery("http://127.0.0.1:8080/?param1=123&param2=test") // ask service using get
+	execLowLevelGetQuery("http://127.0.0.1:8080/?id=42")          // ask service with low-level get API
+	execLowLowLevelPostQuery("http://127.0.0.1:8080/raw_body")    // ask service using post and very low-level API
+
+	show("end of program.")
+	/*
+	   2023-12-11T14:12:28.795Z: program started ...
+	   2023-12-11T14:12:28.796Z: Starting server at: string(:8080);
+	   2023-12-11T14:12:28.796Z: Open url http://localhost:8080/
+
+	   2023-12-11T14:12:28.897Z: http.Get, response.Body: string(root handler, incoming request r:
+	   	&http.Request{Method:"GET", URL:(*url.URL)(0xc0001521b0), Proto:"HTTP/1.1", ProtoMajor:1, ProtoMinor:1,
+	   	Header:http.Header{"Accept-Encoding":[]string{"gzip"}, "User-Agent":[]string{"Go-http-client/1.1"}},
+	   	Body:http.noBody{}, GetBody:(func() (io.ReadCloser, error))(nil), ContentLength:0,
+	   	TransferEncoding:[]string(nil), Close:false, Host:"127.0.0.1:8080",
+	   	Form:url.Values(nil), PostForm:url.Values(nil), MultipartForm:(*multipart.Form)(nil), Trailer:http.Header(nil),
+	   	RemoteAddr:"127.0.0.1:47746",
+	   	RequestURI:"/?param1=123&param2=test", TLS:(*tls.ConnectionState)(nil), Cancel:(<-chan struct {})(nil),
+	   	Response:(*http.Response)(nil), ctx:(*context.cancelCtx)(0xc00007e230)}
+	   root handler, r.Url: &url.URL{Scheme:"", Opaque:"", User:(*url.Userinfo)(nil), Host:"", Path:"/", RawPath:"",
+	   OmitHost:false, ForceQuery:false,
+	   RawQuery:"param1=123&param2=test", Fragment:"", RawFragment:""});
+	   <nil>(<nil>);
+
+	   2023-12-11T14:12:28.897Z: Low-level GET (http.DefaultClient.Do), responce.Body: string(root handler, incoming request r:
+	   	&http.Request{Method:"GET", URL:(*url.URL)(0xc0001801b0), Proto:"HTTP/1.1", ProtoMajor:1, ProtoMinor:1,
+	   	Header:http.Header{"Accept-Encoding":[]string{"gzip"}, "User-Agent":[]string{"coursera/golang"}},
+	   	Body:http.noBody{}, GetBody:(func() (io.ReadCloser, error))(nil), ContentLength:0,
+	   	TransferEncoding:[]string(nil), Close:false, Host:"127.0.0.1:8080", Form:url.Values(nil), PostForm:url.Values(nil),
+	   	MultipartForm:(*multipart.Form)(nil), Trailer:http.Header(nil), RemoteAddr:"127.0.0.1:47746",
+	   	RequestURI:"/?id=42", TLS:(*tls.ConnectionState)(nil), Cancel:(<-chan struct {})(nil),
+	   	Response:(*http.Response)(nil), ctx:(*context.cancelCtx)(0xc0001a2050)}
+	   root handler, r.Url: &url.URL{Scheme:"", Opaque:"", User:(*url.Userinfo)(nil), Host:"", Path:"/", RawPath:"", OmitHost:false, ForceQuery:false,
+	   RawQuery:"id=42", Fragment:"", RawFragment:""});
+	   <nil>(<nil>);
+
+	   2023-12-11T14:12:28.898Z: LowLow-level POST (http.Client.Do), responce.Body: string(`raw_body` handler, raw body {"id": 24, "user": "Bar"});
+	   <nil>(<nil>);
+
+	   2023-12-11T14:12:28.898Z: end of program.
+	*/
+}
+
+func inlineTemplate() {
+	show("program started ...")
+
+	type templateParamsStruct struct {
+		URL     string
+		Browser string
+	}
+
+	const EXAMPLE_TEMPLATE = `
+	Browser {{.Browser}}
+	
+	you at {{.URL}}
+	`
+
+	var rootPageHandler = func(w http.ResponseWriter, r *http.Request) {
+		templateParams := templateParamsStruct{
+			URL:     r.URL.String(),
+			Browser: r.UserAgent(),
+		}
+
+		templateRef := template.New(`example`)
+		templateRef, _ = templateRef.Parse(EXAMPLE_TEMPLATE)
+		templateRef.Execute(w, templateParams)
+	}
+
+	http.HandleFunc("/", rootPageHandler)
+
+	const addrStr = ":8080"
+	show("Starting server at: ", addrStr)
+	show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
+	err := http.ListenAndServe(addrStr, nil)
+	show("end of program. ", err)
+}
+
+func fileTemplate() {
+	show("program started ...")
+
+	type User struct {
+		ID     int
+		Name   string
+		Active bool
+	}
+
+	users := []User{
+		{1, "Foo", true},
+		{2, "<i>Bar</i>", false},
+		{3, "Baz", true},
+	}
+
+	templateRef := template.Must(template.ParseFiles("week04/static/users.html"))
+	/*
+		   <html>
+		   <body>
+		   	<h1>Users</h1>
+		   	{{range .Users}}
+		   		{{.ID}}
+				<b>{{.Name}}</b>
+		   		{{if .Active}}active{{end}}
+		   		<br />
+		   	{{end}}
+		   </body>
+		   </html>
+	*/
+
+	http.HandleFunc(
+		"/",
+		func(w http.ResponseWriter, r *http.Request) {
+			templateRef.Execute(w,
+				struct { // type
+					Users []User
+				}{ // data
+					users,
+				})
+		},
+	)
+
+	const addrStr = ":8080"
+	show("Starting server at: ", addrStr)
+	show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
+	err := http.ListenAndServe(addrStr, nil)
+	show("end of program. ", err)
+}
+
+func methodCallFromTemplate() {
+	show("program started ...")
+
+	users := []User_Template{
+		{1, "Foo", true},
+		{2, "Bar", false},
+		{3, "Baz", true},
+	}
+
+	templateRef, err := template.New("method.html").ParseFiles("week04/static/method.html")
+	if err != nil {
+		panic(err)
+	}
+
+	http.HandleFunc(
+		"/",
+		func(w http.ResponseWriter, r *http.Request) {
+			if err := templateRef.ExecuteTemplate(
+				w,
+				"method.html", // name of the file, always
+				struct {
+					Users []User_Template
+				}{
+					users,
+				},
+			); err != nil {
+				panic(err)
+			}
+		},
+	)
+
+	const addrStr = ":8080"
+	show("Starting server at: ", addrStr)
+	show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
+	err = http.ListenAndServe(addrStr, nil)
+	show("end of program. ", err)
+}
+
+func funcCallFromTemplate() {
+	show("program started ...")
+
+	type User struct {
+		ID     int
+		Name   string
+		Active bool
+	}
+
+	var IsUserOdd = func(user *User) bool {
+		// function to call from template
+		return (user.ID % 2) != 0
+	}
+
+	// register functions
+	templateFuncs := template.FuncMap{
+		"OddUser": IsUserOdd,
+	}
+
+	// add funcs before parsing
+	templateRef, err := template.New("func.html").Funcs(templateFuncs).ParseFiles("week04/static/func.html")
+	if err != nil {
+		panic(err)
+	}
+
+	users := []User{
+		{1, "Foo", true},
+		{2, "Bar", false},
+		{3, "Baz", true},
+	}
+
+	http.HandleFunc(
+		"/",
+		func(w http.ResponseWriter, r *http.Request) {
+			if err := templateRef.ExecuteTemplate(w, "func.html",
+				struct {
+					Users []User
+				}{
+					users,
+				}); err != nil {
+				panic(err)
+			}
+		},
+	)
+
+	const addrStr = ":8080"
+	show("Starting server at: ", addrStr)
+	show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
+	err = http.ListenAndServe(addrStr, nil)
+	show("end of program. ", err)
+}
+
 func main() {
 	// net_listen()
 	// httpDemo()
@@ -527,12 +873,12 @@ func main() {
 	// cookiesDemo()
 	// headersDemo()
 	// staticServeDemo()
-	file_uploadDemo()
-}
-
-func demoTemplate() {
-	show("program started ...")
-	show("end of program.")
+	// file_uploadDemo()
+	// requestDemo()
+	// inlineTemplate()
+	// fileTemplate()
+	// methodCallFromTemplate()
+	funcCallFromTemplate()
 }
 
 func show(msg string, xs ...any) {
