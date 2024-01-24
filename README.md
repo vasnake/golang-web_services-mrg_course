@@ -1,7 +1,9 @@
 # Разработка веб-сервисов на Go
 
-[Go course, MRG, Романов Василий](https://github.com/vasnake/golang-web_services-mrg_course/blob/main/README.md)
+[Разработка веб-сервисов на Golang, Василий Романов, stepik](https://stepik.org/187490)
+Этот курс был создан в 2017 году на основе внедрения языка Go в Почту Mail.ru
 
+3 части, 12 недель
 - [part1](part1.md)
 - [part2](part2.md)
 - [part3](part3.md)
