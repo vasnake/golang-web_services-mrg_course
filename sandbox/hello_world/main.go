@@ -9,6 +9,13 @@
 // edit main.go
 // gofmt -w main.go
 // go run main.go
+/*
+go run hello_world
+OUT: Hello World! Yours truly, string(Gofer)
+ERR: Answer is, int(42)
+OUT: /tmp/go-build2808105547/b001/exe/hello_world
+ERR: Argument, int(0), string(/tmp/go-build2808105547/b001/exe/hello_world)
+*/
 
 // Check stdout, stderr descriptors:
 // GOOS=linux GOARCH=amd64 go build -o hello_world-amd64-linux main.go

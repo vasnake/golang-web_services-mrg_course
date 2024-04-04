@@ -1,21 +1,49 @@
-# Разработка веб-сервисов на Go. Часть 1
+# Разработка веб-сервисов на Golang (Go). Часть 1
 
 [Go course, MRG, Романов Василий](README.md)
-[Разработка веб-сервисов на Go, Часть 1](https://study.vk.team/learning/play/671)
+[Разработка веб-сервисов на Golang (Go), Василий Романов, stepik](https://stepik.org/187490)
 
-- week 1, Введение в Go
-- week 2, Асинхронная работа
-- week 3, Работа с динамическими данными и производительность
-- week 4, Основы HTTP
+Неделя 1 - основы языка
+- 1.1 Правила, чат поддержки, код к лекциям и домашние задания
+- 1.2 Начало работы 
+- 1.3 Основы языка 
+- 1.4 Функции 
+- 1.5 Структуры и методы 
+- 1.6 Интерфейсы 
+- 1.7 Практический пример - программа уникализации с тестами 
+- 1.8 Задание 1 - программа вывода дерева файлов
+
+Неделя 2 - асинхронная работа
+- 2.1 Методы обработки запросов 
+- 2.2 Горутины и каналы 
+- 2.3 Инструменты для многопроцессорного программирование 
+- 2.4 Состояние гонки 
+- 2.5 Задание 2 - асинхроннй пайплайн
+
+Неделя 3 - json и бенчмарки
+- 3.1 JSON 
+- 3.2 Работа с динамическими данными 
+- 3.3 Бенчмарки и производительность 
+- 3.4 Задание 3 - оптимизация кода
+
+Неделя 4 - основы работы с HTTP
+- 4.1 Слушаем сетевое соединение 
+- 4.2 Обработка HTTP-запросов 
+- 4.3 Шаблонизация 
+- 4.4 Профилирование веба 
+- 4.5 Телеграм бот 
+- 4.6 Задание 4 - тестовое покрытие для сервиса поиска по XML
 
 ## part 1, week 1
 
-Введение в Go. [Код, домашки, литература](week_01/materials.zip)
+Основы языка, введение в Go. [Код, домашки, литература](./handouts\golang_web_services_2023-12-28.zip)
 
 Зачем нужен еще один язык программирования?
+
 Go-team (backend development) хотела язык C/C++ но без их недостатков, плюс эффективная утилизация многопроцессорных систем.
-Эффективность (работы программеров в Гугл): компиляции, выполнения, разработки. Зависимости, рантайм, garbage-collection.
-Утилизация многопроцессорных систем (легкие потоки, асинхронность, CSP);
+Ключевые части проекта Go: зависимости, рантайм, garbage-collection, модель конкурентности (асинхронности).
+Эффективность (работы программеров в Гугл): компиляции, выполнения, разработки.
+Утилизация многопроцессорных систем через простой интерфейс: каналы и горутины (легкие потоки, асинхронность, CSP).
 Простой и понятный язык, читабельный, с четким стилем.
 Простая и быстрая сборка. Сборка в статический бинарник, решение проблем dll-hell.
 
@@ -44,7 +72,7 @@ GOMOD - путь к файлу `go.mod`, руками лучше не трога
 
 Чтобы vscode заставить работать с golps и модулями, надо понимать:
 - Что такое и как работать с: `vscode workspace`, `workspace root dirs`, `Multi-root Workspaces`.
-- Аппа состоит из модулей, модули содержат пакеты, пакеты содержат файлы `.go`, [details](https://go.dev/doc/modules/layout)
+- Аппа Go состоит из модулей, модули содержат пакеты, пакеты содержат файлы `.go`, [details](https://go.dev/doc/modules/layout)
 - Минимальный набор файлов для проекта с одной аппой из одного модуля: `prj/go.work`, `prj/app/go.mod`, `prj/app/main.go`.
 - Команды для генерации такого бойлерплейта
 ```s
@@ -89,8 +117,11 @@ $ go run ./hello
 ```
 workspaces.
 
-[snb/hello_world](./sandbox/hello_world/main.go):
-В общем, мои грабли оказались таковы: в vscode у меня воркспейс был из одной рут-директории `desktop`,
+- [run](run.sh) `$ GO_APP_SELECTOR=hello_world gr`
+- Код из лекции [w01/hello_world](week_01/hello_world.go)
+- Моя переработка кода [snb/hello_world](./sandbox/hello_world/main.go)
+
+В общем, мои грабли (настройки vscode+gopls) оказались таковы: в vscode у меня воркспейс был из одной рут-директории `desktop`,
 создание проекта и модуля в `desktop/sandbox/hello_world` привело к ругани gopls.
 Пришлось перенести сэндбокс в дерево вне `desktop` и подключить этот сэндбокс к vscode воркспейс как отдельный корень.
 После чего gopls всосал `go.work` в корне сэндбокс и оттуда прочухал модуль `hello_world`.
@@ -112,13 +143,9 @@ go vet -stringintconv=false ./spec
 }
 ```
 
-- https://play.golang.com/
-- [run](run.sh)
-- [w01/hello_world](week_01/hello_world.go)
-
 Используй `camelCase` для имён. Публичные (экспортируемые) обьекты называй с большой буквы: `Println`.
 
-Файл с кодом содержит:
+Файл с кодом программы содержит текст:
 - `package main`: декларация пакета, в котором расположен код файла. Название `main` означает, что это основной пакет программы,
 в котором расположена основная функция программы.
 - `func main() {...}`: декларация основной функции пакета. Функция будет выполнена при старте программы.
@@ -151,15 +178,18 @@ go vet -stringintconv=false spec
 gofmt -w spec
 go run spec
 ```
-[spec playground](./sandbox/spec/main.go)
+`GO_APP_SELECTOR=spec gr` [spec playground](./sandbox/spec/main.go)
 
-Пакет: имя, нэймспейс для группировки: констант, типов, переменных, функций. Один или несколько файлов.
-Идентификатор может быть "экспортирован" из пакета, если имя начинается с Большой Буквы.
-Один пакет = одна директория (по имени пакета).
+Отдельные моменты из спеки, вызвавшие особый интерес:
 
-Модуль: коллекция пакетов, сопровождаемая файлом `go.mod`.
+> general-purpose language designed with systems programming in mind.
+It is strongly typed and garbage-collected and has explicit support for concurrent programming.
 
-> general-purpose language designed with systems programming in mind. It is strongly typed and garbage-collected and has explicit support for concurrent programming.
+Пакет: имя, нэймспейс для группировки, средство изоляции: констант, типов, переменных, функций.
+Пакет состоит из: один или несколько файлов, в одной директории (по имени пакета).
+Приватные и публичные элементы пакета: идентификатор может быть "экспортирован" из пакета, если имя начинается с Большой Буквы.
+
+Модуль: коллекция пакетов, сопровождаемая файлом `go.mod`. Средство дистрибуции кода, см."зависимости".
 
 > Programs are constructed from packages, whose properties allow efficient management of dependencies.
 
@@ -205,9 +235,11 @@ Variables of `interface` type also have a distinct dynamic type, which is the (n
 interface value будет `(SomeType, nil)` и это `!= nil`. Ибо `nil: (nil, nil)`.
 [details](https://go.dev/play/p/CRZ_caKYCBR).
 
-Строки: последовательность символов (рун), Unicode code-points. Длина строки в рунах != длине строки в байтах.
+Строки: иммутабельная последовательность байт, которая интерпретируется как:
+последовательность символов (рун), Unicode code-points. Длина строки в рунах != длине строки в байтах.
 Если надо работать с коллекцией байт или рун, то надо явно привести тип (`[]rune(str)` or `[]byte(str)`).
 Такое приведение типа создает копию данных, где иммутабельность уже не соблюдается.
+ЧСХ: длина в байтах, доступ по индексу к байту, итерирование `range str` дает руны (кушайте, не обляпайтесь).
 > A string value is a sequence of bytes. The number of bytes is called the length of the string ...
 Strings are immutable
 It is illegal to take the address of a string's byte
@@ -220,14 +252,14 @@ An untyped constant has a default type
 > Numeric types: uint8..64, int8..64, float32..64, complex64..128, byte (alias uint8), rune (alias uint32).
 Predeclared integer types with implementation-specific sizes: uint, int, uintptr.
 
-Array: коллекция элементов одного типа, массивы разных размеров это разные типы.
+Array: коллекция элементов одного типа; массивы разных размеров это разные типы.
 Определение типа массива не может быть рекурсивным.
 > The length is part of the array's type
 An array type T may not have an element of type T, or of a type containing T as a component
 
-Slice: можно сказать, что слайс это view на array с данными.
+Slice: можно сказать, что слайс это view на array элементов.
 У слайса есть переменные длина и капасити.
-Слайс разделяет "хранилище" (массив) с другими слайсами, они все смотрят на один и тот-же кусок памяти.
+Слайс share "хранилище" (массив) с другими слайсами, они все смотрят на один и тот-же кусок памяти.
 
 Struct: набор элементов (полей) структуры.
 Может содержать embedded поля, promoted поля. Нельзя определять поля рекурсивно.
@@ -255,13 +287,16 @@ Map type: не-упорядоченная коллекция элементов,
 > Note that the `zero value` for a `slice` or `map` type is not the same as an `initialized but empty` value of the same type
 
 Channael type: средство коммуникации (между горутинами), обмен сообщениями (элементами) определенного типа. FIFO queue.
-Канал может быть буферизован, это не отражается на его типе. Небуферизованный канал работает только если приемщик и отправитель оба готовы.
+Канал может быть буферизован, это не отражается на его типе.
+Небуферизованный канал работает только если приемщик и отправитель оба готовы.
 Т.е. операция с каналом может быть блокирующей, если операция не может быть поддержана буфером!
 Канал на отправку можно (нужно) закрывать вызовом `close`, что маркирует его как "отправок более не будет".
 > A channel may be constrained only to send or only to receive by assignment or explicit conversion.
 ... The `<-` operator associates with the leftmost chan possible
 
-В целом, каналы обладают сложным протоколом: опциональная буферизация, закрытие канала, (не)блокирующие операции, паника и zero-значения ... WTF!
+В целом, операции с каналами обладают сложным протоколом:
+опциональная буферизация, закрытие канала, (не)блокирующие операции, паника и zero-значения ...
+Простой язык, говорили они, WTF!
 
 Type parameters:
 > comparing operands of type parameter type may panic at run-time
@@ -289,15 +324,15 @@ Function `f := func(xs ...int){}` could be called as `var ys = []int{3, 7}; f(ys
 Generic functions (types): it's like templates, instantiation creates a new non-generic function/type.
 
 > Arithmetic operators ... yield a result of the same type as the first operand
-но это не так для Constant Expressions!
+Но это не так для Constant Expressions!
 
 Floating-point operators:
 > An implementation may combine multiple floating-point operations into a single fused operation
 
 Comparison operators:
 > Two string values are compared lexically byte-wise
-Two channel values are equal if they were created by the same call to `make`
-Slice, map, and function types are not comparable
+Two channel values are equal if they were created by the same call to `make`.
+Slice, map, and function types are not comparable.
 Boolean, numeric, string, pointer, and channel types are strictly comparable
 
 Receive operator:
@@ -310,6 +345,7 @@ conversions only change the type but not the representation of x (not applicable
 there is no indication of overflow (int) ...
 the conversion succeeds (float) but the result value is implementation-dependent ...
 
+Забудьте про адресную арифметику:
 > There is no linguistic mechanism to convert between pointers and integers. 
 The package `unsafe` implements this functionality under restricted circumstances
 
@@ -346,7 +382,7 @@ Continue statements:
 Если есть label, то метка указывает блок где надо начать следующую итерацию. Это НЕ goto!
 
 Fallthrough statements:
-Противоположность `break` в традиционном `switch`. Чтобы провалиться дальше надо явно написать `Fallthrough`.
+Противоположность `break` в традиционном `switch`. Чтобы провалиться надо явно написать `Fallthrough`.
 
 Defer statements:
 Типа деструктора (finally) для функции. Вызов блока перед возвращением из функции.
@@ -356,14 +392,13 @@ Built-in functions:
 > The built-in functions do not have standard Go types, so they can only appear in call expressions;
 they cannot be used as function values
 
-`append`:
-добавляет элементы в слайс, элементы-слайса в слайс, байты-строки в слайс.
+`append`: добавляет элементы в слайс, элементы-слайса в слайс, байты-строки в слайс.
 
 `copy`: копирует элементы слайса, байты строки.
 
 `clear`: слайс - забивает zero-значениями по индексам 0..len; map - удаляет пары. (C - consistensy)
 
-`close(channel)`: 
+`close(channel)`:
 > Closing a receive-only channel is an error.
 Receive from closed ch - non-blocking zero value.
 Other ops - panic. (C - consistency)
@@ -377,14 +412,15 @@ Other ops - panic. (C - consistency)
 `print`, `println`: наличие этих функций не гарантировано.
 
 Bootstrapping:
-package `init` function. 
+package `init` function.
 > Multiple such functions may be defined per package, even within a single source file
 
 unsafe: адресная арифметика, размеры, выравнивание структур, etc. Не надо, но если очень хочется, то можно.
 
 Size and alignment:
 > A struct or array type has size zero if it contains no fields (or elements, respectively) that have a size greater than zero.
-Two distinct zero-size variables may have the same address in memory
+Two distinct zero-size variables may have the same address in memory.
+Отсюда вытекает трюк с коллекцией охулиарда пустых структур.
 
 #### go.mod
 

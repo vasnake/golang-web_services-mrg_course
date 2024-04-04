@@ -110,8 +110,8 @@ go_run_sandbox() {
     pushd ${PRJ_DIR}/sandbox
 
     gofmt -w $module || exit
-    go vet $module
-    # go vet -stringintconv=false $module
+    # go vet $module
+    go vet -stringintconv=false $module
 
     # go run -race $module
     go run $module
