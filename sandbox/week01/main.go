@@ -1,4 +1,4 @@
-package main
+package main // week 1
 
 import (
 	"bufio"
@@ -44,7 +44,7 @@ func vars_1() {
 }
 
 func vars_2() {
-	var platformInt int = 1          // platform dependent
+	var platformInt int = 1          // platform dependent size
 	var autoInt = 2                  // compiler decision, should be platform int
 	var bigInt int64 = (1 << 63) - 1 // you can select from int8 .. int64
 	var uInt uint = 1 << 63          // unsigned, same as int
@@ -91,8 +91,8 @@ func stringsDemo() {
 
 	// string length
 	byteLen := len(utfStr)
-	numSymbols := utf8.RuneCountInString(utfStr)
-	fmt.Println("string len: ", byteLen, numSymbols)
+	runeLen := utf8.RuneCountInString(utfStr)
+	fmt.Println("string len: ", byteLen, runeLen)
 	// string len:  26 13
 
 	// slice, view
@@ -144,7 +144,7 @@ func constDemo() {
 }
 
 func typesDemo() {
-	type UserID int // not int type, UserID type, incompatible
+	type UserID int // not int type, UserID type based on int, incompatible
 
 	idx := 1
 	var uid UserID = 42
@@ -156,7 +156,7 @@ func typesDemo() {
 }
 
 func pointersDemo() {
-	// pointers: just references, not really pointers (can't do pointers aryphmetic, see `unsafe`)
+	// pointers: just references, not really pointers (can't do pointers aryphmetic, see `unsafe` package)
 
 	a := 2
 	b := &a // b ref to a
@@ -1036,7 +1036,7 @@ func uniqueFuncTestable() {
 }
 
 func main() {
-	// vars_1()
+	vars_1()
 	// vars_2()
 	// stringsDemo()
 	// constDemo()
@@ -1061,5 +1061,5 @@ func main() {
 	// interfaceEmpty()
 	// interfaceEmbed()
 	// uniqueProgram()
-	uniqueFuncTestable()
+	// uniqueFuncTestable()
 }

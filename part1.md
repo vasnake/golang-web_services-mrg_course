@@ -427,6 +427,7 @@ Two distinct zero-size variables may have the same address in memory.
 https://go.dev/ref/mod#glossary
 
 A `module` is a collection of packages that are released, versioned, and distributed together
+Модуль: про дистрибуцию (пакет: про изоляцию).
 
 A `module` is identified by a `module path`, which is declared in a `go.mod` file, together with information about the module’s dependencies
 
@@ -434,18 +435,22 @@ The `module root directory` is the directory that contains the `go.mod` file
 
 The `main module` is the module containing the directory where the `go` command is invoked
 
-A `module path` is the canonical name for a module, declared with the module directive in the module’s `go.mod` file. A module’s path is the prefix for `package paths` within the module
+A `module path` is the canonical name for a module, declared with the module directive in the module’s `go.mod` file.
+A module’s path is the prefix for `package paths` within the module
 
 Each `package` within a `module` is a collection of source files in the same directory that are compiled together.
 A `package path` is the `module path` joined with the subdirectory containing the package
 
-Typically, a `module path` consists of a repository root path, a directory within the repository (usually empty), and a major version suffix (only for major version 2 or higher)
+Typically, a `module path` consists of a repository root path, a directory within the repository (usually empty), and a major version suffix (only for `major version` 2 or higher)
 
-If the module is released at major version 2 or higher, the `module path` must end with a `major version suffix` like `/v2`
+If the module is released at `major version` 2 or higher, the `module path` must end with a `major version suffix` like `/v2`
 
-A `version` identifies an immutable snapshot of a module, which may be either a `release` or a `pre-release`. Each version starts with the letter `v`, followed by a `semantic version` https://semver.org/spec/v2.0.0.html
+A `version` identifies an immutable snapshot of a module, which may be either a `release` or a `pre-release`.
+Each version starts with the letter `v`, followed by a `semantic version` https://semver.org/spec/v2.0.0.html
 
-The `patch version` may be followed by an optional pre-release string starting with a `hyphen`. The pre-release string or patch version may be followed by a `build metadata` string starting with a `plus`. For example, `v0.0.0`, `v1.12.134`, `v8.0.5-pre`, and `v2.0.9+meta` are valid versions.
+The `patch version` may be followed by an optional pre-release string starting with a `hyphen`.
+The pre-release string or patch version may be followed by a `build metadata` string starting with a `plus`.
+For example, `v0.0.0`, `v1.12.134`, `v8.0.5-pre`, and `v2.0.9+meta` are valid versions.
 
 A version is considered `unstable` if its major version is `0` or it has a `pre-release suffix`
 Unstable versions are not subject to compatibility requirements
@@ -454,22 +459,28 @@ A `pseudo-version` is a specially formatted `pre-release` version that encodes i
 
 A module may be checked out at a specific `branch`, `tag`, or `revision` using a `version query`. `go get example.com/mod@master`
 
-Module versions are distributed as `.zip files`. There is rarely any need to interact directly with these files, since the `go` command creates, downloads, and extracts them automatically 
+Module versions are distributed as `.zip files`.
+There is rarely any need to interact directly with these files, since the `go` command creates, downloads, and extracts them automatically 
 
-The `module cache` is the directory where the `go` command stores downloaded module files. The module cache is distinct from the `build cache`, which contains compiled packages and other build artifacts
-The default location of the module cache is `$GOPATH/pkg/mod`. To use a different location, set the `GOMODCACHE` environment variable.
+The `module cache` is the directory where the `go` command stores downloaded module files.
+The module cache is distinct from the `build cache`, which contains compiled packages and other build artifacts
+The default location of the module cache is `$GOPATH/pkg/mod`.
+To use a different location, set the `GOMODCACHE` environment variable.
 
 A `workspace` is a collection of modules on disk that are used as the `main modules` when running `minimal version selection` (`MVS`)
 Go uses an algorithm called `Minimal version selection` (MVS) to select a set of module versions to use when building packages
 `MVS` operates on a directed graph of modules, specified with `go.mod` files
 `MVS` starts at the `main modules` (special vertices in the graph that have no version) and traverses the graph
+Т.е. воркспейс содержит набор вершин графа зависимостей.
 
 Most `go` commands may run in `Module-aware` mode or `GOPATH` mode
 If `GO111MODULE`=off, the go command ignores `go.mod` files and runs in `GOPATH` mode
 
-When using modules, the `go` command typically satisfies dependencies by downloading modules from their sources into the `module cache`, then loading packages from those downloaded copies
+When using modules, the `go` command typically satisfies dependencies by
+downloading modules from their sources into the `module cache`, then loading packages from those downloaded copies
 
-`Vendoring` may be used to allow interoperation with older versions of Go, or to ensure that all files used for a `build` are `stored` in a single file tree.
+`Vendoring` may be used to allow interoperation with older versions of Go, or
+to ensure that all files used for a `build` are `stored` in a single file tree.
 
 The `go mod vendor` command constructs a directory named `vendor` in the `main module’s root directory` containing copies of all packages needed
 
@@ -496,7 +507,7 @@ go vet week01
 gofmt -w week01
 go run week01
 ```
-[week 1 playground](./sandbox/week01/main.go)
+[week 1 playground](./sandbox/week01/main.go) `GO_APP_SELECTOR=week01 gr`
 
 `var name type` создает переменную со значением "по умолчанию";
 считается достижением, что не бывает неопределенных значений, всегда память (выделенная под переменную) инициализируется.
@@ -531,12 +542,14 @@ The simplification is significant
 
 Строки immutable.
 
-Длина строки считается в байтах. Для подсчета в символах используй `utf8.RuneCountInString(someStr)`.
+Длина строки считается в байтах, индексируется (доступ) по байтам.
+Для подсчета в символах используй `utf8.RuneCountInString(someStr)`.
+Итерация range по рунам.
 Соответственно, срезы тоже в байтах.
 Строки можно легко конвертировать в байты и байты в строки.
 
 Константы `const name = value`.
-Блоки констант.
+Блоки констант в скобках `( ... )`.
 Опредение через `iota`, автоинкремент, всё сложно.
 Нетипизированные константы, тип присваивается при записи константы в переменную. Вроде макроса получается.
 
@@ -545,8 +558,8 @@ The simplification is significant
 
 Нет адресной арифметики, но есть ссылки, reference. Полезно для передачи структур без копирования.
 - `b := &a` получение ссылки.
-- `*b = 42` запись значения по ссылке.
-- `c := new(int)` создание ссылки на безымянную переменную.
+- `*b = 42` запись значения в переменную по ссылке.
+- `c := new(int)` создание именованной ссылки на безымянную переменную, инициализация нулевыми значениями.
 
 ### Переменные, составные типы данных
 
@@ -556,7 +569,6 @@ The simplification is significant
 - [map](week_01/map.go)
 
 `var arr3 [3]int` размерность массива входит в определение типа переменной, массивы разных размерностей не совместимы по типам.
-
 Для определения размера массива можно использовать константы, но нельзя переменные.
 
 `arr3 := [...]int{1, 2, 3}` Размер массива можно не задавать при явной инициализации.
@@ -569,34 +581,40 @@ The simplification is significant
 - `var buf []int` создание пустого слайса без инициализации, nil
 - `buf := []int{} // len:0, cap:0` создание пустого с инициализацией
 - `buf := make([]int, 5, 10) // len:5, cap:10` срез это конструкция над массивом, у среза есть длина и емкость.
+При длине более 0, элементы инициализируются нулевым значением типа элемента.
 
 - `buf = append(buf, 9, 10) // len:2, cap:2` буфер может расти, при исчерпании емкости буфер пересоздается с удвоенной емкостью.
 - `buf = append(buf, otherBuf...)` при добавлении другого буфера, его надо "распаковать".
 
 Слайсы могут работать "по ссылке", оперируюя значениями в одном и том-же буфере.
 То есть, если явно не выделять память под слайс (или неявно, через append), то работа идёт в одном и том-же буфере.
+Т.е. срез это view на нижелижащий массив, который может быть пересоздан при операциях со слайсом.
+Т.е. рассчитывать на то, что производные слайсы ссылаются на один буфер (в общем случае) - нельзя.
 
 - `numCopied = copy(emptyBuf, buf)` копирование элементов в другой буфер, внутри проверка на выход за границы.
+Копируется наименьшее из двух `len` колич.элементов.
 - `copy(buf[1:3], []int{5, 6})` копирование под-диапазона.
 
 Мапки `var user map[string]string`, можно, как и слайс, создать с нужной ёмкостью, через `make`.
 - `mName, mNameExists := user["middleName"]` правильный способ получения значения из мапки, ибо по умолчанию, несуществующее значение = zero value.
-- `delete(user, "lastName")` удаление записи.
+- `delete(user, "lastName")` удаление записи из мапки.
+
+Мапки реализованы через бакеты, бакеты могут пересоздаваться, поэтому любые референсы на значения невозможны.
 
 ### Управляющие конструкции
 
 - [control](week_01/control.go)
 - [loop](week_01/loop.go)
 
-- `if boolVal { ... }` только тип bool.
-- `if v, exists := myMap["name"]; exists { ... }` условие с блоком инициализации
+- `if boolVal { ... }` только тип bool допустим внутри иф.
+- `if v, exists := myMap["name"]; exists { ... }` условие с блоком инициализации, здесь этот блок = `v, exists := myMap["name"];`
 - `switch len(myMap) { 	case 0, 1: ... }` по умолчанию делает break при срабатывании условия
 - `switch ... case k == "name" && v == "Bender": ...` сложные условия в switch
 - `switch ... break` оператор выхода, можно выходить через несколько уровней, по метке
 
-Циклы определяются ключевым словом `for`, есть разные формы.
+Циклы определяются ключевым словом `for`, есть разные формы циклов.
 
-`for pos, symb := range myStr { ... }` итерирование строки делается по символам, не байтам. (C - consistency)
+`for bytePosition, symb := range myStr { ... }` итерирование строки делается по символам (рунам), не байтам. (C - consistency)
 
 ### Основы функций
 
@@ -607,8 +625,7 @@ The simplification is significant
 
 `func namedWithError(condition bool) (res int, err error) { ... }` осторожнее со значениями "по умолчанию".
 
-`func sum(in ...int) int { ... }` кортежи параметров и кортежи возвращаемых значений -- это нормально.
-
+`func sum(in ...int) int { ... }` списки параметров и кортежи возвращаемых значений -- это нормально.
 Переменное количество входных параметров базируется на представлении параметров как слайса.
 
 Синтаксис объявления функции работает (полноценно) только на уровне пакета.
@@ -621,6 +638,8 @@ The simplification is significant
 
 `printer := func(msg string) { ... }` анонимная функция как значение переменной.
 
+Замыкание, пример функции-фабрики, которая возвращает функцию печати-с-префиксом, где префикс берется из замыкания.
+
 ### Отложенное выполнение и обработка паники
 
 - [defer](week_01/defer.go)
@@ -630,7 +649,7 @@ The simplification is significant
 - Несколько `defer` складываются в стек (FILO).
 - Аргументы отложенных функций вычисляются НЕ отложенно а сразу. Чтобы этого избежать, такие аргументы заворачиваются в анонимную функцию.
 
-`defer` полезен при восстановлении из паники.
+`defer` полезен при восстановлении из паники ибо вызывается даже при возникновении паники.
 Если внутри `defer` вызвать `recover()`, то программа не вывалится в панику а продолжит работать штатно.
 
 ### Основы работы со структурами
@@ -661,6 +680,9 @@ The simplification is significant
 
 При композиции структур, внешняя структура получает все методы встроенных структур.
 
+Можно смотреть на методы как на обычные функции, где добавлен нулевой параметр, как "ресивер" - 
+копия объекта или референс на существующий объект.
+
 ### Пакеты и область видимости
 
 - [dir.txt](week_01/dir.txt)
@@ -680,10 +702,10 @@ The simplification is significant
 > As of Go v1.13, by default, go modules are used.
 > Therefore, you need to tell explicitly if you don't want to do this. `GO111MODULE=off go run main.go`
 
-GOPATH определяет корневую директорию, в которой будут под-директории системы `bin, pkg, src`.
+`GOPATH` определяет корневую директорию, в которой будут под-директории системы `bin, pkg, src`.
 
 Имя пакета это имя директории.
-Приватные поля определяются именованием с маленькой буквы, публичные поля -- с большой.
+Приватные поля (пакета) определяются именованием с маленькой буквы, публичные поля -- с большой.
 
 Доступ к приватным полям возможен только в коде пакета, где определено приватное поле.
 
@@ -697,32 +719,42 @@ GOPATH определяет корневую директорию, в котор
 - [many](week_01/many.go)
 - [cast](week_01/cast.go)
 
-- Интерфейс это тип с методами (и констрейнтами на core тип) `type Payer interface { Pay(int) error }`
-- Другой тип может содержать реализацию интерфейса `func (w *Wallet) Pay(amount int) error { ... }`
-- При вызове похер на конкретный тип, указываем интерфейс `func Buy(p Payer) {	err := p.Pay(10) }`
+- Интерфейс это тип `interface` с сигнатурами функций (и, возможно, констрейнтами на core тип) `type Payer interface { Pay(int) error }`
+- Некий тип может "содержать" реализацию интерфейса `func (w *Wallet) Pay(amount int) error { ... }`
+- При вызове метода нам похер на конкретный тип, указываем интерфейс `func Buy(p Payer) { err := p.Pay(10) }`
 
 Можно (нужно?) держать переменную (поле структуры) с типом нужного интерфейса `var p Payer; p = &Card{Balance: 100}`
 
 Можно кастовать тип от интерфейса обратно к конкретному типу, предварительно сматчив тип. И/Или сделать `type assertion`.
 
-Так реализуется полиморфизм. Добавил реализацию интерфейса в произвольный тип и радуйся.
+Так реализуется полиморфизм (версия ad-hoc polymorphism). Добавил реализацию интерфейса к произвольному типу и радуйся.
 
-Неясно, как, глядя на код, сразу сказать, кто реализует какой интерфейс и в каком объеме.
+Т.е. где-то объявляется интерфейс (набор методов); в других местах для нужных типов данных этот интерфейс реализуется.
+В другом месте пишется логика с использованием интерфейсов.
+В другом месте этот код используется, с передачей в него значений (переменных) нужного типа (поддерживающий интерфейс).
+
+Побочка: неясно, как глядя на код сразу сказать, кто реализует какой интерфейс и в каком объеме.
 
 ### Пустой интерфейс
 
 - [empty_1](week_01/empty_1.go)
 - [empty_2](week_01/empty_2.go)
 
-Пустой интерфейс (type, value) не накладывает ограничений. Использовать его можно только если ручками делать проверку/приведение типа:
+Пустой интерфейс, выглядит внутри как пара `(type, value)` не накладывает ограничений.
+Любое значение реализует пустой интерфейс. Синоним `any`.
+Использовать его можно только если ручками делать проверку/приведение типа:
 `func Buy(in interface{}) { if p, ok = in.(Payer) ...}`
 
-Рассказал на примере `fmt.Printf`, как аргумент типа "пустой интерфейс" может быть подерган за разные методы (опции форматирования определяют вызываемый метод).
+Рассказал на примере `fmt.Printf`, как аргумент типа "пустой интерфейс" может быть подерган за разные методы
+(опции форматирования определяют вызываемый метод).
+
+Короче: пустой интерфейс это `any`. Штука настолько мощная, насколько вредная.
 
 ### Композиция интерфейсов
 
 - [embed](week_01/embed.go)
 
+Композиция интерфейсов.
 Как и структуры, интерфесы могут быть составлены из других интерфейсов.
 При этом, как и структуры, охватывающий интерфейс включает методы вложенных интерфейсов.
 
@@ -732,16 +764,18 @@ GOPATH определяет корневую директорию, в котор
 - [data_map.txt](week_01/data_map.txt)
 
 Пример программы: получает на вход файл и выводит только уникальные строки из этого файла.
-Более точная спека: drop-duplicates.
+Более точная спека: print line with drop-duplicates.
 
 Два варианта: 
 - на мапке строка - уникальность; 
-- на предположении, что файл сортирован (check prev == current). Если обнаруживаем, что набор строк не сортирован - паника.
+- на предположении, что файл сортирован ascending (panic: if prev > current; dup: if prev == current)
+
+Демонстрация абстрагирования по входу и выходу, выделение кода в функцию, удобную для тестирования.
 
 ### Написание тестов для ПУ
 
 - [unique/unique](week_01/unique/unique.go)
-- [unique/unique_test](week_01/unique/unique_test.go)
+- [unique/unique_test](week_01/unique/unique_test.go) `GO_APP_SELECTOR=week01_test gr`
 
 Чтобы поддерживать тестирование, зависимости передаются в функцию как аргументы
 `func sortedInputUnique(input io.Reader, output io.Writer) error { ... }`
@@ -752,12 +786,20 @@ GOPATH определяет корневую директорию, в котор
 
 Тесты запускаются `go test -v ./unique`
 
+Демонстрация написания примитивных юнит-тестов.
+
 ### week 1 homework
 
+> Описание задания и локальные тесты вы можете найти в папке 99_hw в коде к соответствующей неделе.
+Задание предназначено для самостоятельного решения, материалов лекций достаточно для его выполнения. 
+Не надо ничего гуглить, уж тем более решения. Задача научиться приходить к решению, а не увидеть его.
+
 Дана готовая структура пакета `main`, реализующего поведение утилиты `tree`.
-Надо в пакет добавить реализацию функции, выполняющей обход дерева каталогов и выдающей строки для вывода пользователю.
+Надо в пакет добавить реализацию функции,
+выполняющей обход дерева каталогов и выдающей строки для вывода пользователю.
 - [homework materials](week_01/materials.zip/week_1/99_hw/tree/)
-- [actual homework project](./sandbox/week01_homework/tree//hw1.md)
+- `handouts\golang_web_services_2023-12-28.zip\1\99_hw\tree\readme.md`
+- [actual homework project](./sandbox/week01_homework/tree//hw1.md) `sandbox/week01_homework/tree/main.go`
 
 ```s
 pushd week01_homework/tree
@@ -772,7 +814,7 @@ go test -v tree
 go run tree . -f
 cd tree && docker build -t mailgo_hw1 .
 ```
-Реализовал два варианта: рекурсивный и нет (стек).
+`GO_APP_SELECTOR=week01_tree_test gr` Реализовал два варианта: рекурсивный и нет (стек).
 
 ## part 1, week 2
 

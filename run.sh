@@ -21,6 +21,22 @@ go_run() {
     esac
 }
 
+go_run_module() {
+    echo "####################################################################################################"
+    go run ${1}
+    exit_code=$?
+    echo "####################################################################################################"
+    return $exit_code
+}
+
+go_test_module() {
+    echo "####################################################################################################"
+    go test -v ${1}
+    exit_code=$?
+    echo "####################################################################################################"
+    return $exit_code
+}
+
 go_run_sandbox_week03_finder_test() {
     local module="finder"
     local exit_code=0
@@ -79,7 +95,8 @@ go_run_sandbox_week01_tree_test() {
     go run $module tree/testdata -f
     exit_code=$?
 
-    go test -v $module
+    # go test -v $module
+    go_test_module $module
     exit_code=$?
 
     cd $module
@@ -97,7 +114,8 @@ go_run_sandbox_test() {
     gofmt -w $module || exit
     go vet $module
 
-    go test -v $module
+    # go test -v $module
+    go_test_module $module
     exit_code=$?
 
     popd
@@ -114,7 +132,8 @@ go_run_sandbox() {
     go vet -stringintconv=false $module
 
     # go run -race $module
-    go run $module
+    # go run $module
+    go_run_module $module
     exit_code=$?
 
     # https://pkg.go.dev/cmd/go#hdr-Testing_flags

@@ -106,16 +106,17 @@ https://stepik.org/course/187490/syllabus
 
 Код ко всем лекциями можно скачать по следующей ссылке:
 https://stepik.org/media/attachments/lesson/1177827/golang_web_services_2023-12-28.zip
-
-[handouts\golang_web_services_2023-12-28.zip](./handouts\golang_web_services_2023-12-28.zip)
 - Данный код проверен на версии языка go 1.20
 - В папке каждой недели есть домашка, она находится в подпапке 99_hw
 - При работе с консолью пользуйтесь Bash
+
+Я уже скачал: [handouts\golang_web_services_2023-12-28.zip](./handouts\golang_web_services_2023-12-28.zip)
 
 У меня винда и WSL, поэтому я себе сделал такой раннер для кода:
 ```hs
 pushd /mnt/c/Users/${LOGNAME}/data/github/golang-web_services-mrg_course/sandbox
 alias gr='bash -vxe /mnt/c/Users/${LOGNAME}/data/github/golang-web_services-mrg_course/run.sh'
+# всё запускаемое можно найти в скрипте
 ```
 bash
 
@@ -163,3 +164,4 @@ Consequently, there are no constants denoting the IEEE-754 negative zero, infini
 - [Advanced Topics in Programming Languages: Concurrency/message passing Newsqueak](https://youtu.be/hB05UFqOtFA), prime sieve on channels
 - [3.5 Years, 500k Lines of Go (Part 1)][https://npf.io/2017/03/3.5yrs-500k-lines-of-go/] `return fmt.Errorf("While doing foo: %v", err.Error())`
 - The Go Playground https://go.dev/play/ or https://play.golang.com/
+- Practical Go: Real world advice for writing maintainable Go programs / Dave Cheney https://www.google.com/search?q=Practical+Go%3A+Real+world+advice+for+writing+maintainable+Go+programs+%2F+Dave+Cheney
