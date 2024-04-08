@@ -25,3 +25,19 @@ func Buy(p Payer) {
 	fmt.Printf("You paid with %T\n", p)
 
 }
+
+/*
+func main() {
+
+	myWallet := &Wallet{Cash: 100}
+	Buy(myWallet)
+
+	var myMoney Payer
+	myMoney = &Card{Balance: 100, Cardholder: "rvasily"}
+	Buy(myMoney)
+
+	myMoney = &ApplePay{Money: 9}
+	Buy(myMoney)
+}
+
+*/

@@ -399,13 +399,13 @@ Loop: // mark block of code
 		switch {
 		case k == "name" && v == "Bender":
 			println("breaking loop")
-			break Loop
+			break Loop // n.b. it's not goto
 		default:
 			println("k, v:", k, v)
 		}
 	}
 	// switch in loop, name Bender
-	// breaking loop
+	// breaking the loop
 }
 
 func loopDemo() {
@@ -526,8 +526,8 @@ func functionsDemo() {
 		return 42, nil
 	}
 
-	println("shut up compiler, I'm using thease functions: ", sqrt, sum3, namedReturn, withError, withErrorNamed)
-	// shut up compiler, I'm using thease functions:  0x4e1f40 0x4e1f48 0x4e1f50 0x4e1f58 0x4e1f60
+	println("shut up compiler, I'm using these functions: ", sqrt, sum3, namedReturn, withError, withErrorNamed)
+	// shut up compiler, I'm using these functions:  0x4e1f40 0x4e1f48 0x4e1f50 0x4e1f58 0x4e1f60
 
 	var sum = func(in ...int) (res int) {
 		fmt.Printf("in: %#v \n", in) // slice in: []int{1, 2, 3, 4}
@@ -647,7 +647,7 @@ func recoverDemo() {
 
 	// panic: program stop with stacktrace.
 	// panic .. recover: is not a try .. catch, don't use it this way.
-	// you should catch panic if your program is a demon of some sort, and it should continue processing another requests.
+	// you should catch panic if your program is a daemon of some sort, and it should continue processing another requests.
 
 	var panicButton = func() {
 		// catch panic event on exit and suppress it

@@ -12,6 +12,8 @@ import (
 )
 
 func goroutinesDemo() {
+	// run goroutinesNum tasks, each task execute iterationsNum steps/iterations.
+	// sequentially or in async/parallel (in gorutines)
 	const (
 		iterationsNum = 7
 		goroutinesNum = 5
@@ -43,14 +45,13 @@ func goroutinesDemo() {
 
 	for taskNum := 0; taskNum < goroutinesNum; taskNum++ {
 		// sequential calls, wait for each task
-		//doSomeWork(taskNum)
+		doSomeWork(taskNum)
 
 		// concurrent calls, no waiting here
-		go doSomeWork(taskNum)
+		// go doSomeWork(taskNum)
 	}
 
-	// wait for user
-	fmt.Scanln()
+	userInput("hit ENTER")
 }
 
 func chan_1() {
@@ -994,7 +995,7 @@ func atomic_2() {
 }
 
 func main() {
-	// goroutinesDemo()
+	goroutinesDemo()
 	// chan_1()
 	// chan_2()
 	// select_1()
@@ -1012,7 +1013,7 @@ func main() {
 	// race_1()
 	// race_2()
 	// atomic_1()
-	atomic_2()
+	// atomic_2()
 }
 
 func demoTemplate() {
@@ -1031,6 +1032,14 @@ func show(msg string, xs ...any) {
 		// line += fmt.Sprintf("%#v; ", x) // repr
 	}
 	fmt.Println(line)
+}
+
+func userInput(msg string) (res string, err error) {
+	show(msg)
+	if n, e := fmt.Scanln(&res); n != 1 || e != nil {
+		return "", e
+	}
+	return res, nil
 }
 
 // ts return current timestamp in RFC3339 with milliseconds

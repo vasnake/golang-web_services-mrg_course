@@ -11,3 +11,12 @@ func main() {
 	println("idx, uid: ", idx, uid)
 
 }
+
+/*
+	// даже если базовый тип одинаковый, разные типы несовместимы
+	// cannot use uid (type UserID) as type int64 in assignment
+	// myID := idx
+
+	myID := UserID(idx)
+	println(uid, myID)
+*/
