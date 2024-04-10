@@ -33,7 +33,8 @@ func ExecutePipeline(jobs ...job) {
 	var lastPipe Pipe = nil
 
 	for jobIdx, jobFunc := range jobs {
-		var inPipe Pipe = nil // current job input pipe, nil for the first job; prev. job output as current input for non-first jobs
+		var inPipe Pipe = nil // current job input pipe, nil for the first job;
+		// prev. job output set as current input for non-first jobs
 		if jobIdx > 0 {
 			inPipe = lastPipe
 		}

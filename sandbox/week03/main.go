@@ -16,8 +16,23 @@ import (
 	"time"
 )
 
+func main() {
+	// jsonDemo()
+	// struct_tags()
+	dynamicDemo()
+	// reflect_1()
+	// reflect_2()
+	// unpackDemo()
+	// unpack_testBench()
+	// json_testBench()
+	// string_testBench()
+	// sliceAppend_testBench()
+	// memPool_testBench()
+	// xml_textBench()
+}
+
 func jsonDemo() {
-	show("program started ...")
+	show("jsonDemo: program started ...")
 
 	type User struct {
 		ID       int
@@ -41,23 +56,23 @@ func jsonDemo() {
 
 	show("end of program.")
 	/*
-	   2023-12-04T10:57:16.672Z: program started ...
-	   2023-12-04T10:57:16.672Z: Decoded struct x from string s, (x, s)*main.User(&{42 rvasily }); string({"id": 42, "username": "rvasily", "phone": "123"});
-	   2023-12-04T10:57:16.672Z: Encoded struct x to string s, (x, s)*main.User(&{42 rvasily 987654321}); string({"ID":42,"Username":"rvasily"});
-	   2023-12-04T10:57:16.672Z: end of program.
+		2024-04-10T09:29:54.793Z: jsonDemo: program started ...
+		2024-04-10T09:29:54.793Z: Decoded struct x from string s, (x, s): *main.User(&{42 rvasily }); string({"id": 42, "username": "rvasily", "phone": "123"});
+		2024-04-10T09:29:54.793Z: Encoded struct x to string s, (x, s): *main.User(&{42 rvasily 987654321}); string({"ID":42,"Username":"rvasily"});
+		2024-04-10T09:29:54.793Z: end of program.
 	*/
 }
 
 func struct_tags() {
-	show("program started ...")
+	show("struct_tags: program started ...")
 
 	// The encoding of each struct field can be customized by the format string stored under the "json" key in the struct field's tag
 	// https://pkg.go.dev/encoding/json#Marshal
 	type User struct {
-		ID       int `json:"user_id,string"`
-		Username string
-		Address  string `json:",omitempty"`
-		Comnpany string `json:"-"`
+		ID       int    `json:"user_id,string"` // change name, encode as string
+		Username string // no customizations
+		Address  string `json:",omitempty"` // skip if empty
+		Comnpany string `json:"-"`          // skip
 	}
 
 	var u = &User{
@@ -69,26 +84,26 @@ func struct_tags() {
 
 	result, _ := json.Marshal(u)
 	show("Encoded struct x to string s, (x, s): ", u, string(result))
-	// {"user_id":"42","Username":"rvasily","Address":"test"}
 
 	show("end of program.")
 	/*
-	   2023-12-04T11:01:34.038Z: program started ...
-	   2023-12-04T11:01:34.038Z: Encoded struct x to string s, (x, s)*main.User(&{42 rvasily test Mail.Ru Group}); string({"user_id":"42","Username":"rvasily","Address":"test"});
-	   2023-12-04T11:01:34.038Z: end of program.
+		2024-04-10T09:52:52.991Z: struct_tags: program started ...
+		2024-04-10T09:52:52.991Z: Encoded struct x to string s, (x, s): *main.User(&{42 rvasily test Mail.Ru Group});
+			string({"user_id":"42","Username":"rvasily","Address":"test"});
+		2024-04-10T09:52:52.991Z: end of program.
 	*/
 }
 
 func dynamicDemo() {
-	show("program started ...")
+	show("dynamicDemo: program started ...")
 
 	var jsonStr = `[
 		{"id": 17, "username": "iivan", "phone": 0},
 		{"id": "17", "address": "none", "company": "Mail.ru"}
-	]` // list of map, N.B. mixed id data type
-
+	]` // list of maps/objects, N.B. mixed `id`` data type
 	var jsonBytes = []byte(jsonStr)
 
+	// decode bytes to slice of maps
 	var anyTypeValue interface{}
 	json.Unmarshal(jsonBytes, &anyTypeValue)
 	show("Decoded json x to an empty interface y, (x, y): ", jsonStr, anyTypeValue)
@@ -99,19 +114,22 @@ func dynamicDemo() {
 		"username": "rvasily",
 	}
 	anyTypeValue = universalMap // cast to an empty interface, just for fun
+
+	// encode map to string
 	result, _ := json.Marshal(anyTypeValue)
 	show("Encoded map x to json y, (x, y): ", anyTypeValue, string(result))
 	// string({"id":42,"username":"rvasily"});
 
 	show("end of program.")
 	/*
-	   2023-12-04T11:20:26.550Z: program started ...
-	   2023-12-04T11:20:26.550Z: Decoded json x to an empty interface y, (x, y): string([
-	                   {"id": 17, "username": "iivan", "phone": 0},
-	                   {"id": "17", "address": "none", "company": "Mail.ru"}
-	           ]); []interface {}([map[id:17 phone:0 username:iivan] map[address:none company:Mail.ru id:17]]);
-	   2023-12-04T11:20:26.550Z: Encoded map x to json y, (x, y): map[string]interface {}(map[id:42 username:rvasily]); string({"id":42,"username":"rvasily"});
-	   2023-12-04T11:20:26.550Z: end of program.
+		2024-04-10T10:01:43.244Z: dynamicDemo: program started ...
+		2024-04-10T10:01:43.244Z: Decoded json x to an empty interface y, (x, y): string([
+		                {"id": 17, "username": "iivan", "phone": 0},
+		                {"id": "17", "address": "none", "company": "Mail.ru"}
+		        ]); []interface {}([map[id:17 phone:0 username:iivan] map[address:none company:Mail.ru id:17]]);
+		2024-04-10T10:01:43.244Z: Encoded map x to json y, (x, y): map[string]interface {}(map[id:42 username:rvasily]);
+			string({"id":42,"username":"rvasily"});
+		2024-04-10T10:01:43.244Z: end of program.
 	*/
 }
 
@@ -527,26 +545,10 @@ BenchmarkXmlStream-8       21369             54730 ns/op           19208 B/op   
 	show("end of program.")
 }
 
-func main() {
-	// jsonDemo()
-	// struct_tags()
-	// dynamicDemo()
-	// reflect_1()
-	// reflect_2()
-	// unpackDemo()
-	// unpack_testBench()
-	// json_testBench()
-	// string_testBench()
-	// sliceAppend_testBench()
-	// memPool_testBench()
-	xml_textBench()
-
-	// var err = fmt.Errorf("While doing %s: %v", "main", "not implemented")
-	// panic(err)
-}
-
 func demoTemplate() {
 	show("program started ...")
+	// var err = fmt.Errorf("While doing %s: %v", "main", "not implemented")
+	// panic(err)
 	show("end of program.")
 }
 
@@ -559,6 +561,14 @@ func show(msg string, xs ...any) {
 		// line += fmt.Sprintf("%#v; ", x) // repr
 	}
 	fmt.Println(line)
+}
+
+func userInput(msg string) (res string, err error) {
+	show(msg)
+	if n, e := fmt.Scanln(&res); n != 1 || e != nil {
+		return "", e
+	}
+	return res, nil
 }
 
 // ts return current timestamp in RFC3339 with milliseconds

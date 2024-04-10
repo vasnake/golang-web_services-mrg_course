@@ -27,11 +27,11 @@ func main() {
 	// async_work()
 	// workerpool()
 	// waitgroupDemo()
-	ratelim()
+	// ratelim()
 	// race_1()
 	// race_2()
 	// atomic_1()
-	// atomic_2()
+	atomic_2()
 }
 
 func goroutinesDemo() {
@@ -887,7 +887,9 @@ func ratelim() {
 	const (
 		iterationsCount = 5
 		goroutinesCount = 4
-		quotaLimit      = 2
+		// play with this handles
+		quotaLimit            = 2
+		yieldOnEachNIteration = 3
 	)
 
 	var formatWork = func(workerNo, iterNo int) string {
@@ -900,25 +902,27 @@ func ratelim() {
 	}
 
 	var doWork = func(workerNo int, wg *sync.WaitGroup, quotaChan chan ZeroWidthMessage) {
-		defer wg.Done() // decrement workers counter
+		defer wg.Done() // decrement workers counter on exit
 
 		show("worker x, waiting for quota, x: ", workerNo)
 		quotaChan <- signal                // take slot; buffered chan, size of the buffer = number of concurrent tasks
-		defer func() { _ = <-quotaChan }() // free slot
+		defer func() { _ = <-quotaChan }() // release slot on exit
 
 		show("worker x, start working, x: ", workerNo)
 
 		for j := 0; j < iterationsCount; j++ {
 			fmt.Printf(formatWork(workerNo, j))
-			runtime.Gosched() // даём поработать другим горутинам
+			// даём поработать другим горутинам
+			time.Sleep(10 * time.Millisecond)
+			runtime.Gosched()
 
 			// share resources, don't be greedy: re-take slot
-			if (j+1)%2 == 0 {
+			if (j+1)%yieldOnEachNIteration == 0 {
 				show("worker x, releasing slot, x: ", workerNo)
-				_ = <-quotaChan // возвращаем слот
+				_ = <-quotaChan
 				time.Sleep(10 * time.Millisecond)
 				show("worker x, waiting for quota, x: ", workerNo)
-				quotaChan <- signal // ratelim.go, wait for quota
+				quotaChan <- signal
 			}
 		}
 
@@ -1003,8 +1007,13 @@ func ratelim() {
 
 func race_1() {
 	// go run -race week02 # program should fail
-	show("program started ...")
-	const workersCount = 33
+	show("race_1: program started ...")
+	const (
+		// sometimes race detected, sometimes not, heisenbug
+		workersCount    = 21
+		iterationsCount = 27
+		mulFactor       = 37
+	)
 
 	var counters = map[int]int{}
 
@@ -1017,9 +1026,9 @@ func race_1() {
 		go func(workerNo int) {
 			show("worker x started, x: ", workerNo)
 			defer wg.Done()
-			for j := 0; j < 55; j++ {
-				var key = workerNo*10 + j
-				// write to global map (not a good idea)
+			for j := 0; j < iterationsCount; j++ {
+				var key = workerNo*mulFactor + j // all keys are different
+				// write to global map (not a good idea to begin with)
 				counters[key]++
 			}
 		}(i)
@@ -1031,50 +1040,63 @@ func race_1() {
 
 	show("end of program.")
 	/*
-	   2023-11-27T13:51:34.536Z: program started ...
-	   2023-11-27T13:51:34.536Z: main, starting workers ...
-	   2023-11-27T13:51:34.536Z: main, wait for workers ...
-	   2023-11-27T13:51:34.536Z: worker x started, x: int(32);
-	   2023-11-27T13:51:34.536Z: worker x started, x: int(15);
-	   2023-11-27T13:51:34.536Z: worker x started, x: int(26);
-	   fatal error: concurrent map writes
+		2024-04-10T08:38:59.801Z: race_1: program started ...
+		2024-04-10T08:38:59.801Z: main, starting workers ...
+		2024-04-10T08:38:59.801Z: main, wait for workers ...
+		2024-04-10T08:38:59.801Z: worker x started, x: int(20);
+		2024-04-10T08:38:59.802Z: worker x started, x: int(9);
+		2024-04-10T08:38:59.802Z: worker x started, x: int(19);
+		2024-04-10T08:38:59.802Z: worker x started, x: int(0);
+		2024-04-10T08:38:59.802Z: worker x started, x: int(5);
+		fatal error: concurrent map writes
+
+		goroutine 23 [running]:
+		main.race_1.func1(0x5)
+		        sandbox/week02/main.go:1032 +0xcd
+		created by main.race_1 in goroutine 1
+		        sandbox/week02/main.go:1026 +0x85
+		...
 	*/
 }
 
 func race_2() {
-	show("program started ...")
+	show("rece_2: program started ...")
 
 	var counters = map[int]int{}
-	countersMutex := &sync.Mutex{}
+	countersMtx := &sync.Mutex{} // n.b.: ref
 	wg := &sync.WaitGroup{}
 	const workersCount = 33
 
 	wg.Add(workersCount)
 	for i := 0; i < workersCount; i++ {
 		// async
-		go func(counters map[int]int, workerNo int, mutex *sync.Mutex) {
+		go func(counters map[int]int, workerNo int, mtx *sync.Mutex) {
 			defer wg.Done()
 			for j := 0; j < 55; j++ {
 				// sequential write
-				mutex.Lock()
+				mtx.Lock()
 				counters[workerNo*10+j]++
-				mutex.Unlock()
+				mtx.Unlock()
 			}
-		}(counters, i, countersMutex)
+		}(counters, i, countersMtx)
 	}
 
 	wg.Wait()
-	show("result: ", counters)
+	{ // go run -race ... pill
+		countersMtx.Lock()
+		show("result: ", counters)
+		countersMtx.Unlock()
+	}
 
 	show("end of program.")
 }
 
 func atomic_1() {
-	show("program started ...")
+	show("atomic_1: program started ...")
 
-	var totalOperations int32 = 0
+	var totalOperations int32 = 0 // global counter
 	var inc = func() {
-		totalOperations++
+		totalOperations++ // not synchronized operation
 	}
 
 	var main = func() {
@@ -1097,14 +1119,15 @@ func atomic_1() {
 }
 
 func atomic_2() {
-	show("program started ...")
+	show("atomic_2: program started ...")
 
-	var totalOperations int32
-	atomicTotalOperations := new(atomic.Int32)
+	var totalOperations int32 = 0
+	atomicTotalOperations := new(atomic.Int32) // reference
+	atomicTotalOperations.Store(0)
 
-	var inc = func() {
-		atomic.AddInt32(&totalOperations, 1)
-		atomicTotalOperations.Add(1)
+	var inc = func() { // synchronized ops
+		atomic.AddInt32(&totalOperations, 1) // one way
+		atomicTotalOperations.Add(1)         // another way
 	}
 
 	var main = func() {

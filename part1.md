@@ -1007,7 +1007,7 @@ Fatal, deadlock может произойти в "главной" горутин
 
 Демонстрация ограничения количества одновременно работающих воркеров.
 
-Канал используется как семафор: запись сообщения в канал забирает ресурс, считывание сообщения освобождает ресурс.
+Канал (буферизованный) используется как семафор: запись сообщения в канал забирает ресурс, считывание сообщения освобождает ресурс.
 
 Использование буферизованного канала (квота) как ограничителя.
 Как буфер исчерпался, новая работа не начинается.
@@ -1028,39 +1028,43 @@ https://pkg.go.dev/github.com/bradfitz/iter#example-N
 
 - [race_1](week_02/race_1.go)
 
-X воркеров конкурентно пишут в одну мапку.
+Демо: X воркеров конкурентно пишут в одну мапку.
 Мапка по ходу операций перестраивается и разные воркеры начинают работать с разными копиями данных.
 Кто из них победит? Программа падает с fatal error.
 
-`go run -race ...` для диагностики.
+`go run -race ...` для диагностики гонки.
 
 Что же делать? Ставить блокировки?
 
-### `sync.Mutex` для синхронизации данных
+### `sync.Mutex` для синхронизации операций
 
 - [race_2](week_02/race_2.go)
 
-Берем мютекс `mu := &sync.Mutex{}` и в нужном месте используем его
+Берем мютекс (ссылка для предотвращения копирования) `mu := &sync.Mutex{}` и в нужном месте используем его
 `mu.Lock(); counters[th*10+j]++; mu.Unlock()`
 
-Но есть нюансы ...
+Вроде бы ОК. Но есть нюансы ...
 
 ### `sync.Atomic`
 
-- [atomic_1](week_02/atomic_1.go)
-- [atomic_2](week_02/atomic_2.go)
+- [atomic_1](week_02/atomic_1.go) демо не-синхронизированных операций
+- [atomic_2](week_02/atomic_2.go) демо с синхронизацией
 
-Для атомарного изменения одной переменной, счетчика например (регистра ЦП) использовать Mutex слишком дорого.
+Использовать Mutex слишком дорого для атомарного изменения одной переменной, счетчика например (регистра ЦП).
 Есть альтернатива `atomic.AddInt32(&totalOperations, 1)`.
 
 ### week 2 homework
 
-Есть пакет `main`, он требует добавления кода. Есть тесты. Подробности в `*.md` файлах.
+> асинхроннй пайплайн
+
+Есть пакет `main` (file `signer.go`), он требует добавления кода. Есть тесты. Подробности в `*.md` файлах.
 Вкратце: библиотека реализует "пайплайн" набора джобов, с распараллеливанием работы.
-Каждая джоба читает из канала `in` и пишет в канал `out`.
+Каждая джоба читает из канала `in` и пишет в канал `out`. Если тесты выполняются, задача решена.
 - [homework materials](week_02/w2_materials.zip/2/99_hw/signer/hw2.md), [extra](week_02/w2_materials.zip/2/99_hw/wp_extra/wp_extra.md)
 - [actual homework project](./sandbox/week02_homework/signer/hw2.md)
 - [actual homework project, extra](./sandbox/week02_homework/wp_extra/wp_extra.md)
+
+Updated: `handouts\golang_web_services_2023-12-28.zip\2\99_hw\signer\readme.md`
 
 ```s
 pushd sandbox # workspace
@@ -1089,45 +1093,47 @@ gofmt -w ./week02_homework/signer
 go test -v -race signer
 go run signer
 ```
-signer app.
+signer app `GO_APP_SELECTOR=week02_signer_test gr`
 
 Extra задание (динамический пул воркеров) без тестов и с очень свободным описанием. Отложил на "потом".
 
 ## part 1, week 3
 
-Работа с динамическими данными и производительность.
-[Код, домашки, литература](week_03/part1_week3.zip)
+Работа с динамическими данными и производительность. Рефлексия, кодогенерация, бенчмарки.
+[Код, домашки, литература](week_03/part1_week3.zip), updated: `handouts\golang_web_services_2023-12-28.zip\3\`
 
 ```s
-    pushd sandbox
-    mkdir -p week03 && pushd ./week03
+pushd sandbox
+mkdir -p week03 && pushd ./week03
 
-    cat > main.go << EOT
+cat > main.go << EOT
 package main
 func main() { panic("not implemented yet") }
 EOT
 
-    go mod init week03
-    go mod tidy
-    popd # to sandbox
-    go work use ./week03/
-    go vet week03
-    gofmt -w week03
-    go run week03
+go mod init week03
+go mod tidy
+popd # to sandbox
+go work use ./week03/
+go vet week03
+gofmt -w week03
+go run week03
 ```
-[week 3 playground](./sandbox/week03/main.go)
+[week 3 playground](./sandbox/week03/main.go) `GO_APP_SELECTOR=week03 gr`
 
-### Распаковываем JSON
+### JSON codec
 
 - [json](week_03/json.go)
 - [struct_tags](week_03/struct_tags.go)
 
-- Пакет `encoding/json` дает нам кодек. `json.Unmarshal(bytes, emptyStructRef)`: Декодирование из слайса байт в структуру, 
+- Пакет `encoding/json` дает нам кодек. `json.Unmarshal(bytes, emptyStructRef)`: Декодирование из слайса байт в структуру;
 надо знать тип структуры и создать её, пустую, перед декодированием.
 - Кодирование делается зеркально, `bytes, err := json.Marshal(someStruct)`.
-- Приватные поля (с маленькой буквы которые) не обрабатываются, ибо `encoding/json` пакет не может получить доступ к приватным полям нашего пакета.
+- Приватные поля (с маленькой буквы которые) не обрабатываются, ибо `encoding/json` пакет не может получить доступ
+к приватным полям нашего пакета.
 
-Теги структуры: метаинформация структур. При описании (определении) стурктуры, к полю добавляется строка определенного формата,
+Теги структуры: метаинформация структур.
+При описании (определении) стурктуры, к полю добавляется строка определенного формата,
 где записана метаинформация. В частности, как декодеру json обрабатывать поле, какое имя ему дать, какой тип использовать, etc.
 ```s
 ID       int `json:"user_id,string"`
@@ -1135,7 +1141,7 @@ ID       int `json:"user_id,string"`
 
 https://go.dev/blog/json
 
-### Нюансы работы с JSON
+### JSON codec, структура неизвестна
 
 - [dynamic](week_03/dynamic.go)
 
