@@ -1150,21 +1150,33 @@ Unmarshal в пустой интерфейс.
 
 Также и Marshal, создав мапку `map[string]interface{}{ ... }`, можно ее кодировать в json.
 
-### Пакет reflect -- работаем с динамикой в рантайме
+### Пакет reflect, работаем с динамикой в рантайме
 
 - [reflect_1](week_03/reflect_1.go)
 - [reflect_2](week_03/reflect_2.go)
+
+Демонстрация работы рефлексии для анализа (и процессинга) полей структур в рантайме.
+Получить список полей и в цикле каждое обработать, посмотрев на имя, тип, тег.
+Примитивный пример декодинга бинарных данных в произвольную структуру (при условии, что слайс байт отражает именно эту структуру).
 
 - `reflect.ValueOf(x).Elem()` позволяет итерировать типы и значения структуры, переданной как "пустой интерфейс".
 - Пример, как при помощи рефлексии распаковать слайс байт (бинарные данные на выходе perl `pack`) в структуру.
 `reflect.ValueOf(x).Elem()` для получения списка полей структуры, которую надо восстановить из слайса байт.
 Перебирая поля структуры, читаем данные из источника байт.
 
-### Кодогенерация -- программа пишет программу
+### Кодогенерация, программа пишет программу
 
+`handouts\golang_web_services_2023-12-28.zip\3\codegen\Makefile`
 - [unpack](week_03/unpack.go)
 - [marshaller](week_03/marshaller.go)
 - [codegen](week_03/codegen.go)
+
+Демонстрация распаковки слайса байт в структуру (как в примере с рефлексией).
+Только теперь жестко задан процесс распаковки, для каждого поля структуры записан (сгенерирован) шаблонный код.
+Кодогенератор написан (ручками) с использованием анализатора AST го-шной программы.
+
+Структура записана в файле х, кодеген читает этот файл и пишет шаблонный код (метод структуры) в файл у.
+Сама программа собирается из файлов х, у, ...
 
 К структуре добавлен метод `Unpack`, сгенерированный кодогенератором.
 Метод реализует восстановление структуры из бинарных данных, созданных через perl `pack`.
@@ -1172,9 +1184,11 @@ Unmarshal в пустой интерфейс.
 и, для всех её полей, создает код восстановления поля из слайса байт.
 
 Кодогенерация полезна, когда некогда в рантайме тратить время на анализ и рефлексию.
-Профилирование покажет насколько падает скорость (в 2..4 раза).
+Профилирование покажет насколько падает скорость (спойлер: в 2..4 раза).
 
-### Система бенчмарков Go, кодоген / рефлексия / регулярки / подстрока / slice.append
+### Система бенчмарков Go
+
+тестируем: кодоген vs рефлексия; регулярки vs подстрока; slice.append prealloc vs no-prealloc
 
 - [unpack_test](week_03/unpack_test.go)
 - [json_test](week_03/json_test.go)
@@ -1183,8 +1197,11 @@ Unmarshal в пустой интерфейс.
 
 Бенчмарки в `testing.B`, `func BenchmarkFooBar( ... ) { ... }`, `go test -bench ...`
 
+Бенчмарки это как тесты, только тестируется скорость.
+Файл содержит суффикс `_test.go`, имя функции содержит префикс `func Benchmark`.
+
 - `go test -bench . week03` показал, что распаковка структуры через кодогенерацию вдвое быстрее рефлексии.
-- `go test -bench . -benchmem week03` замер расхода памяти. Рефлексия жрет вдвое больше памяти.
+- `go test -bench . -benchmem week03` замер расхода памяти (в дополнение к замеру скорости). Рефлексия жрет вдвое больше памяти.
 - Пакет кодека json на кодогенерации (EasyJson) в 2..4 раза эффективнее стандартного (не в каждой метрике каждой операции, однако).
 - Демонстрация медленности регулярных выражений на строках. Регулярка в 3..x раз медленнее простого `contains`.
 - Демонстрация медленности добавления в слайс без преаллокации. В 8 раз медленнее.
@@ -1201,67 +1218,88 @@ https://www.google.com/search?q=go+tool+pprof+illustrated&tbm=vid
 
 Команды: `top`, `list Unpack`, `web`, `alloc_space, top`, `alloc_objects, top`
 
+Можно увидеть строки программы, где происходило "горячее": выделение памяти или жрал цпу.
+
 Можно снимать дампы с работающей программы, не прерывая её работы.
 
-### sync.Pool, mem allocation
+### `sync.Pool`, mem allocation
 
 - [pool_test](week_03/pool_test.go)
 
-Хотим не выделять память каждый раз, хотим использовать пул преаллоцированной памяти (arena). Для скорости.
+Демонстрация разницы в подходах: выделение буфера 64 байта для энкодера джейсон и выполнение кодирования, на каждой итерации теста.
+Второй вариант: используя пул, память под буфер выделить один раз.
+
+Хотим не выделять память каждый раз, хотим переиспользовать имеющийся буфер. Для скорости.
 
 `dataPool = sync.Pool{ ... }; data := dataPool.Get().(*bytes.Buffer)`
+Приведение к типу: `.(*bytes.Buffer)`, ибо геттер дает `any`.
 
-Процентов 90 скорости выиграли.
+sync.Pool это по сути синхронизированный синглтон, интерфейс: Get, Put.
+
 Операций выделения памяти меньше. Нагрузка на GC, соответственно, падает.
 
 ### Покрытие кода тестами
 
-`go test -v -cover`,
-`go test -coverprofile=cover.out`,
-`go tool cover -html=cover.out -o cover.html`
+Test coverage
+- `go test -v -cover`,
+- `go test -coverprofile=cover.out`,
+- `go tool cover -html=cover.out -o cover.html`
 
-### XML, complete file vs stream of tokens
+Демо кода с тремя ветками выполнения, покрытие тестами всех веток.
 
+### XML, complete file vs stream of tokens, performance
+
+Паттерн борьбы за производительность: обработка потока (токенов) как замена обработке целого файла.
 - [main](week_03/xml_main.go)
 - [xml_test](week_03/xml_test.go)
 
-Декодинг файла xml целиком и сразу, vs потоковая обработка токенов. Производительность (не сильно отличается).
+Декодинг файла xml целиком и сразу, vs потоковая обработка токенов. Производительность ~1.5.
+Но основная проблема не в производительности а в количестве ресурсов (памяти) потребных для обработки.
+Для потока памяти нужна константа, для файла памяти надо по размеру файла.
 
 Поточная обработка данных, на примере xml. `encoding/xml`.
 Читаем по токенам, обрабатываем: `xml.NewDecoder(bytes.NewReader(data)).Token()`
 
 ### week 3 homework
 
-Есть пакет `main`, он требует добавления кода в функцию `FastSearch`. Есть тесты. Подробности в `*.md` файлах.
-Вкратце: задание на оптимизацию (быстрее, меньше памяти, аллокаций) уже существующей (baseline) функции. Научиться работать с `pprof`.
-- [homework materials](week_03/part1_week3.zip/part1_week3/99_hw/hw3.md)
-- [actual homework project](./sandbox/week03_homework/finder/hw3.md)
+Есть пакет `main`, он требует добавления кода в функцию `FastSearch`.
+Есть тесты.
+Подробности в `*.md` файлах.
+`handouts\golang_web_services_2023-12-28.zip\3\99_hw\readme.md`
 
-> Для выполнения задания необходимо чтобы один из параметров ( ns/op, B/op, allocs/op ) был быстрее чем baseline ( fast < solution ) и ещё один лучше baseline + 20%.
+Вкратце: задание на оптимизацию (быстрее молотит, меньше памяти жрет, аллокаций меньшее количество) уже существующей (baseline) функции.
+Научиться работать с `pprof`.
+Есть функция `SlowSearch`, надо написать `FastSearch`, более производительную (во всех смыслах) версию медленной.
+- [homework materials](week_03/part1_week3.zip/part1_week3/99_hw/hw3.md)
+- [actual homework project](./sandbox/week03_homework/finder/hw3.md) `GO_APP_SELECTOR=week03_finder_test gr`
+
+> Для выполнения задания необходимо чтобы
+один из параметров ( ns/op, B/op, allocs/op ) был быстрее чем baseline ( fast < solution ) и
+ещё один лучше baseline + 20%.
 
 ```s
-    pushd sandbox # workspace
-    mkdir -p week03_homework/finder
+pushd sandbox # workspace
+mkdir -p week03_homework/finder
 
-    pushd week03_homework/finder
-    go mod init finder
+pushd week03_homework/finder
+go mod init finder
 
-    cat > finder.go << EOT
+cat > finder.go << EOT
 package main
 func main() { panic("not yet") }
 EOT
 
-    go mod tidy
+go mod tidy
 
-    popd # workspace
-    # go work init
-    go work use ./week03_homework/finder
+popd # workspace
+# go work init
+go work use ./week03_homework/finder
 
-    go vet finder
-    gofmt -w ./week03_homework/finder
-    go run finder
-    go test -v finder
-    go test -bench . -benchmem finder    
+go vet finder
+gofmt -w ./week03_homework/finder
+go run finder
+go test -v finder
+go test -bench . -benchmem finder    
 ```
 finder lib.
 
@@ -1276,27 +1314,27 @@ https://betterstack.com/community/guides/scaling-go/json-in-go/
 
 ## part 1, week 4
 
-Основы HTTP.
-[Код, домашки, литература](week_04/part1_week4.zip)
+Основы HTTP. Разработка web-сервера.
+[Код, домашки, литература](week_04/part1_week4.zip), updated: `handouts\golang_web_services_2023-12-28.zip\4\`
 
 ```s
-    pushd sandbox
-    mkdir -p week04 && pushd ./week04
+pushd sandbox
+mkdir -p week04 && pushd ./week04
 
-    cat > main.go << EOT
+cat > main.go << EOT
 package main
 func main() { panic("not implemented yet") }
 EOT
 
-    go mod init week04
-    go mod tidy
-    popd # to sandbox
-    go work use ./week04/
-    go vet week04
-    gofmt -w week04
-    go run week04
+go mod init week04
+go mod tidy
+popd # to sandbox
+go work use ./week04/
+go vet week04
+gofmt -w week04
+go run week04
 ```
-[week 4 playground](./sandbox/week04/main.go)
+[week 4 playground](./sandbox/week04/main.go) `GO_APP_SELECTOR=week04 gr`
 
 ### Слушаем TCP-сокет с использованием пакета net
 

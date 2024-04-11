@@ -19,11 +19,11 @@ import (
 func main() {
 	// jsonDemo()
 	// struct_tags()
-	dynamicDemo()
+	// dynamicDemo()
 	// reflect_1()
 	// reflect_2()
 	// unpackDemo()
-	// unpack_testBench()
+	unpack_testBench()
 	// json_testBench()
 	// string_testBench()
 	// sliceAppend_testBench()
@@ -103,7 +103,7 @@ func dynamicDemo() {
 	]` // list of maps/objects, N.B. mixed `id`` data type
 	var jsonBytes = []byte(jsonStr)
 
-	// decode bytes to slice of maps
+	// decode bytes to slice of maps (interfaces)
 	var anyTypeValue interface{}
 	json.Unmarshal(jsonBytes, &anyTypeValue)
 	show("Decoded json x to an empty interface y, (x, y): ", jsonStr, anyTypeValue)
@@ -134,29 +134,31 @@ func dynamicDemo() {
 }
 
 func reflect_1() {
-	show("program started ...")
+	show("reflect_1: program started ...")
 
 	type User struct {
 		ID       int
-		RealName string `unpack:"-"`
+		RealName string `unpack:"-"` // tag for decoder: ignore this field
 		Login    string
 		Flags    int
 	}
 
-	var PrintReflect = func(anyVal interface{}) error {
-		reflectValue := reflect.ValueOf(anyVal).Elem() // it's a key to all the magic
-		show("Given value x has y fields, (x, y): ", anyVal, reflectValue.NumField())
+	var PrintReflect = func(x any) error {
+		reflectValue := reflect.ValueOf(x).Elem() // it's a key to all the magic
+		show("Given value x has n fields, (x, n): ", x, reflectValue.NumField())
 
+		// for each field in x
 		for i := 0; i < reflectValue.NumField(); i++ {
 			valueField := reflectValue.Field(i)
 			typeField := reflectValue.Type().Field(i)
 
 			show(
-				"Field (name, type, value, tag): ",
+				"Field (idx, name, type, tag, value): ",
+				i,
 				typeField.Name,
 				typeField.Type.Kind(),
-				valueField,
 				typeField.Tag,
+				valueField,
 			)
 		}
 
@@ -167,7 +169,7 @@ func reflect_1() {
 		ID:       42,
 		RealName: "rvasily",
 		Flags:    32,
-	}
+	} // Login is empty
 
 	err := PrintReflect(userRef) // examine the output
 	if err != nil {
@@ -176,34 +178,34 @@ func reflect_1() {
 
 	show("end of program.")
 	/*
-	   2023-12-04T12:24:45.037Z: program started ...
-	   2023-12-04T12:24:45.037Z: Given value x has y fields, (x, y): *main.User(&{42 rvasily  32}); int(4);
-	   2023-12-04T12:24:45.038Z: Field (name, type, value, tag): string(ID); reflect.Kind(int); reflect.Value(42); reflect.StructTag();
-	   2023-12-04T12:24:45.038Z: Field (name, type, value, tag): string(RealName); reflect.Kind(string); reflect.Value(rvasily); reflect.StructTag(unpack:"-");
-	   2023-12-04T12:24:45.038Z: Field (name, type, value, tag): string(Login); reflect.Kind(string); reflect.Value(); reflect.StructTag();
-	   2023-12-04T12:24:45.038Z: Field (name, type, value, tag): string(Flags); reflect.Kind(int); reflect.Value(32); reflect.StructTag();
-	   2023-12-04T12:24:45.038Z: end of program.
+		2024-04-11T09:15:30.325Z: reflect_1: program started ...
+		2024-04-11T09:15:30.325Z: Given value x has n fields, (x, n): *main.User(&{42 rvasily  32}); int(4);
+		2024-04-11T09:15:30.325Z: Field (idx, name, type, tag, value): int(0); string(ID); reflect.Kind(int); reflect.StructTag(); reflect.Value(42);
+		2024-04-11T09:15:30.325Z: Field (idx, name, type, tag, value): int(1); string(RealName); reflect.Kind(string); reflect.StructTag(unpack:"-"); reflect.Value(rvasily);
+		2024-04-11T09:15:30.325Z: Field (idx, name, type, tag, value): int(2); string(Login); reflect.Kind(string); reflect.StructTag(); reflect.Value();
+		2024-04-11T09:15:30.325Z: Field (idx, name, type, tag, value): int(3); string(Flags); reflect.Kind(int); reflect.StructTag(); reflect.Value(32);
+		2024-04-11T09:15:30.325Z: end of program.
 	*/
 }
 
 func reflect_2() {
-	show("program started ...")
+	show("reflect_2: program started ...")
 
 	type User struct {
-		ID       int
-		RealName string `unpack:"-"`
+		ID       uint32
+		RealName string `unpack:"-"` // skip decoding, don't touch it
 		Login    string
-		Flags    int
+		Flags    uint32
 	}
 
-	var UnpackReflect = func(targetStructRef interface{}, sourceBytes []byte) error {
+	var UnpackReflect = func(targetStructRef any, sourceBytes []byte) error {
 		// restore int or string fields of given struct, from given bytes
 
+		var bytesOrder = binary.LittleEndian // hidden knowledge
 		bytesReader := bytes.NewReader(sourceBytes)
 		reflectValue := reflect.ValueOf(targetStructRef).Elem()
-		var bytesOrder = binary.LittleEndian // hidden knowledge
 
-		for i := 0; i < reflectValue.NumField(); i++ {
+		for i := 0; i < reflectValue.NumField(); i++ { // for each field
 			valueField := reflectValue.Field(i)
 			typeField := reflectValue.Type().Field(i)
 
@@ -214,40 +216,37 @@ func reflect_2() {
 
 			switch typeField.Type.Kind() {
 
-			case reflect.Int:
+			case reflect.Uint32:
 				var value uint32 // hidden knowlwdge
 				binary.Read(bytesReader, bytesOrder, &value)
-				valueField.Set(reflect.ValueOf(int(value)))
+				valueField.Set(reflect.ValueOf(value))
 
 			case reflect.String:
 				var strLen uint32
 				binary.Read(bytesReader, bytesOrder, &strLen)
-				strBytes := make([]byte, strLen)
-				binary.Read(bytesReader, bytesOrder, &strBytes)
-				valueField.SetString(string(strBytes))
+				buf := make([]byte, strLen)
+				binary.Read(bytesReader, bytesOrder, &buf)
+				valueField.SetString(string(buf))
 
 			default:
-				return fmt.Errorf("bad type: %v for field %v", typeField.Type.Kind(), typeField.Name)
-
-			}
-
-		}
-
-		return nil
+				return fmt.Errorf("Unknown type: %v for field %v", typeField.Type.Kind(), typeField.Name)
+			} // end switch
+		} // end for
+		return nil // no errors
 	}
 
 	/*
-		perl -E '$b = pack("L L/a* L", 1_123_456, "v.romanov", 16);
-			print map { ord.", "  } split("", $b); '
+		someone already encoded User instance to slice of bytes:
+			perl -E '$b = pack("L L/a* L", 1_123_456, "v.romanov", 16);
+				print map { ord.", "  } split("", $b); '
 	*/
-
 	data := []byte{
-		128, 36, 17, 0, // int
+		128, 36, 17, 0, // uint32
 
-		9, 0, 0, 0, // str len
+		9, 0, 0, 0, // str len in bytes (uint32)
 		118, 46, 114, 111, 109, 97, 110, 111, 118, // str bytes
 
-		16, 0, 0, 0, // int
+		16, 0, 0, 0, // uint32
 	}
 
 	userRef := new(User)
@@ -259,16 +258,17 @@ func reflect_2() {
 
 	show("end of program.")
 	/*
-	   2023-12-04T12:47:43.434Z: program started ...
-	   2023-12-04T12:47:43.434Z: Unpacked struct: *main.User(&{1123456  v.romanov 16});
-	   2023-12-04T12:47:43.434Z: end of program.
+		2024-04-11T09:28:01.755Z: reflect_2: program started ...
+		2024-04-11T09:28:01.755Z: Unpacked struct: *main.User(&{1123456  v.romanov 16});
+		2024-04-11T09:28:01.755Z: end of program.
 	*/
 }
 
 func unpackDemo() {
-	// go build gen/* && ./codegen.exe pack/packer.go  pack/marshaller.go
+	// build codegen; run codegen; run unpack demo
+	// go build gen/* && ./codegen.exe pack/packer.go pack/marshaller.go
 
-	show("program started ...")
+	show("unpackDemo: program started ...")
 
 	// codegen program
 
@@ -414,12 +414,12 @@ func unpackDemo() {
 			print map { ord.", "  } split("", $b); '
 	*/
 	packedBytes := []byte{
-		128, 36, 17, 0, // int
+		128, 36, 17, 0, // uint32
 
-		9, 0, 0, 0, // string len
+		9, 0, 0, 0, // string len uint32
 		118, 46, 114, 111, 109, 97, 110, 111, 118, // string bytes
 
-		16, 0, 0, 0, // int
+		16, 0, 0, 0, // uint32
 	}
 
 	user := User{}
@@ -428,18 +428,22 @@ func unpackDemo() {
 
 	show("end of program.")
 	/*
-	   2023-12-04T15:33:09.621Z: program started ...
-	   SKIP *ast.ImportSpec is not ast.TypeSpec
-	   process struct User
-	           generating Unpack method
-	           generating code for field User.ID
-	           generating code for field User.Login
-	           generating code for field User.Flags
-	   SKIP struct "Avatar" doesnt have comments
-	   SKIP *ast.ValueSpec is not ast.TypeSpec
-	   SKIP *ast.FuncDecl is not *ast.GenDecl
-	   2023-12-04T15:33:09.657Z: Unpacked user: main.User({1123456  v.romanov 16});
-	   2023-12-04T15:33:09.657Z: end of program.
+		2024-04-11T10:00:05.567Z: unpackDemo: program started ...
+
+		SKIP *ast.ImportSpec is not ast.TypeSpec
+		process struct User
+		        generating Unpack method
+		        generating code for field User.ID
+		        generating code for field User.Login
+		        generating code for field User.Flags
+		SKIP struct "UserV2" doesnt have cgen mark
+		SKIP struct "Client" doesnt have comments
+		SKIP struct "Avatar" doesnt have comments
+		SKIP *ast.ValueSpec is not ast.TypeSpec
+		SKIP *ast.FuncDecl is not *ast.GenDecl
+
+		2024-04-11T10:00:05.588Z: Unpacked user: main.User({1123456  v.romanov 16});
+		2024-04-11T10:00:05.588Z: end of program.
 	*/
 }
 

@@ -15,6 +15,26 @@ import (
 	"time"
 )
 
+func main() {
+	net_listen()
+	// httpDemo()
+	// pagesDemo()
+	// servehttpDemo()
+	// muxDemo()
+	// serversDemo()
+	// get_paramsDemo()
+	// postFormDemo()
+	// cookiesDemo()
+	// headersDemo()
+	// staticServeDemo()
+	// file_uploadDemo()
+	// requestDemo()
+	// inlineTemplate()
+	// fileTemplate()
+	// methodCallFromTemplate()
+	// funcCallFromTemplate()
+}
+
 func net_listen() {
 	show("program started ...")
 
@@ -859,26 +879,6 @@ func funcCallFromTemplate() {
 	show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
 	err = http.ListenAndServe(addrStr, nil)
 	show("end of program. ", err)
-}
-
-func main() {
-	// net_listen()
-	// httpDemo()
-	// pagesDemo()
-	// servehttpDemo()
-	// muxDemo()
-	// serversDemo()
-	// get_paramsDemo()
-	// postFormDemo()
-	// cookiesDemo()
-	// headersDemo()
-	// staticServeDemo()
-	// file_uploadDemo()
-	// requestDemo()
-	// inlineTemplate()
-	// fileTemplate()
-	// methodCallFromTemplate()
-	funcCallFromTemplate()
 }
 
 func show(msg string, xs ...any) {
