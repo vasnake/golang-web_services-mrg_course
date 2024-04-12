@@ -19,9 +19,8 @@ type CheckoutResult struct {
 	Err     string
 }
 
+// some business logic for testing, http client calling external service
 func (cart *Cart) CartCheckout(id string) (*CheckoutResult, error) {
-	// some business logic for testing
-
 	url := cart.PaymentApiURL + "?id=" + id
 
 	resp, err := http.Get(url)
@@ -81,6 +80,8 @@ func TestCartCheckout(t *testing.T) {
 		},
 	}
 
+	// fake server
+
 	var PaymentAPIMockHandler = func(w http.ResponseWriter, r *http.Request) {
 		// show("Request: ", r)
 		switch r.FormValue("id") {
@@ -103,11 +104,17 @@ func TestCartCheckout(t *testing.T) {
 	serverMock := httptest.NewServer(http.HandlerFunc(PaymentAPIMockHandler))
 	defer serverMock.Close()
 
+	// tests
+
 	for idx, testCase := range cases {
 		cart := &Cart{
-			PaymentApiURL: serverMock.URL,
+			PaymentApiURL: serverMock.URL, // fake server
 		}
+
+		// call test subject
 		result, err := cart.CartCheckout(testCase.ID)
+
+		// check
 
 		if err != nil && !testCase.ExpectedIsError {
 			t.Errorf("[%d] unexpected error: %#v", idx, err)

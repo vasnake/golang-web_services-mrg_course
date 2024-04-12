@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	htmpl "html/template"
 	"io"
 	"net"
 	"net/http"
@@ -16,27 +17,39 @@ import (
 )
 
 func main() {
-	net_listen()
+	// net_listen()
+
 	// httpDemo()
 	// pagesDemo()
 	// servehttpDemo()
 	// muxDemo()
 	// serversDemo()
+
 	// get_paramsDemo()
 	// postFormDemo()
 	// cookiesDemo()
 	// headersDemo()
+
 	// staticServeDemo()
 	// file_uploadDemo()
+
 	// requestDemo()
+
 	// inlineTemplate()
 	// fileTemplate()
+
 	// methodCallFromTemplate()
-	// funcCallFromTemplate()
+	funcCallFromTemplate()
 }
 
+const (
+	addrStr = ":8080"
+	ipStr   = "127.0.0.1"
+)
+
 func net_listen() {
-	show("program started ...")
+	show("net_listen: program started ...")
+	const addr = "127.0.0.1:8080"
 
 	var handleConnection = func(conn net.Conn) {
 		defer conn.Close() // on exit
@@ -48,7 +61,7 @@ func net_listen() {
 		currLine := bufio.NewScanner(conn)
 		for currLine.Scan() {
 			text := currLine.Text()
-			// ignore empty lines
+
 			if text == "Exit" {
 				conn.Write([]byte("Bye\n\r"))
 				show("Disconnected: ", name)
@@ -56,24 +69,25 @@ func net_listen() {
 			} else if text != "" {
 				show("Got y from x, (x, y): ", name, text)
 				conn.Write([]byte("You typed: `" + text + "`\n\r"))
-			}
+			} // ignore empty lines
+
 		} // end loop
 	}
 
-	listner, err := net.Listen("tcp", "127.0.0.1:8080")
+	listner, err := net.Listen("tcp", addr)
 	if err != nil {
 		panic(err)
 	}
 
 	for {
-		show("Waiting for connection ... ", listner)
+		show("Waiting for connection ... ", listner, addr)
 		conn, err := listner.Accept()
 		if err != nil {
 			panic(err)
 		}
 		show("Got new connection: ", conn)
 
-		// async session
+		// start async session, goto next connection
 		go handleConnection(conn)
 	}
 	// show("end of program.")
@@ -108,7 +122,7 @@ func net_listen() {
 }
 
 func httpDemo() {
-	show("program started ...")
+	show("httpDemo: program started ...")
 
 	const addrStr = ":8080"
 	const servingUrlPattern = "/"
@@ -119,17 +133,16 @@ func httpDemo() {
 	}
 
 	// register handler in server mux
-	http.HandleFunc(servingUrlPattern, handler)
+	http.HandleFunc(servingUrlPattern, handler) // DefaultServerMux
 
 	show("Starting server at: ", addrStr)
-	err := http.ListenAndServe(addrStr, nil) // handler=nil => using mux
-
+	err := http.ListenAndServe(addrStr, nil) // handler=nil => using mux (default)
 	show("end of program. ", err)
 	/*
 	   2023-12-07T14:56:19.644Z: program started ...
 	   2023-12-07T14:56:19.644Z: Starting server at: string(:8080);
 	   ^Z
-	   sandbox$  bg
+	   sandbox$ bg
 	   sandbox$ curl 127.0.0.1:8080
 	   Привет, мир!
 	   !!!
@@ -137,69 +150,87 @@ func httpDemo() {
 }
 
 func pagesDemo() {
-	show("program started ...")
+	show("pagesDemo: program started ...")
+
+	const addrStr = ":8080"
 
 	var mainPageHandler = func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "Main page")
+		fmt.Fprintln(w, "Main page, url:", r.URL.String())
 	}
 
-	// register handlers in mux
+	// register 3 handlers in (default) mux
 
-	http.HandleFunc("/", mainPageHandler)
+	http.HandleFunc("/", mainPageHandler) // root page, default handler
 
-	// N.B. route w.o. ending slash
+	// N.B. route w.o. ending slash, one `/page`
 	http.HandleFunc(
 		"/page",
 		func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, "Single page:", r.URL.String())
+			fmt.Fprintln(w, "Single page (anon. func):", r.URL.String())
 		},
 	)
 
-	// N.B. route with ending slash, it works as a prefix for a class of supported routes
+	// N.B. route with ending slash, it works as a prefix for a class of supported routes `/pages/*`
 	http.HandleFunc(
 		"/pages/",
 		func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, "Multiple pages:", r.URL.String())
+			fmt.Fprintln(w, "Multiple pages, url:", r.URL.String())
 		},
 	)
 
-	const addrStr = ":8080"
-	show("Starting server at: ", addrStr)
-	err := http.ListenAndServe(addrStr, nil)
-
+	show("Starting server (`/`, `/page`, `/pages/`) at: ", "127.0.0.1"+addrStr)
+	err := http.ListenAndServe(addrStr, nil) // using default mux
 	show("end of program. ", err)
 	/*
-	   2023-12-07T15:08:06.651Z: program started ...
-	   2023-12-07T15:08:06.651Z: Starting server at: string(:8080);
-	   ^Z
-	   sandbox$  bg
-	   sandbox$ curl 127.0.0.1:8080
-	   Main page
-	   sandbox$ curl 127.0.0.1:8080/page
-	   Single page: /page
-	   sandbox$ curl 127.0.0.1:8080/pages/
-	   Multiple pages: /pages/
-	   sandbox$ curl 127.0.0.1:8080/pages/foo
-	   Multiple pages: /pages/foo
-	   sandbox$ curl 127.0.0.1:8080/pages/bar/foo
-	   Multiple pages: /pages/bar/foo
+		2024-04-12T08:27:30.615Z: pagesDemo: program started ...
+		2024-04-12T08:27:30.615Z: Starting server (`/`, `/page`, `/pages/`) at: string(127.0.0.1:8080);
+		^Z
+		bg
+		curl 127.0.0.1:8080/page
+			Single page (anon. func): /page
+		curl 127.0.0.1:8080/pages
+			<a href="/pages/">Moved Permanently</a>.
+		curl 127.0.0.1:8080/pages/
+			Multiple pages, url: /pages/
+		curl 127.0.0.1:8080/pages/foo
+			Multiple pages, url: /pages/foo
+		curl 127.0.0.1:8080/page/bar
+			Main page, url: /page/bar
+		curl 127.0.0.1:8080/pager
+			Main page, url: /pager
 	*/
 }
 
 func servehttpDemo() {
-	show("program started ...")
+	show("serveHttp: program started ...")
 
-	// All requests served by one instance of a struct.
-	// But, different routes could use different instances of a struct.
+	const (
+		addrStr = ":8080"
+		ipStr   = "127.0.0.1"
+	)
+
+	// Different routes could use different instances of a struct.
+	// But all requests in this route will be served by one instance of a struct.
+	/*
+		type Handler_servehttp struct {
+			Name string
+		}
+
+		func (h *Handler_servehttp) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintln(w, "Name:", h.Name, "URL:", r.URL.String())
+		}
+
+	*/
+	// you can use some state for processing each route
+
 	testHandlerRef := &Handler_servehttp{Name: "test"}
-	http.Handle("/test/", testHandlerRef)
+	http.Handle("/test/", testHandlerRef) // default mux
 
 	rootHandlerRef := &Handler_servehttp{Name: "root"}
-	http.Handle("/", rootHandlerRef)
+	http.Handle("/", rootHandlerRef) // default mux
 
-	const addrStr = ":8080"
-	show("Starting server at: ", addrStr)
-	err := http.ListenAndServe(addrStr, nil)
+	show("Starting server (`/test/`, `/`) at: ", ipStr+addrStr)
+	err := http.ListenAndServe(addrStr, nil) // default mux
 	show("end of program. ", err)
 	/*
 	   2023-12-07T15:28:49.715Z: program started ...
@@ -214,7 +245,12 @@ func servehttpDemo() {
 }
 
 func muxDemo() {
-	show("program started ...")
+	show("muxDemo: program started ...")
+
+	const (
+		addrStr = ":8080"
+		ipStr   = "127.0.0.1"
+	)
 
 	var handler = func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Processed URL:", r.URL.String())
@@ -226,7 +262,6 @@ func muxDemo() {
 	muxRef.HandleFunc("/", handler) // vs http.Handle("/", rootHandlerRef)
 
 	// server+mux defined with optional parameters
-	const addrStr = ":8080"
 	server := http.Server{
 		Addr:         addrStr,
 		Handler:      muxRef,
@@ -234,7 +269,7 @@ func muxDemo() {
 		WriteTimeout: 10 * time.Second,
 	}
 
-	show("Starting server at: ", addrStr)
+	show("Starting server (`/`) at: ", ipStr+addrStr)
 	err := server.ListenAndServe() // vs err := http.ListenAndServe(addrStr, nil)
 	show("end of program.", err)
 	/*
@@ -247,7 +282,7 @@ func muxDemo() {
 }
 
 func serversDemo() {
-	show("program started ...")
+	show("serversDemo: program started ...")
 
 	// different addr, same behaviour (way to scale server?)
 	var runServer = func(addr string) {
@@ -266,11 +301,11 @@ func serversDemo() {
 
 		show("Starting server at: ", addr)
 		err := server.ListenAndServe()
-		show("Server stopped: ", err)
+		show("Server stopped: ", addr, err)
 	}
 
 	// two async servers on two different ports
-	var addrStr1, addrStr2 = ":8081", ":8080"
+	const addrStr1, addrStr2 = ":8081", ":8080"
 	// async
 	go runServer(addrStr1)
 	// main goroutine
@@ -290,27 +325,30 @@ func serversDemo() {
 }
 
 func get_paramsDemo() {
-	show("program started ...")
+	show("get_paramsDemo: program started ...")
+	const (
+		addrStr = ":8080"
+		ipStr   = "127.0.0.1"
+	)
 
-	var handler = func(w http.ResponseWriter, r *http.Request) {
+	var handlerFunc = func(w http.ResponseWriter, r *http.Request) {
 		// from url string
 		getParamValue := r.URL.Query().Get("param")
 		if getParamValue != "" {
 			fmt.Fprintln(w, "`param`:", getParamValue)
 		}
 
-		// from all params storages
+		// from all params storages, n.b. storage priority
 		queryKeyValue := r.FormValue("key")
 		if queryKeyValue != "" {
 			fmt.Fprintln(w, "`key`:", queryKeyValue)
 		}
 	}
 
-	http.HandleFunc("/", handler)
+	http.HandleFunc("/", handlerFunc) // default mux
 
-	const addrStr = ":8080"
-	show("Starting server at: ", addrStr)
-	err := http.ListenAndServe(addrStr, nil)
+	show("Starting server (`/`) at: ", ipStr+addrStr)
+	err := http.ListenAndServe(addrStr, nil) // default mux
 	show("end of program. ", err)
 	/*
 	   2023-12-07T16:13:33.721Z: program started ...
@@ -329,8 +367,13 @@ func get_paramsDemo() {
 }
 
 func postFormDemo() {
-	show("program started ...")
+	show("postFormDemo: program started ...")
+	const (
+		addrStr = ":8080"
+		ipStr   = "127.0.0.1"
+	)
 
+	// root route
 	var loginFormTmpl = []byte(`
 	<html> <body> <form action="/" method="post">
 		Login: <input type="text" name="login">
@@ -340,40 +383,47 @@ func postFormDemo() {
 	`)
 
 	var loginFormHandler = func(w http.ResponseWriter, r *http.Request) {
-		// Show form only when requested with GET (not POST)
+		// Show login form only when requested with GET (actually: not POST)
 		if r.Method != http.MethodPost {
 			w.Write(loginFormTmpl)
 			return
 		}
 
-		// if requested with POST
+		// if requested with POST (after submit login form)
 
-		// parse form data explicitly
+		// parse form data explicitly, support different storages (post, put, get, ...)
 		// r.ParseForm()
 		// loginFormValue := r.Form["login"][0]
 
 		// or implicitly
 		loginFormValue := r.FormValue("login")
 
-		fmt.Fprintln(w, "User login: ", loginFormValue)
+		fmt.Fprintln(w, "User login: ", loginFormValue) // ignore password for now
 	}
 
 	http.HandleFunc("/", loginFormHandler)
 
-	const addrStr = ":8080"
-	show("Starting server at: ", addrStr)
-	show("Open url http://localhost:8080/")
+	show("Starting server (`/`) at: ", ipStr+addrStr)
+	show("Open in browser url http://localhost:8080/")
 	err := http.ListenAndServe(addrStr, nil)
 	show("end of program. ", err)
 }
 
 func cookiesDemo() {
-	show("program started ...")
+	show("cookiesDemo: program started ...")
+	const (
+		addrStr = ":8080"
+		ipStr   = "127.0.0.1"
+	)
+
+	// route handlers
 
 	var mainPage = func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		// dispatch: go to login or logout
 
-		sessionCookieRef, err := r.Cookie("session_id")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8") // must be set before writing
+
+		sessionCookieRef, err := r.Cookie("session_id") // try to get cookie
 		if err == http.ErrNoCookie {
 			fmt.Fprintln(w, "You need to login: ")
 			fmt.Fprintln(w, `<a href="/login">login</a>`)
@@ -395,48 +445,57 @@ func cookiesDemo() {
 	}
 
 	var logoutPage = func(w http.ResponseWriter, r *http.Request) {
+		// expire cookie:
 		sessionCookieRef, err := r.Cookie("session_id")
 		if err == http.ErrNoCookie {
-			http.Redirect(w, r, "/", http.StatusFound)
+			// http.Redirect(w, r, "/", http.StatusFound)
+			show("cookie not found, just sent user away")
 		} else {
-			sessionCookieRef.Expires = time.Now().AddDate(0, 0, -1) // expire yesterday
+			sessionCookieRef.Expires = time.Now().AddDate(0, 0, -1) // expired yesterday
 			http.SetCookie(w, sessionCookieRef)
-			http.Redirect(w, r, "/", http.StatusFound)
 		}
+		http.Redirect(w, r, "/", http.StatusFound) // go away
 	}
 
+	// default mux
 	http.HandleFunc("/login", loginPage)
 	http.HandleFunc("/logout", logoutPage)
 	http.HandleFunc("/", mainPage)
 
-	const addrStr = ":8080"
-	show("Starting server at: ", addrStr)
+	show("Starting server (`/login`, `/logout`, `/`) at: ", ipStr+addrStr)
 	show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
-	err := http.ListenAndServe(addrStr, nil)
+	err := http.ListenAndServe(addrStr, nil) // default mux
 	show("end of program. ", err)
 }
 
 func headersDemo() {
-	show("program started ...")
+	show("headersDemo: program started ...")
+	const (
+		addrStr = ":8080"
+		ipStr   = "127.0.0.1"
+	)
 
-	var handler = func(w http.ResponseWriter, r *http.Request) {
+	var handlerFunc = func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("RequestID", "d41d8cd98f00b204")
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		fmt.Fprintln(w, "You browser UA is:", r.UserAgent())
-		fmt.Fprintln(w, "You `Accept`:", r.Header.Get("Accept"))
+		fmt.Fprintln(w, "Your browser's UA is:", r.UserAgent())
+		fmt.Fprintln(w, "Your browser's `Accept`:", r.Header.Get("Accept"))
 	}
 
-	http.HandleFunc("/", handler)
+	http.HandleFunc("/", handlerFunc)
 
-	const addrStr = ":8080"
-	show("Starting server at: ", addrStr)
+	show("Starting server (`/`) at: ", ipStr+addrStr)
 	show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
 	err := http.ListenAndServe(addrStr, nil)
 	show("end of program. ", err)
 }
 
 func staticServeDemo() {
-	show("program started ...")
+	show("staticServeDemo: program started ...")
+	const (
+		addrStr = ":8080"
+		ipStr   = "127.0.0.1"
+	)
 
 	var rootHandlerFunc = func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
@@ -449,24 +508,28 @@ func staticServeDemo() {
 	// TLDR: `/data/img/gopher.png` => `./week04/static/img/gopher.png`
 	// when looking for `/data/img/gopher.png`:
 	// - strip `/data/`
-	// - read `img/gopher.png` in `./week04/static` directory
+	// - read `img/gopher.png` from `./week04/static` directory
 	staticHandler := http.StripPrefix(
 		"/data/",
 		http.FileServer(http.Dir("./week04/static")),
 	)
 
+	// default mux
 	http.HandleFunc("/", rootHandlerFunc)
 	http.Handle("/data/", staticHandler)
 
-	const addrStr = ":8080"
-	show("Starting server at: ", addrStr)
+	show("Starting server at: ", ipStr+addrStr)
 	show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
-	err := http.ListenAndServe(addrStr, nil)
+	err := http.ListenAndServe(addrStr, nil) // default mux
 	show("end of program. ", err)
 }
 
 func file_uploadDemo() {
-	show("program started ...")
+	show("file_uploadDemo: program started ...")
+	const (
+		addrStr = ":8080"
+		ipStr   = "127.0.0.1"
+	)
 
 	var uploadFormTmpl = []byte(`
 	<html> <body> <form action="/upload" method="post" enctype="multipart/form-data">
@@ -484,13 +547,13 @@ func file_uploadDemo() {
 
 		// process first 5 MB
 		if err := r.ParseMultipartForm(5 * 1024 * 1024); err != nil {
-			fmt.Println(err)
+			show("ParseMultipartForm failed: ", err)
 			return
 		}
 
 		file, fileHeaderRef, err := r.FormFile("my_file")
 		if err != nil {
-			fmt.Println(err)
+			show("FormFile failed: ", err)
 			return
 		}
 		defer file.Close()
@@ -521,30 +584,28 @@ func file_uploadDemo() {
 			return
 		}
 
-		fmt.Fprintf(w, "content-type %#v\n", r.Header.Get("Content-Type"))
-		fmt.Fprintf(w, "params %#v\n", decodedContent)
+		fmt.Fprintf(w, "content-type: %#v\n", r.Header.Get("Content-Type"))
+		fmt.Fprintf(w, "recieved Params value: %#v\n", decodedContent)
 	}
 
-	// render upload form
-	http.HandleFunc("/", mainPage)
-	// upload file using form
-	http.HandleFunc("/upload", uploadFormHandler)
-	// upload raw data using POST
-	http.HandleFunc("/raw_body", uploadRawContentHandler)
+	// default mux
+	http.HandleFunc("/", mainPage)                        // render upload form
+	http.HandleFunc("/upload", uploadFormHandler)         // upload file using form
+	http.HandleFunc("/raw_body", uploadRawContentHandler) // upload raw data using POST
 
-	const addrStr = ":8080"
-	show("Starting server at: ", addrStr)
+	show("Starting server (`/`, `/upload`, `/raw_body`) at: ", ipStr+addrStr)
 	show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
-	err := http.ListenAndServe(addrStr, nil)
+	show("or call service: " + `curl -v -X POST -H "Content-Type: application/json" -d '{"id": 42, "user": "Foo Bar"}' http://localhost:8080/raw_body`)
+	err := http.ListenAndServe(addrStr, nil) // default mux
 	show("end of program. ", err)
 }
 
 func requestDemo() {
-	show("program started ...")
+	show("requestDemo: program started ...")
 
 	// async, run the server with 2 endpoints
 	var runHttpServer = func() {
-		// register server root handler
+		// register server root handler, default mux
 		http.HandleFunc(
 			"/",
 			func(w http.ResponseWriter, r *http.Request) {
@@ -553,7 +614,7 @@ func requestDemo() {
 			},
 		)
 
-		// register server `raw_body` handler
+		// register server `raw_body` handler, default mux
 		http.HandleFunc(
 			"/raw_body",
 			func(w http.ResponseWriter, r *http.Request) {
@@ -568,8 +629,7 @@ func requestDemo() {
 		)
 
 		// run
-		const addrStr = ":8080"
-		show("Starting server at: ", addrStr)
+		show("Starting server at: ", ipStr+addrStr)
 		show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
 		err := http.ListenAndServe(addrStr, nil)
 		show("end of server. ", err)
@@ -709,42 +769,45 @@ func requestDemo() {
 }
 
 func inlineTemplate() {
-	show("program started ...")
+	show("inlineTemplate: program started ...")
 
+	// data for template
 	type templateParamsStruct struct {
 		URL     string
 		Browser string
 	}
 
-	const EXAMPLE_TEMPLATE = `
+	const SIMPLE_TEMPLATE = `
 	Browser {{.Browser}}
 	
 	you at {{.URL}}
 	`
 
 	var rootPageHandler = func(w http.ResponseWriter, r *http.Request) {
+		// get data
 		templateParams := templateParamsStruct{
 			URL:     r.URL.String(),
 			Browser: r.UserAgent(),
 		}
 
+		// create & render template
 		templateRef := template.New(`example`)
-		templateRef, _ = templateRef.Parse(EXAMPLE_TEMPLATE)
+		templateRef, _ = templateRef.Parse(SIMPLE_TEMPLATE)
 		templateRef.Execute(w, templateParams)
 	}
 
-	http.HandleFunc("/", rootPageHandler)
+	http.HandleFunc("/", rootPageHandler) // default mux
 
-	const addrStr = ":8080"
-	show("Starting server at: ", addrStr)
+	show("Starting server at: ", ipStr+addrStr)
 	show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
-	err := http.ListenAndServe(addrStr, nil)
+	err := http.ListenAndServe(addrStr, nil) // default mux
 	show("end of program. ", err)
 }
 
 func fileTemplate() {
-	show("program started ...")
+	show("fileTemplate: program started ...")
 
+	// data for filling template
 	type User struct {
 		ID     int
 		Name   string
@@ -753,11 +816,12 @@ func fileTemplate() {
 
 	users := []User{
 		{1, "Foo", true},
-		{2, "<i>Bar</i>", false},
+		{2, "<i>Bar</i>", false}, // n.b. html tags, should be escaped
 		{3, "Baz", true},
 	}
 
-	templateRef := template.Must(template.ParseFiles("week04/static/users.html"))
+	// templateRef := template.Must(template.ParseFiles("week04/static/users.html"))
+	templateRef := htmpl.Must(htmpl.ParseFiles("week04/static/users.html"))
 	/*
 		   <html>
 		   <body>
@@ -782,25 +846,35 @@ func fileTemplate() {
 					users,
 				})
 		},
-	)
+	) // default mux
 
-	const addrStr = ":8080"
-	show("Starting server at: ", addrStr)
+	show("Starting server at: ", ipStr+addrStr)
 	show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
-	err := http.ListenAndServe(addrStr, nil)
+	err := http.ListenAndServe(addrStr, nil) // default mux
 	show("end of program. ", err)
 }
 
 func methodCallFromTemplate() {
-	show("program started ...")
+	show("methodCallFromTemplate: program started ...")
 
+	// data
 	users := []User_Template{
 		{1, "Foo", true},
 		{2, "Bar", false},
 		{3, "Baz", true},
 	}
+	/*
+		func (user *User_Template) PrintActive() string {
+			// this method invoked in html template
+			if !user.Active {
+				return ""
+			}
+			return "Method says: user " + user.Name + " is active"
+		}
+	*/
 
-	templateRef, err := template.New("method.html").ParseFiles("week04/static/method.html")
+	// template
+	templateRef, err := htmpl.New("method.html").ParseFiles("week04/static/method.html")
 	if err != nil {
 		panic(err)
 	}
@@ -810,7 +884,7 @@ func methodCallFromTemplate() {
 		func(w http.ResponseWriter, r *http.Request) {
 			if err := templateRef.ExecuteTemplate(
 				w,
-				"method.html", // name of the file, always
+				"method.html", // name of the file (or template?), always
 				struct {
 					Users []User_Template
 				}{
@@ -820,44 +894,42 @@ func methodCallFromTemplate() {
 				panic(err)
 			}
 		},
-	)
+	) // default mux
 
-	const addrStr = ":8080"
-	show("Starting server at: ", addrStr)
+	show("Starting server at: ", ipStr+addrStr)
 	show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
 	err = http.ListenAndServe(addrStr, nil)
 	show("end of program. ", err)
 }
 
 func funcCallFromTemplate() {
-	show("program started ...")
+	show("funcCallFromTemplate: program started ...")
 
 	type User struct {
 		ID     int
 		Name   string
 		Active bool
 	}
-
-	var IsUserOdd = func(user *User) bool {
-		// function to call from template
-		return (user.ID % 2) != 0
-	}
-
-	// register functions
-	templateFuncs := template.FuncMap{
-		"OddUser": IsUserOdd,
-	}
-
-	// add funcs before parsing
-	templateRef, err := template.New("func.html").Funcs(templateFuncs).ParseFiles("week04/static/func.html")
-	if err != nil {
-		panic(err)
-	}
-
 	users := []User{
 		{1, "Foo", true},
 		{2, "Bar", false},
 		{3, "Baz", true},
+	}
+
+	// function to call from template
+	var IsUserOdd = func(user *User) bool {
+		return (user.ID % 2) != 0
+	}
+
+	// register functions
+	templateFuncs := htmpl.FuncMap{
+		"OddUser": IsUserOdd,
+	}
+
+	// add funcs before parsing
+	templateRef, err := htmpl.New("func.html").Funcs(templateFuncs).ParseFiles("week04/static/func.html")
+	if err != nil {
+		panic(err)
 	}
 
 	http.HandleFunc(
@@ -872,12 +944,11 @@ func funcCallFromTemplate() {
 				panic(err)
 			}
 		},
-	)
+	) // default mux
 
-	const addrStr = ":8080"
-	show("Starting server at: ", addrStr)
+	show("Starting server at: ", ipStr+addrStr)
 	show(fmt.Sprintf("Open url http://localhost%s/", addrStr))
-	err = http.ListenAndServe(addrStr, nil)
+	err = http.ListenAndServe(addrStr, nil) // default mux
 	show("end of program. ", err)
 }
 

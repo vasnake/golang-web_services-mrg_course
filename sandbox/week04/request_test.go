@@ -7,8 +7,8 @@ import (
 	"testing"
 )
 
+// Some server business logic, should be tested. How? Like any other function
 func GetUserHttpHandler(w http.ResponseWriter, r *http.Request) {
-	// Some business logic, should be tested. How? Like any other function.
 	key := r.FormValue("id")
 	if key == "42" {
 		w.WriteHeader(http.StatusOK)
@@ -40,11 +40,14 @@ func TestGetUserHttpHandler(t *testing.T) {
 	}
 
 	for idx, testCase := range cases {
+		// fake client make fake query
 		req := httptest.NewRequest("GET", "http://example.com/api/user?id="+testCase.ID, nil)
 		respWriter := httptest.NewRecorder()
 
-		// show("Test request: ", req)
+		// call test subject
 		GetUserHttpHandler(respWriter, req)
+
+		// check
 
 		if respWriter.Code != testCase.ExpectedStatusCode {
 			t.Errorf("[%d] wrong StatusCode: got %d, expected %d",

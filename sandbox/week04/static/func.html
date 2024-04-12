@@ -1,16 +1,16 @@
 <html>
 <body>
 	<h1>Users</h1>
-	{{range .Users}}
-    {{.ID}}
+		{{range .Users}}
+		{{.ID}}
 		<b>{{.Name}}</b>,
-    id {{.ID}}
+	    id {{.ID}}
 		{{if OddUser .}} <!-- call registered function with user value as parameter -->
 			is odd
-    {{else}}
-      is even
+		{{else}}
+			is even
 		{{end}}
 		<br />
-	{{end}}
+		{{end}}
 </body>
 </html>
