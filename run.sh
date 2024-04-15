@@ -17,6 +17,7 @@ go_run() {
         week03)                     go_run_sandbox week03;;
         week03_finder_test)         go_run_sandbox_week03_finder_test;;
         week04)                     go_run_sandbox week04;;
+        week04_homework)            go_run_sandbox_week04_search_test;;
         *)                          errorExit "Unknown program: ${selector}";;
     esac
 }
@@ -34,6 +35,37 @@ go_test_module() {
     go test -v ${1}
     exit_code=$?
     echo "####################################################################################################"
+    return $exit_code
+}
+
+go_run_sandbox_week04_search_test() {
+    local module="search"
+    local exit_code=0
+    pushd ${PRJ_DIR}/sandbox/week04_homework
+
+    gofmt -w $module || exit
+
+    go vet $module
+    # go vet -stringintconv=false $module
+
+    # go run -race $module
+    # go run $module
+    # go_run_module $module
+
+    # https://pkg.go.dev/cmd/go#hdr-Testing_flags
+    # go test -bench . $module
+    # go test -bench . -benchmem $module
+    # go test -bench '.*Mem.*' -benchmem $module
+    # go test -bench '.*Xml.*' -benchmem $module
+    # go test -v $module
+
+    go test -v -cover $module
+    # go test -coverprofile=cover.out $module
+    # go tool cover -html=cover.out -o cover.html
+
+    exit_code=$?
+    echo "####################################################################################################"
+    popd
     return $exit_code
 }
 
@@ -131,6 +163,7 @@ go_run_sandbox() {
     pushd ${PRJ_DIR}/sandbox
 
     gofmt -w $module || exit
+
     # go vet $module
     go vet -stringintconv=false $module
 
