@@ -95,10 +95,13 @@ func (srv *SearchClient) FindUsers(req SearchRequest) (*SearchResponse, error) {
 	body, err := ioutil.ReadAll(resp.Body)
 
 	switch resp.StatusCode {
+
 	case http.StatusUnauthorized:
 		return nil, fmt.Errorf("Bad AccessToken")
+
 	case http.StatusInternalServerError:
 		return nil, fmt.Errorf("SearchServer fatal error")
+
 	case http.StatusBadRequest:
 		errResp := SearchErrorResponse{}
 		err = json.Unmarshal(body, &errResp)
@@ -109,7 +112,7 @@ func (srv *SearchClient) FindUsers(req SearchRequest) (*SearchResponse, error) {
 			return nil, fmt.Errorf("OrderFeld %s invalid", req.OrderField)
 		}
 		return nil, fmt.Errorf("unknown bad request error: %s", errResp.Error)
-	}
+	} // end switch
 
 	data := []User{}
 	err = json.Unmarshal(body, &data)

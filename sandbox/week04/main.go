@@ -952,6 +952,7 @@ func funcCallFromTemplate() {
 	show("end of program. ", err)
 }
 
+// show writes message to standard output. Message combined from prefix msg and slice of arbitrary arguments
 func show(msg string, xs ...any) {
 	var line = ts() + ": " + msg
 
@@ -963,7 +964,7 @@ func show(msg string, xs ...any) {
 	fmt.Println(line)
 }
 
-// ts return current timestamp in RFC3339 with milliseconds
+// ts returns current timestamp in RFC3339 with milliseconds
 func ts() string {
 	/*
 		https://pkg.go.dev/time#pkg-constants
