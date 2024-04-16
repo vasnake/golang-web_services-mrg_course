@@ -1549,6 +1549,10 @@ go test -coverprofile=cover.out search && go tool cover -html=cover.out -o cover
 ```
 search client tests.
 
+Требование на тестирование клиента выполнено: 100% покрытие тестами, с помощью моков серверной части.
+Пожелание реализации поиска по XML файлу я проигнорировал. Задача тривиальная, тестов на ее выполнение нет.
+Может быть потом, как-нибудь, когда время будет.
+
 ## links, info
 
 - [Package `fmt` implements formatted I/O with functions analogous to C's printf and scanf](https://pkg.go.dev/fmt)

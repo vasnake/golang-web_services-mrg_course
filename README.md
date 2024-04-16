@@ -152,6 +152,11 @@ Consequently, there are no constants denoting the IEEE-754 negative zero, infini
 
 [week 2, extra homework](./sandbox/week02_homework/wp_extra/wp_extra.md)
 
+### week 4, search in XML
+
+[week 4, extra homework](./part1.md#week4-homework)
+Часть задания, в которой надо реализовать поиск "юзеров" в файле XML, согласно переданным параметрам.
+
 ## Info, links
 
 - `Communicating Sequential Processes` by Tony Hoare

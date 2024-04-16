@@ -112,7 +112,7 @@ func (srv *SearchClient) FindUsers(req SearchRequest) (*SearchResponse, error) {
 			return nil, fmt.Errorf("OrderFeld %s invalid", req.OrderField)
 		}
 		return nil, fmt.Errorf("unknown bad request error: %s", errResp.Error)
-	} // end switch
+	} // end switch resp.StatusCode
 
 	data := []User{}
 	err = json.Unmarshal(body, &data)

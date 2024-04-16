@@ -12,7 +12,7 @@ import (
 )
 
 func SearchServerSlow(w http.ResponseWriter, r *http.Request) {
-	time.Sleep(client.Timeout + (111 * 42))
+	time.Sleep(client.Timeout + (client.Timeout / 9)) // sleep longer than client timeout
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	io.WriteString(w, "[]")
 }
@@ -20,29 +20,23 @@ func SearchServerSlow(w http.ResponseWriter, r *http.Request) {
 // SearchServer is a handler for http requests. Reads from Request, writes result to ResponseWriter
 func SearchServer(w http.ResponseWriter, r *http.Request) {
 	// show("Request: ", r)
-	/*
-	   2024-04-16T06:55:24.553Z: Request: *http.Request(&{
-	   	GET /?
-	   		limit=1&
-	   		offset=0&
-	   		order_by=42&
-	   		order_field=&
-	   		query=
-	   	HTTP/1.1 1 1 map[
-	   		Accept-Encoding:[gzip]
-	   		Accesstoken:[good]
-	   		User-Agent:[Go-http-client/1.1]]
-	   	{} <nil> 0 [] false 127.0.0.1:33707 map[] map[] <nil> map[] 127.0.0.1:59348 /?
-	   		limit=1&
-	   		offset=0&
-	   		order_by=42&
-	   		order_field=&
-	   		query= <nil> <nil> <nil> 0xc000212190 <nil> [] map[]});
-	*/
-	data := []User{}
+	marshal := func(v any) []byte {
+		bytes, err := json.Marshal(v)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			io.WriteString(w, err.Error())
+			return nil
+		} else {
+			return bytes
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8") // must be set before writing
+
+	// different error cases
 
 	accessTok := r.Header.Get("AccessToken")
-	if accessTok == "fatal" { // TODO: remove this mock of fatal error
+	if accessTok == "fatal" { // imitation of fatal error
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -54,79 +48,42 @@ func SearchServer(w http.ResponseWriter, r *http.Request) {
 	switch r.FormValue("order_by") {
 	case "42":
 		w.WriteHeader(http.StatusBadRequest)
-		w.Header().Set("Content-Type", "application/json; charset=utf-8") // must be set before writing
-		io.WriteString(w, "unpackable json: ][")
+		io.WriteString(w, "malformed json: ][")
 		return
 	case "37":
-		w.Header().Set("Content-Type", "application/json; charset=utf-8") // must be set before writing
-		bytes, err := json.Marshal(SearchErrorResponse{Error: "Wrong `order_by` value: 37"})
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			io.WriteString(w, err.Error())
-		} else {
+		bytes := marshal(SearchErrorResponse{Error: "Wrong `order_by` value: 37"})
+		if bytes != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write(bytes)
 		}
 		return
 	case "73":
-		w.Header().Set("Content-Type", "application/json; charset=utf-8") // must be set before writing
-		bytes, err := json.Marshal(SearchErrorResponse{Error: "Malformer result: list of users"})
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			io.WriteString(w, err.Error())
-		} else {
+		bytes := marshal(SearchErrorResponse{Error: "Malformer result: list of users"})
+		if bytes != nil {
 			w.Write(bytes)
 		}
 		return
-
-	case "-1":
-		fallthrough
-	case "0":
-		fallthrough
-	case "1":
-		fallthrough
 	default:
-		_ = "foo"
+		_ = "errors not ordered here"
 	}
 
 	switch r.FormValue("order_field") {
 	case "foo":
-		w.Header().Set("Content-Type", "application/json; charset=utf-8") // must be set before writing
-		bytes, err := json.Marshal(SearchErrorResponse{Error: "ErrorBadOrderField"})
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			io.WriteString(w, err.Error())
-		} else {
+		bytes := marshal(SearchErrorResponse{Error: "ErrorBadOrderField"})
+		if bytes != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write(bytes)
 		}
 		return
-
 	default:
-		_ = "foo"
+		_ = "no errors here"
 	}
 
-	switch r.FormValue("id") {
-	case "42":
-		w.WriteHeader(http.StatusPaymentRequired)
-		// w.WriteHeader(http.StatusOK)
-		// io.WriteString(w, `{"status": 200, "balance": 100500}`)
-
-	case "__internal_error":
-		w.WriteHeader(http.StatusServiceUnavailable)
-		// fallthrough
-
-	default:
-		bytes, err := json.Marshal(data)
-		if err != nil {
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8") // must be set before writing
-			w.WriteHeader(http.StatusInternalServerError)
-			io.WriteString(w, err.Error())
-		} else {
-			w.Header().Set("Content-Type", "application/json; charset=utf-8") // must be set before writing
-			w.Write(bytes)
-		}
-	} // end switch
+	// search and find users:
+	bytes := marshal(found3Users)
+	if bytes != nil {
+		w.Write(bytes)
+	}
 }
 
 func TestSmoke(t *testing.T) {
@@ -142,9 +99,10 @@ func TestSmoke(t *testing.T) {
 	resp, err := sc.FindUsers(req)
 
 	idx := 0
-	if err == nil && resp == nil {
+	if resp == nil {
 		t.Errorf("[%d] response is nil, unexpected error: %#v", idx, err)
-	} else if err != nil {
+	}
+	if err != nil {
 		t.Errorf("[%d] unexpected error: %#v", idx, err)
 	}
 }
@@ -221,7 +179,7 @@ func TestErrorCases(t *testing.T) {
 		},
 	}
 
-	eq := IsErrorStartsWith
+	eeq := IsErrorStartsWith
 	getToken := func(row FindUserTEstCase) string {
 		if row.accessToken == "" {
 			return "good"
@@ -242,7 +200,7 @@ func TestErrorCases(t *testing.T) {
 
 		resp, err := sc.FindUsers(row.request)
 
-		if !eq(err, row.err) {
+		if !eeq(err, row.err) {
 			t.Errorf("row [%d], expected error: `%#v`; got error: `%#v`", idx, row.err, err)
 		}
 		if resp != row.response {
@@ -251,20 +209,42 @@ func TestErrorCases(t *testing.T) {
 	}
 }
 
+var found3Users = []User{
+	{Id: 1},
+	{Id: 2},
+	{Id: 3},
+}
+
 func TestHappyCases(t *testing.T) {
-	testTable := []FindUserTEstCase{}
+	testTable := []FindUserTEstCase{
+		{ // if len(data) == req.Limit
+			request:  SearchRequest{Limit: 2}, // limit: 3
+			response: &SearchResponse{NextPage: true, Users: found3Users[:2]},
+		},
+		{ // if len(data) != req.Limit
+			request:  SearchRequest{Limit: 3}, // limit: 4
+			response: &SearchResponse{Users: found3Users[:3]},
+		},
+		{ // if len(data) != req.Limit
+			request:  SearchRequest{Limit: 33}, // limit: 26
+			response: &SearchResponse{Users: found3Users[:3]},
+		},
+	}
 
 	serverMock := httptest.NewServer(http.HandlerFunc(SearchServer))
 	defer serverMock.Close()
-	sc := SearchClient{URL: serverMock.URL}
-	var eq = func(e1, e2 error) bool { return IsErrorsEqual(e1, e2) }
+	sc := SearchClient{URL: serverMock.URL, AccessToken: "good"}
+	eeq := IsErrorsEqual
+	req := IsResponseEqual
 
 	for idx, row := range testTable {
+
 		resp, err := sc.FindUsers(row.request)
-		if eq(err, row.err) {
+
+		if !eeq(err, row.err) {
 			t.Errorf("row [%d], expected error: `%#v`; got error: `%#v`", idx, row.err, err)
 		}
-		if resp != row.response {
+		if !req(resp, row.response) {
 			t.Errorf("row [%d], expected resp: `%#v`; got resp: `%#v`", idx, row.response, resp)
 		}
 	}
@@ -309,4 +289,37 @@ func IsErrorStartsWith(e1, e2 error) bool {
 		return false
 	}
 	return strings.Contains(e1.Error(), e2.Error())
+}
+
+func IsResponseEqual(r1, r2 *SearchResponse) bool {
+	if r1.NextPage == r2.NextPage {
+		if r1.Users == nil {
+			if r2.Users == nil {
+				return true
+			}
+			return false
+		}
+		if r2.Users == nil {
+			return false
+		}
+		if len(r1.Users) == len(r2.Users) {
+			for i, u1 := range r1.Users {
+				u2 := r2.Users[i]
+				if !IsUserEqual(u1, u2) {
+					return false
+				}
+			}
+			return true
+		}
+	}
+	return false
+}
+
+func IsUserEqual(u1, u2 User) bool {
+	return u1 == u2
+	// return u1.Id == u2.Id &&
+	// 	u1.Age == u2.Age &&
+	// 	u1.About == u2.About &&
+	// 	u1.Gender == u2.Gender &&
+	// 	u1.Name == u2.Name
 }
