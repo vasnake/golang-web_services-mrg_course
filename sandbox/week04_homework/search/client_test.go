@@ -12,26 +12,98 @@ import (
 )
 
 func SearchServerSlow(w http.ResponseWriter, r *http.Request) {
-	// time.Sleep(1100 * time.Millisecond)
-	time.Sleep(client.Timeout + 42)
-	switch r.FormValue("id") {
-	case "__internal_error":
-		w.WriteHeader(http.StatusServiceUnavailable)
-	default:
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		io.WriteString(w, "[]")
-	}
+	time.Sleep(client.Timeout + (111 * 42))
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	io.WriteString(w, "[]")
 }
 
 // SearchServer is a handler for http requests. Reads from Request, writes result to ResponseWriter
 func SearchServer(w http.ResponseWriter, r *http.Request) {
 	// show("Request: ", r)
+	/*
+	   2024-04-16T06:55:24.553Z: Request: *http.Request(&{
+	   	GET /?
+	   		limit=1&
+	   		offset=0&
+	   		order_by=42&
+	   		order_field=&
+	   		query=
+	   	HTTP/1.1 1 1 map[
+	   		Accept-Encoding:[gzip]
+	   		Accesstoken:[good]
+	   		User-Agent:[Go-http-client/1.1]]
+	   	{} <nil> 0 [] false 127.0.0.1:33707 map[] map[] <nil> map[] 127.0.0.1:59348 /?
+	   		limit=1&
+	   		offset=0&
+	   		order_by=42&
+	   		order_field=&
+	   		query= <nil> <nil> <nil> 0xc000212190 <nil> [] map[]});
+	*/
 	data := []User{}
 
-	at := r.Header.Get("AccessToken")
-	if at != "good" {
+	accessTok := r.Header.Get("AccessToken")
+	if accessTok == "fatal" { // TODO: remove this mock of fatal error
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if accessTok != "good" {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
+	}
+
+	switch r.FormValue("order_by") {
+	case "42":
+		w.WriteHeader(http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json; charset=utf-8") // must be set before writing
+		io.WriteString(w, "unpackable json: ][")
+		return
+	case "37":
+		w.Header().Set("Content-Type", "application/json; charset=utf-8") // must be set before writing
+		bytes, err := json.Marshal(SearchErrorResponse{Error: "Wrong `order_by` value: 37"})
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			io.WriteString(w, err.Error())
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write(bytes)
+		}
+		return
+	case "73":
+		w.Header().Set("Content-Type", "application/json; charset=utf-8") // must be set before writing
+		bytes, err := json.Marshal(SearchErrorResponse{Error: "Malformer result: list of users"})
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			io.WriteString(w, err.Error())
+		} else {
+			w.Write(bytes)
+		}
+		return
+
+	case "-1":
+		fallthrough
+	case "0":
+		fallthrough
+	case "1":
+		fallthrough
+	default:
+		_ = "foo"
+	}
+
+	switch r.FormValue("order_field") {
+	case "foo":
+		w.Header().Set("Content-Type", "application/json; charset=utf-8") // must be set before writing
+		bytes, err := json.Marshal(SearchErrorResponse{Error: "ErrorBadOrderField"})
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			io.WriteString(w, err.Error())
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write(bytes)
+		}
+		return
+
+	default:
+		_ = "foo"
 	}
 
 	switch r.FormValue("id") {
@@ -78,12 +150,20 @@ func TestSmoke(t *testing.T) {
 }
 
 type FindUserTEstCase struct {
-	request  SearchRequest
-	response *SearchResponse
-	err      error
+	request     SearchRequest
+	response    *SearchResponse
+	err         error
+	accessToken string
+	url         string
 }
 
 func TestErrorCases(t *testing.T) {
+	serverMockClosed := httptest.NewServer(http.HandlerFunc(SearchServer))
+	serverMock := httptest.NewServer(http.HandlerFunc(SearchServer))
+	serverMockSlow := httptest.NewServer(http.HandlerFunc(SearchServerSlow))
+	defer func() { serverMock.Close(); serverMockSlow.Close() }()
+	serverMockClosed.Close()
+
 	testTable := []FindUserTEstCase{
 		{
 			request:  SearchRequest{Limit: -1},
@@ -96,51 +176,69 @@ func TestErrorCases(t *testing.T) {
 			err:      fmt.Errorf("offset must be > 0"),
 		},
 		{
+			url:      serverMockClosed.URL,
 			request:  SearchRequest{},
 			response: nil,
 			err:      fmt.Errorf("unknown error Get"),
 		},
 		{
+			url:      serverMockSlow.URL,
 			request:  SearchRequest{},
 			response: nil,
 			err:      fmt.Errorf("timeout for limit"),
 		},
 		{
-			request:  SearchRequest{},
-			response: nil,
-			err:      fmt.Errorf("Bad AccessToken"),
+			accessToken: "bad",
+			request:     SearchRequest{},
+			response:    nil,
+			err:         fmt.Errorf("Bad AccessToken"),
 		},
-		// http.StatusInternalServerError:  return nil, fmt.Errorf("SearchServer fatal error")
-		// http.StatusBadRequest:
-		// 		fmt.Errorf("unknown bad request error: %s", errResp.Error)
-		// 		fmt.Errorf("cant unpack error json: %s", err)
-		// 		fmt.Errorf("OrderFeld %s invalid", req.OrderField)
-		// return nil, fmt.Errorf("cant unpack result json: %s", err)
+		{
+			accessToken: "fatal",
+			request:     SearchRequest{},
+			response:    nil,
+			err:         fmt.Errorf("SearchServer fatal error"),
+		},
+		{
+			request:  SearchRequest{OrderBy: 42}, // bad request, with unpackable error message
+			response: nil,
+			err:      fmt.Errorf("cant unpack error json: "),
+		},
+		{
+			request:  SearchRequest{OrderField: "foo"}, // bad request, with meaningful error message
+			response: nil,
+			err:      fmt.Errorf("OrderFeld "),
+		},
+		{
+			request:  SearchRequest{OrderBy: 37}, // bad request, with meaningful unknown error message
+			response: nil,
+			err:      fmt.Errorf("unknown bad request error: "),
+		},
+		{
+			request:  SearchRequest{OrderBy: 73}, // good request, unpackable result
+			response: nil,
+			err:      fmt.Errorf("cant unpack result json: "),
+		},
 	}
 
-	serverMockClosed := httptest.NewServer(http.HandlerFunc(SearchServer))
-	serverMockClosed.Close()
-	serverMockSlow := httptest.NewServer(http.HandlerFunc(SearchServerSlow))
-	serverMock := httptest.NewServer(http.HandlerFunc(SearchServer))
-	defer func() { serverMock.Close(); serverMockSlow.Close() }()
-	sc := SearchClient{}
+	eq := IsErrorStartsWith
+	getToken := func(row FindUserTEstCase) string {
+		if row.accessToken == "" {
+			return "good"
+		}
+		return row.accessToken
+	}
+	getURL := func(row FindUserTEstCase) string {
+		if row.url == "" {
+			return serverMock.URL
+		}
+		return row.url
+	}
 
+	sc := SearchClient{}
 	for idx, row := range testTable {
-		// update env config
-		sc.AccessToken = "good"
-		sc.URL = serverMock.URL
-		eq := func(e1, e2 error) bool { return IsErrorsEqual(e1, e2) }
-		if row.err.Error() == "Bad AccessToken" {
-			sc.AccessToken = "bad"
-		}
-		if row.err.Error() == "timeout for limit" {
-			sc.URL = serverMockSlow.URL
-			eq = func(e1, e2 error) bool { return IsErrorStartsWith(e1, e2) }
-		}
-		if row.err.Error() == "unknown error Get" {
-			sc.URL = serverMockClosed.URL
-			eq = func(e1, e2 error) bool { return IsErrorStartsWith(e1, e2) }
-		}
+		sc.AccessToken = getToken(row)
+		sc.URL = getURL(row)
 
 		resp, err := sc.FindUsers(row.request)
 

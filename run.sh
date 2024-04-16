@@ -44,7 +44,6 @@ go_run_sandbox_week04_search_test() {
     pushd ${PRJ_DIR}/sandbox/week04_homework
 
     gofmt -w $module || exit
-
     go vet $module
     # go vet -stringintconv=false $module
 
