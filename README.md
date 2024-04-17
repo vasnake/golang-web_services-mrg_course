@@ -170,3 +170,4 @@ Consequently, there are no constants denoting the IEEE-754 negative zero, infini
 - [3.5 Years, 500k Lines of Go (Part 1)][https://npf.io/2017/03/3.5yrs-500k-lines-of-go/] `return fmt.Errorf("While doing foo: %v", err.Error())`
 - The Go Playground https://go.dev/play/ or https://play.golang.com/
 - Practical Go: Real world advice for writing maintainable Go programs / Dave Cheney https://www.google.com/search?q=Practical+Go%3A+Real+world+advice+for+writing+maintainable+Go+programs+%2F+Dave+Cheney
+- http routing benchmark https://github.com/julienschmidt/go-http-routing-benchmark

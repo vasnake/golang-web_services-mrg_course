@@ -22,4 +22,5 @@ use (
 	./week03_homework/finder
 	./week04
 	./week04_homework/search
+	./week05
 )
