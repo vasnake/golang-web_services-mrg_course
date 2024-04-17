@@ -4,9 +4,9 @@
 Этот курс был создан в 2017 году на основе внедрения языка Go в Почту Mail.ru
 
 3 части, 12 недель
-- [part1](part1.md)
-- [part2](part2.md)
-- [part3](part3.md)
+- [part1](part1.md) week 1..4
+- [part2](part2.md) week 5..8
+- [part3](part3.md) week 9..12
 
 ## silly-bus
 

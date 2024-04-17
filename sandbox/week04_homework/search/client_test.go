@@ -11,14 +11,14 @@ import (
 	"time"
 )
 
-func SearchServerSlow(w http.ResponseWriter, r *http.Request) {
+func SearchServerSlowMock(w http.ResponseWriter, r *http.Request) {
 	time.Sleep(client.Timeout + (client.Timeout / 9)) // sleep longer than client timeout
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	io.WriteString(w, "[]")
 }
 
-// SearchServer is a handler for http requests. Reads from Request, writes result to ResponseWriter
-func SearchServer(w http.ResponseWriter, r *http.Request) {
+// SearchServerMock is a handler for http requests. Reads from Request, writes result to ResponseWriter
+func SearchServerMock(w http.ResponseWriter, r *http.Request) {
 	// show("Request: ", r)
 	marshal := func(v any) []byte {
 		bytes, err := json.Marshal(v)
@@ -64,7 +64,7 @@ func SearchServer(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	default:
-		_ = "errors not ordered here"
+		_ = "no errors here"
 	}
 
 	switch r.FormValue("order_field") {
@@ -87,7 +87,7 @@ func SearchServer(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestSmoke(t *testing.T) {
-	serverMock := httptest.NewServer(http.HandlerFunc(SearchServer))
+	serverMock := httptest.NewServer(http.HandlerFunc(SearchServerMock))
 	defer serverMock.Close()
 
 	sc := &SearchClient{
@@ -116,9 +116,9 @@ type FindUserTEstCase struct {
 }
 
 func TestErrorCases(t *testing.T) {
-	serverMockClosed := httptest.NewServer(http.HandlerFunc(SearchServer))
-	serverMock := httptest.NewServer(http.HandlerFunc(SearchServer))
-	serverMockSlow := httptest.NewServer(http.HandlerFunc(SearchServerSlow))
+	serverMockClosed := httptest.NewServer(http.HandlerFunc(SearchServerMock))
+	serverMock := httptest.NewServer(http.HandlerFunc(SearchServerMock))
+	serverMockSlow := httptest.NewServer(http.HandlerFunc(SearchServerSlowMock))
 	defer func() { serverMock.Close(); serverMockSlow.Close() }()
 	serverMockClosed.Close()
 
@@ -231,7 +231,7 @@ func TestHappyCases(t *testing.T) {
 		},
 	}
 
-	serverMock := httptest.NewServer(http.HandlerFunc(SearchServer))
+	serverMock := httptest.NewServer(http.HandlerFunc(SearchServerMock))
 	defer serverMock.Close()
 	sc := SearchClient{URL: serverMock.URL, AccessToken: "good"}
 	eeq := IsErrorsEqual
@@ -292,27 +292,29 @@ func IsErrorStartsWith(e1, e2 error) bool {
 }
 
 func IsResponseEqual(r1, r2 *SearchResponse) bool {
-	if r1.NextPage == r2.NextPage {
-		if r1.Users == nil {
-			if r2.Users == nil {
-				return true
-			}
+	// first field
+	if r1.NextPage != r2.NextPage {
+		return false
+	}
+
+	// last field
+
+	if r1.Users == nil && r2.Users == nil {
+		return true
+	}
+	if r1.Users == nil || r2.Users == nil {
+		return false
+	}
+	if len(r1.Users) != len(r2.Users) {
+		return false
+	}
+
+	for i, u1 := range r1.Users {
+		if !IsUserEqual(u1, r2.Users[i]) {
 			return false
-		}
-		if r2.Users == nil {
-			return false
-		}
-		if len(r1.Users) == len(r2.Users) {
-			for i, u1 := range r1.Users {
-				u2 := r2.Users[i]
-				if !IsUserEqual(u1, u2) {
-					return false
-				}
-			}
-			return true
 		}
 	}
-	return false
+	return true
 }
 
 func IsUserEqual(u1, u2 User) bool {

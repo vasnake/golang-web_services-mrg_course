@@ -1483,8 +1483,6 @@ go run week04
 
 ### week4 homework
 
-# I_AM_HERE
-
 "чего же от нас требуется": `handouts\golang_web_services_2023-12-28.zip\4\99_hw\readme.md`
 
 > Тема: поиск данных по XML и тестовое покрытие ...
