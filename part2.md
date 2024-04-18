@@ -181,63 +181,95 @@ https://github.com/julienschmidt/go-http-routing-benchmark
 
 ### Валидация
 
-# I_AM_HERE
-
-- [validation](week_05/validation.go)
+- [validation](week_05/validation.go) валидация параметров запроса
 
 Нет стандартного способа валидации, всё проекто-зависимо.
 Есть пакеты `asaskevich/govalidator`, `gorilla/schema`, другие.
+Первый: только валидатор. Второй: парсинг + валидация.
 Это работает на рефлексии. Если надо, чтобы валидация работала быстрее, делайте кодогенератор или пишите руками.
 
-### Фреймворки 1 (Beego)
+Me:
+Если надо шлепать на конвейере, то нужно что-то декларативное.
+Если одиночные проекты, то можно и руками парсинг-валидацию написать.
 
-https://beego.me/ фреймворк
+### web-site Фреймворки 1 (Beego)
+
+https://beego.me/ фреймворк https://github.com/beego/beego
 
 `bee new web_bp; cd web_bp; bee run`
 `bee api user; cd user; bee run -gendoc=true -downdoc=true`
 
-Можно сгенерировать сайт, можно сгенерировать API c документацией Swagger.
+Можно сгенерировать html web сайт; можно сгенерировать сайт с json (REST) API, c документацией Swagger.
 Много компонент, для быстрого старта очень неплохо.
-Ближе к Django.
+Похоже на Django.
 
-### Фреймворки 2 (gin)
+### web-site Фреймворки 2 (gin)
 
-- [main](week_05/main.go)
+- [main](week_05/main.go), UPD: `handouts\golang_web_services_2023-12-28.zip\5\frameworks\gin\main.go`
 
-`gin-gonic/gin` фреймворк.
-Быстрый и функциональный, простой. Генераторов (как в Beego) нет.
+`gin-gonic/gin` фреймворк https://github.com/gin-gonic/gin
+
+Быстрый и функциональный, простой.
+Генераторов (как в Beego) нет.
 Ближе к Flask.
 
 ### Логирование
 
-- [logging_main](week_05/logging_main.go)
+- [logging_main](week_05/logging_main.go), UPD: `handouts\golang_web_services_2023-12-28.zip\5\logging\main.go`
 
-Несколько подходов к логированию.
-Стандартный логгер `log`, `zap` - структурированные логи, `logrus` - делает вид, что структурированный.
+Несколько подходов к логированию, Demo: через мидлварь выводит в лог 5 строк разными способами.
 
-`logrus` имеет много коннекторов, для отсылки логов в разные приемники. Медленный.
-`zap` на порядок быстрее.
+Стандартный логгер `log`;
+`zap` - структурированные логи;
+`logrus` - делает вид, что структурированный.
+
+`logrus` имеет много коннекторов, для отсылки логов в разные приемники https://github.com/sirupsen/logrus/wiki/Hooks. Медленный.
+
+`zap` на порядок быстрее https://github.com/uber-go/zap?tab=readme-ov-file#performance
+
+Структурированный лог позволяет устранить рефлексию и аллокацию памяти, благодаря явному указанию структуры сообщения (типов значений).
+
+UPD: говорят, в Го завезли недавно структурированные логи.
 
 ### Веб-сокеты
 
 - [websockets_main](week_05/websockets_main.go) [websockets_index.html](week_05/websockets_index.html)
+UPD: 
+- `handouts\golang_web_services_2023-12-28.zip\5\websockets\index.html`
+- `handouts\golang_web_services_2023-12-28.zip\5\websockets\main.go`
 
-`gorilla/websockets`, при заходе на нужный урл открывается асинхронный канал на вебсокете.
+`gorilla/websockets`, страница с яваскрипт, открывает асинхронный канал на вебсокете.
+
+Вебсокеты: дуплексный канал страница-JS-сервер. Push, Pull, все дела. В основном для легковесного Push.
+В Го из коробки нет вебсокетов, нужны сторонние пакеты.
+
+- https://github.com/nhooyr/websocket
+- https://github.com/gorilla/websocket
 
 ### Шаблонизация
 
-- [template_main](week_05/template_main.go) [template_base.html](week_05/template_base.html) [template_index.html](week_05/template_index.html)
+Demo: кодогенерация шаблона в модуль Го, использование модуля для рендеринга страницы
+- [template_main](week_05/template_main.go) `handouts\golang_web_services_2023-12-28.zip\5\template_adv\main.go`
+- [template_index.html](week_05/template_index.html) `handouts\golang_web_services_2023-12-28.zip\5\template_adv\template\index.html`
 
 Стандартный шаблонизатор медленный, на рефлексии.
-Шаблонизатор `Hero`, прекомпиляция в код Go.
-Программа (шаблон) содержит не текстовые вставки в коде а наоборот, вставки кода в текст.
 
+Шаблонизатор `Hero` https://github.com/shiyanhui/hero, прекомпиляция шаблонов в код Go.
+Шаблон содержит (не текстовые вставки в коде а наоборот) вставки кода Го в текст страницы.
+
+В исходном коде аппы можно оставить спец.комментарий:
 `go:generate hero -source=./template/` -- комментарий-маркер для команды `go generate`.
+
 Недостаток: шаблон по горячему не перезапустишь. Надо пересобирать программу.
+Преимущество: очень быстро выводит страницы.
 
 При выводе шаблона используется буфер (выделение/освобождение памяти), надо использовать pool для переиспользования ресурсов.
 
-### Управление зависимостями
+https://github.com/slinso/goTemplateBenchmark
+
+### Управление зависимостями (deprecated)
+
+UPD: Все зависимости через систему модулей https://go.dev/doc/modules/managing-dependencies
 
 - [dependencies_main](week_05/dependencies_main.go)
 
@@ -255,6 +287,10 @@ dep ensure -add github.com/foo/bar
 dep status
 dep ensure -update
 ```
+
+### week5 homework
+
+# I_AM_HERE
 
 ## part 2, week 2 (06)
 
