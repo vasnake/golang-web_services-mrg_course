@@ -292,6 +292,54 @@ dep ensure -update
 
 # I_AM_HERE
 
+Фолдер с задачей: `handouts\golang_web_services_2023-12-28.zip\5\99_hw\codegen\`
+
+Описание задачи: `readme.md`
+
+Написать программу кодогена `handlers_gen\codegen.go`
+> Запуск будет выглядеть примерно так: `go build handlers_gen/* && ./codegen api.go api_handlers.go`
+Т.е. запускаться он будет как `бинарник_кодогенератора что_парсим.го куда_парсим.го`
+
+`api.go` - этот файл вам надо скармливать в кодогенератор. редактировать его не надо
+
+* `main.go` - редактировать не надо
+* `main_test.go` - этот файл надо запускать для тестирования после кодогенерации. редактировать не надо
+
+> Запуск тестов будет происходить так:
+`go build handlers_gen/* && ./codegen.exe api.go api_handlers.go && go test -v`
+
+[actual homework project](./sandbox/week05_homework/codegen/) `GO_APP_SELECTOR=week05_homework gr`
+```s
+pushd sandbox # workspace
+mkdir -p week05_homework/codegen/handlers_gen
+pushd week05_homework/codegen
+
+go mod init codegen
+
+# makes go vet happy
+cat > main.go << EOT
+package main
+func main() { panic("not yet") }
+EOT
+
+cat > handlers_gen/codegen.go << EOT
+package main
+func main() { panic("not yet") }
+EOT
+
+go mod tidy
+
+popd # workspace
+# go work init
+# go work edit -dropuse=./week05_homework/code_gen
+go work use ./week05_homework/codegen
+
+go vet codegen
+gofmt -w ./week05_homework/codegen
+go test -v codegen
+```
+codegen prj.
+
 ## part 2, week 2 (06)
 
 SQL, NoSQL
