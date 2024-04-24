@@ -1,0 +1,19 @@
+codegen
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# IDE
+.idea/
+
+# macos
+.DS_Store
+
+# temp dirs
+t/
+tmp/
+temp/
