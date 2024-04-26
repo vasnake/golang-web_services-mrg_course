@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"go/types"
+	"runtime/debug"
+	"slices"
 	"strings"
 
 	// "log"
@@ -43,7 +46,7 @@ func main() {
 	fmt.Fprintln(outFileRef, headerText, "")
 
 	var taggedStructs = []ApiValidatorStructMeta{}
-	var tryAppend = func(sm *ApiValidatorStructMeta, err error) {
+	var tryAppendS = func(sm *ApiValidatorStructMeta, err error) {
 		show("struct parsed, structMeta, error: ", sm, err)
 		if err != nil {
 			show("parseStruct failed: ", err)
@@ -51,6 +54,18 @@ func main() {
 		}
 		if sm != nil {
 			taggedStructs = append(taggedStructs, *sm)
+		}
+	}
+
+	var markedFuncs = []ApiGenFuncMeta{}
+	var tryAppendF = func(fm *ApiGenFuncMeta, err error) {
+		show("func parsed, funcMeta, error: ", fm, err)
+		if err != nil {
+			show("parseFunc failed: ", err)
+			os.Exit(parseFuncErrorCode)
+		}
+		if fm != nil {
+			markedFuncs = append(markedFuncs, *fm)
 		}
 	}
 
@@ -84,7 +99,7 @@ func main() {
 						var st = ts.Type.(*ast.StructType)
 						// show("got StructType: ", specIdx, st)
 						var sm, err = parseStruct(ts, st)
-						tryAppend(sm, err)
+						tryAppendS(sm, err)
 					default:
 						// show("unknown type: ", specIdx, ts.Type)
 					}
@@ -97,9 +112,7 @@ func main() {
 			var tfd = topDecl.(*ast.FuncDecl)
 			// show("got FunDecl, name: ", topIdx, tfd.Name)
 			var fm, err = parseFunc(tfd)
-			show("func parsed, funcMeta: ", fm, err)
-			// TODO: generate: http handlers (one reciever: one mux and 1..n handlers)
-			// actually: add to collection
+			tryAppendF(fm, err)
 
 		default:
 			show("unknown Decl: ", topIdx, topDecl)
@@ -144,7 +157,7 @@ func parseStruct(ts *ast.TypeSpec, st *ast.StructType) (*ApiValidatorStructMeta,
 			var err error
 			var fieldMeta = NewApiValidatorFieldMeta()
 			fieldMeta.fieldName = field.Names[0].Name
-			fieldMeta.fieldType, err = decodeTypeFromExpr(field.Type)
+			fieldMeta.fieldType, err = decodeFieldTypeFromExpr(field.Type)
 			if err != nil {
 				return nil, fmt.Errorf("Field type decode problem: %#v; %v", field, err)
 			}
@@ -194,15 +207,109 @@ func parseStruct(ts *ast.TypeSpec, st *ast.StructType) (*ApiValidatorStructMeta,
 	return nil, nil
 }
 
-func parseFunc(fd *ast.FuncDecl) (*FuncMeta, error) {
+func parseFunc(fd *ast.FuncDecl) (*ApiGenFuncMeta, error) {
 	show("processFunc: ", fd)
 	/*
 		parse:
 		func declaration, with comment `// apigen:api ...`, e.g:
 		// apigen:api {"url": "/user/create", "auth": true, "method": "POST"}
 		func (srv *OtherApi) Create(ctx context.Context, in OtherCreateParams) (*OtherUser, error) { ... }
+
+		decode: funcName, recvTypeName, paramTypeName; apigenTrio(url, auth, method)
 	*/
+	var comment = fd.Doc.Text()
+	if startsWith(comment, apiGenTagPrefix) {
+		show("parseFunc, apigen marker found, processing func: ", fd.Name, comment)
+
+		var jsonSpec = comment[len(apiGenTagPrefix):]
+		// show("api json: ", jsonSpec)
+		var specMap specMap
+		var err = json.Unmarshal([]byte(jsonSpec), &specMap)
+		if err != nil {
+			return nil, fmt.Errorf("parseFunc failed, invalid apigen json: %v. %v", jsonSpec, err)
+		}
+		// show("api spec map: ", specMap)
+
+		var funcMeta = NewApiGenFuncMeta().fillFromSpec(specMap)
+		if funcMeta == nil {
+			return nil, fmt.Errorf("parseFunc failed, problems with spec comment. %v", comment)
+		}
+		show("api meta: ", funcMeta)
+
+		funcMeta.funcName = fd.Name.Name
+
+		funcMeta.recieverName = func(r *ast.FieldList) string { // TODO: refactor typeName decoder
+			if r == nil || len(r.List) == 0 {
+				return ""
+			}
+			rt, err := decodeAnyTypeFromExpr(r.List[0].Type)
+			if err != nil {
+				show("decode reciever type failed: ", err, r.List[0].Type)
+				return ""
+			}
+			return rt
+		}(fd.Recv)
+
+		funcMeta.paramName = func(p *ast.FieldList) string {
+			for i, f := range p.List { // TODO: access by index `1`
+				typeName, err := decodeAnyTypeFromExpr(f.Type)
+				if err != nil && i == 1 { // don't care about context param
+					show("decode parameter type failed: ", err, f.Type)
+					return ""
+				}
+				if i == 1 {
+					return typeName
+				} // skip context parameter
+			}
+			return ""
+		}(fd.Type.Params)
+
+		if funcMeta.recieverName == "" {
+			return nil, fmt.Errorf("parseFunc failed, invalid recieverName. %v", funcMeta)
+		}
+		if funcMeta.paramName == "" {
+			return nil, fmt.Errorf("parseFunc failed, invalid paramName. %v", funcMeta)
+		}
+		return funcMeta, nil
+	} // end if found apigen comment
+
 	return nil, nil
+}
+
+type ApiGenFuncMeta struct {
+	funcName     string // empty by default
+	recieverName string // empty by default
+	paramName    string // empty by default
+	url          string // empty by default
+	httpMethod   string // empty by default
+	auth         bool   // false by default
+}
+
+func NewApiGenFuncMeta() *ApiGenFuncMeta {
+	return &ApiGenFuncMeta{
+		auth: false,
+	}
+}
+
+func (fm *ApiGenFuncMeta) fillFromSpec(spec specMap) *ApiGenFuncMeta {
+	defer func() { // type assertion problems
+		if err := recover(); err != nil {
+			debug.PrintStack()
+			show("fillFromSpec, recover from error: ", err)
+			fm = nil
+		}
+		if fm.url == "" {
+			show("fillFromSpec, url is empty")
+			fm = nil
+		}
+	}()
+
+	// apigen:api {"url": "/user/create", "auth": true, "method": "POST"}
+	fm.url = (spec.getOrDefault("url", "")).(string)
+	fm.httpMethod = (spec.getOrDefault("method", "")).(string)
+	fm.auth = (spec.getOrDefault("auth", false)).(bool)
+
+	return fm
 }
 
 type ApiValidatorStructMeta struct {
@@ -249,13 +356,6 @@ func NewApiValidatorTags() *ApiValidatorTags {
 	}
 }
 
-type FuncMeta struct {
-	funcName     string
-	recieverName string
-	paramName    string
-	// url, auth, method
-}
-
 func usage() {
 	fmt.Println("", usageText, "")
 }
@@ -266,8 +366,10 @@ const (
 	parserErrorCode
 	createFileErrorCode
 	parseStructErrorCode
+	parseFuncErrorCode
 
 	apiValidatorTagPrefix = "`apivalidator:"
+	apiGenTagPrefix       = "apigen:api"
 
 	usageText = `Program should be executed like so:
 go build handlers_gen/* && ./codegen api.go api_handlers.go
@@ -286,19 +388,38 @@ import (
 )`
 )
 
+type specMap map[string]any
+
+func (xs specMap) getOrDefault(key string, dflt any) any {
+	var v, exist = xs[key]
+	if !exist {
+		return dflt
+	}
+	return v
+}
+
 func startsWith(s, prefix string) bool {
 	return strings.HasPrefix(s, prefix)
 }
 
-func decodeTypeFromExpr(expr ast.Expr) (string, error) {
+func decodeFieldTypeFromExpr(expr ast.Expr) (string, error) {
+	return decodeTypeFromExpr(expr, []string{"int", "string"})
+}
+
+func decodeAnyTypeFromExpr(expr ast.Expr) (string, error) {
+	return decodeTypeFromExpr(expr, []string{})
+}
+
+func decodeTypeFromExpr(expr ast.Expr, check []string) (string, error) {
 	var exprStr = types.ExprString(expr)
 	// show("decodeTypeFromExpr: ", expr, exprStr)
-	if exprStr == "int" || exprStr == "string" {
-		return exprStr, nil
-	}
 
 	if exprStr == "" {
 		return "", fmt.Errorf("decodeTypeFromExpr, failed conversion from Expr to string. Expr: %v", expr)
+	}
+
+	if len(check) == 0 || slices.Contains(check, exprStr) {
+		return exprStr, nil
 	}
 
 	return exprStr, fmt.Errorf("decodeTypeFromExpr, unknown type: %s", exprStr)
