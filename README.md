@@ -175,7 +175,7 @@ Consequently, there are no constants denoting the IEEE-754 negative zero, infini
 ### vscode hints
 
 User settings: `~\AppData\Roaming\Code\User\settings.json`
-```hs
+```json
 ...
     "gopls": {
         "ui.diagnostic.analyses": {

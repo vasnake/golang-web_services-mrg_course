@@ -46,20 +46,20 @@ go_run_sandbox_week05_codegen_test() {
     local exit_code=0
     pushd ${PRJ_DIR}/sandbox/week05_homework
     
-    rm codegen/api_handlers.go || echo $?
+    rm codegen/api_handlers.go || echo $? # drop generated code
 
     gofmt -w $module || exit
     go vet $module
-    # go vet -stringintconv=false $module
-    # go doc cmd/vet
+    # go vet -stringintconv=false $module # go doc cmd/vet
+
+    # pushd ${moduleDir}/handlers_gen && gofmt -w ./ && go vet -printf=false && popd
+    pushd ${moduleDir}/handlers_gen && gofmt -w ./ && go vet && popd
+    pushd ${moduleDir} && go build handlers_gen/* && ./codegen api.go api_handlers.go && popd
+    # go test -v $module
 
     # go run -race $module
     # go run $module
     # go_run_module $module
-
-    pushd ${moduleDir}/handlers_gen && gofmt -w ./ && go vet -printf=false && popd
-    pushd ${moduleDir} && go build handlers_gen/* && ./codegen api.go api_handlers.go && popd
-    # go test -v $module
 
     # https://pkg.go.dev/cmd/go#hdr-Testing_flags
     # go test -bench . $module

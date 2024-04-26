@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"strings"
 
 	// "log"
@@ -39,7 +40,19 @@ func main() {
 		os.Exit(createFileErrorCode)
 	}
 
-	fmt.Fprintln(outFileRef, headerText)
+	fmt.Fprintln(outFileRef, headerText, "")
+
+	var taggedStructs = []ApiValidatorStructMeta{}
+	var tryAppend = func(sm *ApiValidatorStructMeta, err error) {
+		show("struct parsed, structMeta, error: ", sm, err)
+		if err != nil {
+			show("parseStruct failed: ", err)
+			os.Exit(parseStructErrorCode)
+		}
+		if sm != nil {
+			taggedStructs = append(taggedStructs, *sm)
+		}
+	}
 
 	for topIdx, topDecl := range nodeRef.Decls {
 		/*
@@ -58,7 +71,6 @@ func main() {
 		*/
 		// show("top-level declaration: ", topIdx, topDecl)
 		switch topDecl.(type) {
-
 		case *ast.GenDecl:
 			var tgd = topDecl.(*ast.GenDecl)
 			// show("got GenDecl, specs: ", topIdx, tgd.Specs)
@@ -72,9 +84,7 @@ func main() {
 						var st = ts.Type.(*ast.StructType)
 						// show("got StructType: ", specIdx, st)
 						var sm, err = parseStruct(ts, st)
-						show("struct parsed, structMeta: ", sm, err)
-						// TODO: generate: struct parser, struct validator
-						// actually: add to collection
+						tryAppend(sm, err)
 					default:
 						// show("unknown type: ", specIdx, ts.Type)
 					}
@@ -90,23 +100,18 @@ func main() {
 			show("func parsed, funcMeta: ", fm, err)
 			// TODO: generate: http handlers (one reciever: one mux and 1..n handlers)
 			// actually: add to collection
+
 		default:
 			show("unknown Decl: ", topIdx, topDecl)
 		} // end Decl type switch
 	}
 
-	// TODO: use collections of structs and funcs to generate output code
+	// TODO: use collected (structs and funcs) meta to generate output code (http handlers and data parsers, validators)
 
 	panic("not yet")
 }
 
-type StructMeta struct {
-	name   string
-	fields []string
-	// each field: tag options
-}
-
-func parseStruct(ts *ast.TypeSpec, st *ast.StructType) (*StructMeta, error) {
+func parseStruct(ts *ast.TypeSpec, st *ast.StructType) (*ApiValidatorStructMeta, error) {
 	show("processStruct: ", ts, st)
 	/*
 		parse:
@@ -125,45 +130,68 @@ func parseStruct(ts *ast.TypeSpec, st *ast.StructType) (*StructMeta, error) {
 		Class    string `apivalidator:"enum=warrior|sorcerer|rouge,default=warrior"`
 		Level    int    `apivalidator:"min=1,max=50"`
 	*/
-	for fidx, field := range st.Fields.List {
-		show("struct field: ", fidx, field, field.Tag)
+	// collect: struct_name, field_name, field_type, field_tags (list of parser_validator_rules)
+	// if no-fields-with-tag: empty result (not error)
+	var structName = ts.Name.Name
+	// show("struct name: ", structName)
+	var taggedFields = []ApiValidatorFieldMeta{}
+
+	for _, field := range st.Fields.List {
+		// show("struct field, tag: ", field, field.Tag)
+
 		if field.Tag != nil && startsWith(field.Tag.Value, apiValidatorTagPrefix) {
-			show("lets roll ...", field.Tag.Value) // lets roll ...string(`apivalidator:"min=1,max=50"`);
+			show("field with tag, process ...", field.Tag.Value) // lets roll ...string(`apivalidator:"min=1,max=50"`);
+			var err error
+			var fieldMeta = NewApiValidatorFieldMeta()
+			fieldMeta.fieldName = field.Names[0].Name
+			fieldMeta.fieldType, err = decodeTypeFromExpr(field.Type)
+			if err != nil {
+				return nil, fmt.Errorf("Field type decode problem: %#v; %v", field, err)
+			}
+
 			var tagsLine = field.Tag.Value[len(apiValidatorTagPrefix)+1 : len(field.Tag.Value)-2]
 			// show("tag stripped: ", tv) // tag stripped: string(min=1,max=50);
 			var tagsList = strings.Split(tagsLine, ",")
 			// show("list of tags: ", strings.Join(ts, `","`)) // list of tags: string(min=1","max=50);
 			// tag `required` w/o value, other: with values
+
 			for _, kv := range tagsList {
 				// show("tag pair: ", kv)
 				var elems = strings.Split(kv, "=")
 				switch elems[0] {
 				case "required":
-					show("required")
+					// show("required")
+					fieldMeta.tag.required = true
 				case "min":
-					show("min: ", elems[1])
+					// show("min: ", elems[1])
+					fieldMeta.tag.min = elems[1]
 				case "max":
-					show("max: ", elems[1])
+					// show("max: ", elems[1])
+					fieldMeta.tag.max = elems[1]
 				case "paramname":
-					show("read field from: ", elems[1])
+					// show("read field from: ", elems[1])
+					fieldMeta.tag.paramname = elems[1]
 				case "enum":
-					show("enum: ", strings.Split(elems[1], "|"))
+					// show("enum: ", strings.Split(elems[1], "|"))
+					fieldMeta.tag.enum = strings.Split(elems[1], "|")
 				case "default":
-					show("default value: ", elems[1])
+					// show("default value: ", elems[1])
+					fieldMeta.tag.defaultValue = elems[1]
 				default:
-					show("unknown tag: ", elems)
+					// show("unknown tag: ", elems)
+					return nil, fmt.Errorf("Unknown tag: %v, %v", tagsLine, elems[0])
 				}
-			}
-		}
+			} // end of field tags iterator
+
+			show("field with tag: ", fieldMeta)
+			taggedFields = append(taggedFields, *fieldMeta)
+		} // end if field 'have the tag'
+	} // end fields iterator
+
+	if len(taggedFields) > 0 {
+		return NewApiValidatorStructMeta(structName, taggedFields), nil
 	}
 	return nil, nil
-}
-
-type FuncMeta struct {
-	funcName     string
-	recieverName string
-	paramName    string
-	// url, auth, method
 }
 
 func parseFunc(fd *ast.FuncDecl) (*FuncMeta, error) {
@@ -177,8 +205,59 @@ func parseFunc(fd *ast.FuncDecl) (*FuncMeta, error) {
 	return nil, nil
 }
 
+type ApiValidatorStructMeta struct {
+	structName   string
+	taggedFields []ApiValidatorFieldMeta
+}
+
+func NewApiValidatorStructMeta(name string, fields []ApiValidatorFieldMeta) *ApiValidatorStructMeta {
+	return &ApiValidatorStructMeta{
+		structName:   name,
+		taggedFields: fields,
+	}
+}
+
+type ApiValidatorFieldMeta struct {
+	fieldName string
+	fieldType string // int, string
+	tag       ApiValidatorTags
+}
+
+func NewApiValidatorFieldMeta() *ApiValidatorFieldMeta {
+	return &ApiValidatorFieldMeta{
+		tag: *NewApiValidatorTags(),
+	}
+}
+
+type ApiValidatorTags struct {
+	required     bool     // false by default
+	min          string   // empty by default
+	max          string   // empty by default
+	paramname    string   // empty by default
+	enum         []string // empty by default
+	defaultValue string   // empty by default
+}
+
+func NewApiValidatorTags() *ApiValidatorTags {
+	return &ApiValidatorTags{
+		required:     false,
+		min:          "",
+		max:          "",
+		paramname:    "",
+		enum:         []string{},
+		defaultValue: "",
+	}
+}
+
+type FuncMeta struct {
+	funcName     string
+	recieverName string
+	paramName    string
+	// url, auth, method
+}
+
 func usage() {
-	fmt.Println(usageText)
+	fmt.Println("", usageText, "")
 }
 
 const (
@@ -186,15 +265,15 @@ const (
 	notEnoughArgumentsErrorCode
 	parserErrorCode
 	createFileErrorCode
+	parseStructErrorCode
 
 	apiValidatorTagPrefix = "`apivalidator:"
 
-	usageText = `
-Program should be executed like so: go build handlers_gen/* && ./codegen api.go api_handlers.go
+	usageText = `Program should be executed like so:
+go build handlers_gen/* && ./codegen api.go api_handlers.go
 where:
 - api.go: internal API implementation,
-- api_handlers.go: filename for generated code, file will be overwritten without warning.
-`
+- api_handlers.go: filename for generated code, file will be overwritten without warning.`
 
 	headerText = `package main
 
@@ -204,12 +283,25 @@ import (
 	"net/url"
 	"runtime/debug"
 	"strconv"
-)	
-`
+)`
 )
 
 func startsWith(s, prefix string) bool {
 	return strings.HasPrefix(s, prefix)
+}
+
+func decodeTypeFromExpr(expr ast.Expr) (string, error) {
+	var exprStr = types.ExprString(expr)
+	// show("decodeTypeFromExpr: ", expr, exprStr)
+	if exprStr == "int" || exprStr == "string" {
+		return exprStr, nil
+	}
+
+	if exprStr == "" {
+		return "", fmt.Errorf("decodeTypeFromExpr, failed conversion from Expr to string. Expr: %v", expr)
+	}
+
+	return exprStr, fmt.Errorf("decodeTypeFromExpr, unknown type: %s", exprStr)
 }
 
 // ts returns current timestamp in RFC3339 with milliseconds
