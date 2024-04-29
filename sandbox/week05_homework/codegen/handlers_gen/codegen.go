@@ -207,25 +207,6 @@ func renderValidateTemplate(st ApiValidatorStructMeta) (string, error) {
 
 func renderHandlerMethodTemplate(fm ApiGenFuncMeta) (string, error) {
 	return renderTemplate("handlerMethod", handlerMethodTemplate, fm)
-	/*
-		var template = ttmpl.New("handlerMethod")
-		var err error
-
-		template, err = template.Parse(handlerMethodTemplate)
-		if err != nil {
-			return "", fmt.Errorf("renderHandlerMethodTemplate, failed template.Parse. %v", err)
-		}
-
-		var buffer = new(strings.Builder)
-
-		err = template.Execute(buffer, fm)
-		if err != nil {
-			return "", fmt.Errorf("renderHandlerMethodTemplate, failed template.Execute. %v", err)
-		}
-
-		buffer.WriteString("\n")
-		return buffer.String(), nil
-	*/
 }
 
 func renderServeHTTPTemplate(reciever string, funcs []ApiGenFuncMeta) (string, error) {
@@ -237,30 +218,6 @@ func renderServeHTTPTemplate(reciever string, funcs []ApiGenFuncMeta) (string, e
 		Reciever:     reciever,
 		RouteHanlers: funcs,
 	})
-	/*
-		var template = ttmpl.New("serveHTTP")
-		var err error
-
-		template, err = template.Parse(serveHTTPTemplate)
-		if err != nil {
-			return "", fmt.Errorf("renderServeHTTPTemplate, failed template.Parse. %v", err)
-		}
-
-
-
-		var buffer = new(strings.Builder)
-
-		err = template.Execute(buffer, serveHTTPTemplateData{
-			Reciever:     reciever,
-			RouteHanlers: funcs,
-		})
-		if err != nil {
-			return "", fmt.Errorf("renderServeHTTPTemplate, failed template.Execute. %v", err)
-		}
-
-		buffer.WriteString("\n")
-		return buffer.String(), nil
-	*/
 }
 
 func renderTemplate(name, tmpl string, data any) (string, error) {
@@ -309,13 +266,13 @@ func (srv {{ .RecieverName }} ) handler{{ .FuncName }}(w http.ResponseWriter, r 
 		writeError(http.StatusNotAcceptable, "bad method", w)
 		return
 	}
-{{end}}
+{{ end }}
 {{ if .Auth }}
 	if !isAuthenticated(r) {
 		writeError(http.StatusForbidden, "unauthorized", w)
 		return
 	}
-{{end}}
+{{ end }}
 	r.ParseForm()
 	paramsRef := new({{ .ParamName }})
 	err := paramsRef.fillFrom(r.Form)
@@ -339,9 +296,61 @@ func (srv {{ .RecieverName }} ) handler{{ .FuncName }}(w http.ResponseWriter, r 
 	writeSuccess(http.StatusOK, resultRef, w)
 }`
 
-const fillFormTemplate = ``
+const fillFormTemplate = `// fillFrom write data from 'params' to 'pref'
+func (pref *{{ .StructName }}) fillFrom(params url.Values) error {
+	var err error = nil
+{{ range .TaggedFields }}
+{{ if eq .FieldType "string" }}
+	pref.{{ .FieldName }} = getOrDefault(params, "{{ .ParamNameOrFieldName }}", "{{ .DefaultValue }}")
+{{ else }}
+	pref.{{ .FieldName }}, err = strconv.Atoi(getOrDefault(params, "{{ .ParamNameOrFieldName }}", "{{ .DefaultValue }}"))
+	if err != nil {
+		return errors.New("{{ .ParamNameOrFieldName }} must be int")
+	}
+{{ end }}
+{{ end }}
+	return err
+}`
 
-const validateTemplate = ``
+const validateTemplate = `// validate check data against set of rules
+func (cpref *{{ .StructName }}) validate() error {
+{{ range .TaggedFields }}
+{{ if eq .FieldType "string" }}
+{{ if .Tag.Required }}
+	if cpref.{{ .FieldName }} == "" { // required
+		return errors.New("{{ .ParamNameOrFieldName }}: value required")
+	}
+{{ end }}
+{{ if .Min }}
+	if len(cpref.{{ .FieldName }}) < {{ .Tag.Min }} { // min string
+		return errors.New("{{ .ParamNameOrFieldName }} len must be >= {{ .Tag.Min }}")
+	}
+{{ end }}
+{{ if .Max }}
+	if len(cpref.{{ .FieldName }}) > {{ .Tag.Max }} {
+		return errors.New("{{ .ParamNameOrFieldName }} len must be <= {{ .Tag.Max }}")
+	}
+{{ end }}
+{{ if .Enum }}
+	if !contains(cpref.{{ .FieldName }}, {{ .EnumGoRepr }}) { // enum
+		return errors.New("{{ .ParamNameOrFieldName }} must be one of {{ .EnumListRepr }}")
+	}
+{{ end }}
+{{ else }}
+{{ if .Min }}
+	if cpref.{{ .FieldName }} < {{ .Tag.Min }} { // min int
+		return errors.New("{{ .ParamNameOrFieldName }} must be >= {{ .Tag.Min }}")
+	}
+{{ end }}
+{{ if .Max }}
+	if cpref.{{ .FieldName }} > {{ .Tag.Max }} {
+		return errors.New("{{ .ParamNameOrFieldName }} must be <= {{ .Tag.Max }}")
+	}
+{{ end }}
+{{ end }}
+{{ end }}
+	return nil
+}`
 
 func filterByReciever(xs []ApiGenFuncMeta, rcv string) []ApiGenFuncMeta {
 	var ys = make([]ApiGenFuncMeta, 0, len(xs))
@@ -396,8 +405,8 @@ func parseStruct(ts *ast.TypeSpec, st *ast.StructType) (*ApiValidatorStructMeta,
 			show("field with tag, process ...", field.Tag.Value) // lets roll ...string(`apivalidator:"min=1,max=50"`);
 			var err error
 			var fieldMeta = NewApiValidatorFieldMeta()
-			fieldMeta.fieldName = field.Names[0].Name
-			fieldMeta.fieldType, err = decodeFieldTypeFromExpr(field.Type)
+			fieldMeta.FieldName = field.Names[0].Name
+			fieldMeta.FieldType, err = decodeFieldTypeFromExpr(field.Type)
 			if err != nil {
 				return nil, fmt.Errorf("Field type decode problem: %#v; %v", field, err)
 			}
@@ -414,22 +423,22 @@ func parseStruct(ts *ast.TypeSpec, st *ast.StructType) (*ApiValidatorStructMeta,
 				switch elems[0] {
 				case "required":
 					// show("required")
-					fieldMeta.tag.required = true
+					fieldMeta.Tag.Required = true
 				case "min":
 					// show("min: ", elems[1])
-					fieldMeta.tag.min = elems[1]
+					fieldMeta.Tag.Min = elems[1]
 				case "max":
 					// show("max: ", elems[1])
-					fieldMeta.tag.max = elems[1]
+					fieldMeta.Tag.Max = elems[1]
 				case "paramname":
 					// show("read field from: ", elems[1])
-					fieldMeta.tag.paramname = elems[1]
+					fieldMeta.Tag.Paramname = elems[1]
 				case "enum":
 					// show("enum: ", strings.Split(elems[1], "|"))
-					fieldMeta.tag.enum = strings.Split(elems[1], "|")
+					fieldMeta.Tag.Enum = strings.Split(elems[1], "|")
 				case "default":
 					// show("default value: ", elems[1])
-					fieldMeta.tag.defaultValue = elems[1]
+					fieldMeta.Tag.DefaultValue = elems[1]
 				default:
 					// show("unknown tag: ", elems)
 					return nil, fmt.Errorf("Unknown tag: %v, %v", tagsLine, elems[0])
@@ -553,46 +562,72 @@ func (fm *ApiGenFuncMeta) fillFromSpec(spec specMap) *ApiGenFuncMeta {
 }
 
 type ApiValidatorStructMeta struct {
-	structName   string
-	taggedFields []ApiValidatorFieldMeta
+	StructName   string
+	TaggedFields []ApiValidatorFieldMeta
 }
 
 func NewApiValidatorStructMeta(name string, fields []ApiValidatorFieldMeta) *ApiValidatorStructMeta {
 	return &ApiValidatorStructMeta{
-		structName:   name,
-		taggedFields: fields,
+		StructName:   name,
+		TaggedFields: fields,
 	}
 }
 
 type ApiValidatorFieldMeta struct {
-	fieldName string
-	fieldType string // int, string
-	tag       ApiValidatorTags
+	FieldName string
+	FieldType string // int, string
+	Tag       ApiValidatorTags
 }
 
 func NewApiValidatorFieldMeta() *ApiValidatorFieldMeta {
 	return &ApiValidatorFieldMeta{
-		tag: *NewApiValidatorTags(),
+		Tag: *NewApiValidatorTags(),
 	}
+}
+func (fm ApiValidatorFieldMeta) ParamNameOrFieldName() string {
+	if fm.Tag.Paramname == "" {
+		return strings.ToLower(fm.FieldName)
+	}
+	return strings.ToLower(fm.Tag.Paramname)
+}
+func (fm ApiValidatorFieldMeta) DefaultValue() string {
+	return fm.Tag.DefaultValue
+}
+func (fm ApiValidatorFieldMeta) Min() bool {
+	return fm.Tag.Min != ""
+}
+func (fm ApiValidatorFieldMeta) Max() bool {
+	return fm.Tag.Max != ""
+}
+func (fm ApiValidatorFieldMeta) Enum() bool {
+	return len(fm.Tag.Enum) > 0
+}
+func (fm ApiValidatorFieldMeta) EnumGoRepr() string {
+	// return `[]string{"user", "moderator", "admin"}`
+	return fmt.Sprintf(`[]string{"%s"}`, strings.Join(fm.Tag.Enum, `", "`))
+}
+func (fm ApiValidatorFieldMeta) EnumListRepr() string {
+	// return "[user, moderator, admin]"
+	return fmt.Sprintf(`[%s]`, strings.Join(fm.Tag.Enum, `, `))
 }
 
 type ApiValidatorTags struct {
-	required     bool     // false by default
-	min          string   // empty by default
-	max          string   // empty by default
-	paramname    string   // empty by default
-	enum         []string // empty by default
-	defaultValue string   // empty by default
+	Required     bool     // false by default
+	Min          string   // empty by default
+	Max          string   // empty by default
+	Paramname    string   // empty by default
+	Enum         []string // empty by default
+	DefaultValue string   // empty by default
 }
 
 func NewApiValidatorTags() *ApiValidatorTags {
 	return &ApiValidatorTags{
-		required:     false,
-		min:          "",
-		max:          "",
-		paramname:    "",
-		enum:         []string{},
-		defaultValue: "",
+		Required:     false,
+		Min:          "",
+		Max:          "",
+		Paramname:    "",
+		Enum:         []string{},
+		DefaultValue: "",
 	}
 }
 
