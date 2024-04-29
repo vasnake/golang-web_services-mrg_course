@@ -10,6 +10,7 @@ import (
 	"runtime/debug"
 	"slices"
 	"strings"
+	ttmpl "text/template"
 
 	// "log"
 	"os"
@@ -119,9 +120,125 @@ func main() {
 		} // end Decl type switch
 	}
 
-	// TODO: use collected (structs and funcs) meta to generate output code (http handlers and data parsers, validators)
+	text, err := generateHandlers(markedFuncs, taggedStructs)
+	if err != nil {
+		show("generateHandlers failed: ", err)
+		os.Exit(generateHandlersErrorCode)
+	}
 
-	panic("not yet")
+	show("writing generated code ...")
+	fmt.Fprintln(outFileRef, text, "")
+	show("success")
+}
+
+func generateHandlers(funcs []ApiGenFuncMeta, structs []ApiValidatorStructMeta) (string, error) {
+	show("generateHandlers: ", funcs, structs)
+	var buffer = new(strings.Builder)
+
+	/*
+		for each func reciever: create ServeHTTP function with as many route handlers as there are routes
+		func (srv *OtherApi) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+			...
+			case "/user/create":
+				srv.handlerCreate(w, r)
+			...
+		}
+	*/
+	var recievers = make([]string, 0, 3)
+	for _, fm := range funcs {
+		recievers = append(recievers, fm.RecieverName)
+	}
+	// show("all recievers: ", recievers)
+	recievers = distinct(recievers)
+	// show("distinct recievers: ", recievers)
+
+	for _, rcv := range recievers {
+		var rcvRoutes = filterByReciever(funcs, rcv)
+		// show("reciever routes: ", rcv, rcvRoutes)
+		var text, err = renderServeHTTPTemplate(rcv, rcvRoutes)
+		if err != nil {
+			return "", fmt.Errorf("generateHandlers, renderServeHTTPTemplate failed: %v", err)
+		}
+		buffer.WriteString(text)
+	}
+
+	return buffer.String(), nil
+}
+
+func renderServeHTTPTemplate(reciever string, funcs []ApiGenFuncMeta) (string, error) {
+	var template = ttmpl.New("serveHTTP")
+	var err error
+
+	template, err = template.Parse(serveHTTPTemplate)
+	if err != nil {
+		return "", fmt.Errorf("renderServeHTTPTemplate, failed template.Parse. %v", err)
+	}
+
+	type serveHTTPTemplateData struct {
+		Reciever     string
+		RouteHanlers []ApiGenFuncMeta
+	}
+
+	var buffer = new(strings.Builder)
+
+	err = template.Execute(buffer, serveHTTPTemplateData{
+		Reciever:     reciever,
+		RouteHanlers: funcs,
+	})
+	if err != nil {
+		return "", fmt.Errorf("renderServeHTTPTemplate, failed template.Execute. %v", err)
+	}
+
+	buffer.WriteString("\n")
+	return buffer.String(), nil
+}
+
+const serveHTTPTemplate = `func (srv {{ .Reciever }} ) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if err := recover(); err != nil {
+			debug.PrintStack()
+			writeError(http.StatusInternalServerError, "Internal server error", w)
+		}
+	}()
+
+	switch r.URL.Path {
+{{ range .RouteHanlers }}
+	case "{{ .Url }}":
+		srv.handler{{ .FuncName }}(w, r)
+{{ end }}
+	default:
+		writeError(http.StatusNotFound, "unknown method", w)
+	}
+}`
+
+/*
+	   	{{range .Users}}
+	   		{{.ID}}
+			<b>{{.Name}}</b>
+	   		{{if .Active}}active{{end}}
+	   		<br />
+	   	{{end}}
+*/
+
+func filterByReciever(xs []ApiGenFuncMeta, rcv string) []ApiGenFuncMeta {
+	var ys = make([]ApiGenFuncMeta, 0, len(xs))
+	for _, x := range xs {
+		if x.RecieverName == rcv {
+			ys = append(ys, x)
+		}
+	}
+	return ys
+}
+
+func distinct(xs []string) []string {
+	var ys = make([]string, 0, len(xs))
+	slices.Sort(xs)
+	for i, _ := range xs {
+		if i == 0 || xs[i] != ys[len(ys)-1] {
+			ys = append(ys, xs[i])
+		}
+	}
+	return ys
 }
 
 func parseStruct(ts *ast.TypeSpec, st *ast.StructType) (*ApiValidatorStructMeta, error) {
@@ -236,9 +353,9 @@ func parseFunc(fd *ast.FuncDecl) (*ApiGenFuncMeta, error) {
 		}
 		show("api meta: ", funcMeta)
 
-		funcMeta.funcName = fd.Name.Name
+		funcMeta.FuncName = fd.Name.Name
 
-		funcMeta.recieverName = func(r *ast.FieldList) string { // TODO: refactor typeName decoder
+		funcMeta.RecieverName = func(r *ast.FieldList) string { // TODO: refactor typeName decoder
 			if r == nil || len(r.List) == 0 {
 				return ""
 			}
@@ -250,7 +367,7 @@ func parseFunc(fd *ast.FuncDecl) (*ApiGenFuncMeta, error) {
 			return rt
 		}(fd.Recv)
 
-		funcMeta.paramName = func(p *ast.FieldList) string {
+		funcMeta.ParamName = func(p *ast.FieldList) string {
 			for i, f := range p.List { // TODO: access by index `1`
 				typeName, err := decodeAnyTypeFromExpr(f.Type)
 				if err != nil && i == 1 { // don't care about context param
@@ -264,10 +381,10 @@ func parseFunc(fd *ast.FuncDecl) (*ApiGenFuncMeta, error) {
 			return ""
 		}(fd.Type.Params)
 
-		if funcMeta.recieverName == "" {
+		if funcMeta.RecieverName == "" {
 			return nil, fmt.Errorf("parseFunc failed, invalid recieverName. %v", funcMeta)
 		}
-		if funcMeta.paramName == "" {
+		if funcMeta.ParamName == "" {
 			return nil, fmt.Errorf("parseFunc failed, invalid paramName. %v", funcMeta)
 		}
 		return funcMeta, nil
@@ -277,17 +394,17 @@ func parseFunc(fd *ast.FuncDecl) (*ApiGenFuncMeta, error) {
 }
 
 type ApiGenFuncMeta struct {
-	funcName     string // empty by default
-	recieverName string // empty by default
-	paramName    string // empty by default
-	url          string // empty by default
-	httpMethod   string // empty by default
-	auth         bool   // false by default
+	FuncName     string // empty by default
+	RecieverName string // empty by default
+	ParamName    string // empty by default
+	Url          string // empty by default
+	HttpMethod   string // empty by default
+	Auth         bool   // false by default
 }
 
 func NewApiGenFuncMeta() *ApiGenFuncMeta {
 	return &ApiGenFuncMeta{
-		auth: false,
+		Auth: false,
 	}
 }
 
@@ -298,16 +415,16 @@ func (fm *ApiGenFuncMeta) fillFromSpec(spec specMap) *ApiGenFuncMeta {
 			show("fillFromSpec, recover from error: ", err)
 			fm = nil
 		}
-		if fm.url == "" {
+		if fm.Url == "" {
 			show("fillFromSpec, url is empty")
 			fm = nil
 		}
 	}()
 
 	// apigen:api {"url": "/user/create", "auth": true, "method": "POST"}
-	fm.url = (spec.getOrDefault("url", "")).(string)
-	fm.httpMethod = (spec.getOrDefault("method", "")).(string)
-	fm.auth = (spec.getOrDefault("auth", false)).(bool)
+	fm.Url = (spec.getOrDefault("url", "")).(string)
+	fm.HttpMethod = (spec.getOrDefault("method", "")).(string)
+	fm.Auth = (spec.getOrDefault("auth", false)).(bool)
 
 	return fm
 }
@@ -367,6 +484,7 @@ const (
 	createFileErrorCode
 	parseStructErrorCode
 	parseFuncErrorCode
+	generateHandlersErrorCode
 
 	apiValidatorTagPrefix = "`apivalidator:"
 	apiGenTagPrefix       = "apigen:api"
