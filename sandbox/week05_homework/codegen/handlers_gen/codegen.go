@@ -12,7 +12,6 @@ import (
 	"strings"
 	ttmpl "text/template"
 
-	// "log"
 	"os"
 	"time"
 )
@@ -197,6 +196,16 @@ func generateHandlers(funcs []ApiGenFuncMeta, structs []ApiValidatorStructMeta) 
 	return buffer.String(), nil
 }
 
+func filterByReciever(xs []ApiGenFuncMeta, rcv string) []ApiGenFuncMeta {
+	var ys = make([]ApiGenFuncMeta, 0, len(xs))
+	for _, x := range xs {
+		if x.RecieverName == rcv {
+			ys = append(ys, x)
+		}
+	}
+	return ys
+}
+
 func renderFillFormTemplate(st ApiValidatorStructMeta) (string, error) {
 	return renderTemplate("fillForm", fillFormTemplate, st)
 }
@@ -238,139 +247,6 @@ func renderTemplate(name, tmpl string, data any) (string, error) {
 
 	buffer.WriteString("\n")
 	return buffer.String(), nil
-}
-
-const serveHTTPTemplate = `// ServeHTTP implements http.Handler
-func (srv {{ .Reciever }} ) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		if err := recover(); err != nil {
-			debug.PrintStack()
-			writeError(http.StatusInternalServerError, "Internal server error", w)
-		}
-	}()
-
-	switch r.URL.Path {
-{{ range .RouteHanlers }}
-	case "{{ .Url }}":
-		srv.handler{{ .FuncName }}(w, r)
-{{ end }}
-	default:
-		writeError(http.StatusNotFound, "unknown method", w)
-	}
-}`
-
-const handlerMethodTemplate = `// handler{{ .FuncName }} implements http.Handler for '{{ .FuncName }}' method
-func (srv {{ .RecieverName }} ) handler{{ .FuncName }}(w http.ResponseWriter, r *http.Request) {
-{{ $length := len .HttpMethod }} {{ if gt $length 0 }}
-	if r.Method != "{{ .HttpMethod }}" {
-		writeError(http.StatusNotAcceptable, "bad method", w)
-		return
-	}
-{{ end }}
-{{ if .Auth }}
-	if !isAuthenticated(r) {
-		writeError(http.StatusForbidden, "unauthorized", w)
-		return
-	}
-{{ end }}
-	r.ParseForm()
-	paramsRef := new({{ .ParamName }})
-	err := paramsRef.fillFrom(r.Form)
-	if err != nil {
-		writeError(http.StatusBadRequest, err.Error(), w)
-		return
-	}
-
-	err = paramsRef.validate()
-	if err != nil {
-		writeError(http.StatusBadRequest, err.Error(), w)
-		return
-	}
-
-	resultRef, err := srv.{{ .FuncName }}(r.Context(), *paramsRef)
-	if err != nil {
-		writeSrvError(err, w)
-		return
-	}
-
-	writeSuccess(http.StatusOK, resultRef, w)
-}`
-
-const fillFormTemplate = `// fillFrom write data from 'params' to 'pref'
-func (pref *{{ .StructName }}) fillFrom(params url.Values) error {
-	var err error = nil
-{{ range .TaggedFields }}
-{{ if eq .FieldType "string" }}
-	pref.{{ .FieldName }} = getOrDefault(params, "{{ .ParamNameOrFieldName }}", "{{ .DefaultValue }}")
-{{ else }}
-	pref.{{ .FieldName }}, err = strconv.Atoi(getOrDefault(params, "{{ .ParamNameOrFieldName }}", "{{ .DefaultValue }}"))
-	if err != nil {
-		return errors.New("{{ .ParamNameOrFieldName }} must be int")
-	}
-{{ end }}
-{{ end }}
-	return err
-}`
-
-const validateTemplate = `// validate check data against set of rules
-func (cpref *{{ .StructName }}) validate() error {
-{{ range .TaggedFields }}
-{{ if eq .FieldType "string" }}
-{{ if .Tag.Required }}
-	if cpref.{{ .FieldName }} == "" { // required
-		return errors.New("{{ .ParamNameOrFieldName }}: value required")
-	}
-{{ end }}
-{{ if .Min }}
-	if len(cpref.{{ .FieldName }}) < {{ .Tag.Min }} { // min string
-		return errors.New("{{ .ParamNameOrFieldName }} len must be >= {{ .Tag.Min }}")
-	}
-{{ end }}
-{{ if .Max }}
-	if len(cpref.{{ .FieldName }}) > {{ .Tag.Max }} {
-		return errors.New("{{ .ParamNameOrFieldName }} len must be <= {{ .Tag.Max }}")
-	}
-{{ end }}
-{{ if .Enum }}
-	if !contains(cpref.{{ .FieldName }}, {{ .EnumGoRepr }}) { // enum
-		return errors.New("{{ .ParamNameOrFieldName }} must be one of {{ .EnumListRepr }}")
-	}
-{{ end }}
-{{ else }}
-{{ if .Min }}
-	if cpref.{{ .FieldName }} < {{ .Tag.Min }} { // min int
-		return errors.New("{{ .ParamNameOrFieldName }} must be >= {{ .Tag.Min }}")
-	}
-{{ end }}
-{{ if .Max }}
-	if cpref.{{ .FieldName }} > {{ .Tag.Max }} {
-		return errors.New("{{ .ParamNameOrFieldName }} must be <= {{ .Tag.Max }}")
-	}
-{{ end }}
-{{ end }}
-{{ end }}
-	return nil
-}`
-
-func filterByReciever(xs []ApiGenFuncMeta, rcv string) []ApiGenFuncMeta {
-	var ys = make([]ApiGenFuncMeta, 0, len(xs))
-	for _, x := range xs {
-		if x.RecieverName == rcv {
-			ys = append(ys, x)
-		}
-	}
-	return ys
-}
-
-func distinct(xs []string) []string {
-	var ys = make([]string, 0, len(xs))
-	slices.Sort(xs)
-	for i, _ := range xs {
-		if i == 0 || xs[i] != ys[len(ys)-1] {
-			ys = append(ys, xs[i])
-		}
-	}
-	return ys
 }
 
 func parseStruct(ts *ast.TypeSpec, st *ast.StructType) (*ApiValidatorStructMeta, error) {
@@ -662,6 +538,118 @@ import (
 	"runtime/debug"
 	"strconv"
 )`
+
+	serveHTTPTemplate = `// ServeHTTP implements http.Handler
+func (srv {{ .Reciever }} ) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if err := recover(); err != nil {
+			debug.PrintStack()
+			writeError(http.StatusInternalServerError, "Internal server error", w)
+		}
+	}()
+
+	switch r.URL.Path {
+{{ range .RouteHanlers }}
+	case "{{ .Url }}":
+		srv.handler{{ .FuncName }}(w, r)
+{{ end }}
+	default:
+		writeError(http.StatusNotFound, "unknown method", w)
+	}
+}`
+
+	handlerMethodTemplate = `// handler{{ .FuncName }} implements http.Handler for '{{ .FuncName }}' method
+func (srv {{ .RecieverName }} ) handler{{ .FuncName }}(w http.ResponseWriter, r *http.Request) {
+{{ $length := len .HttpMethod }} {{ if gt $length 0 }}
+	if r.Method != "{{ .HttpMethod }}" {
+		writeError(http.StatusNotAcceptable, "bad method", w)
+		return
+	}
+{{ end }}
+{{ if .Auth }}
+	if !isAuthenticated(r) {
+		writeError(http.StatusForbidden, "unauthorized", w)
+		return
+	}
+{{- end }}
+	r.ParseForm()
+	paramsRef := new({{ .ParamName }})
+	err := paramsRef.fillFrom(r.Form)
+	if err != nil {
+		writeError(http.StatusBadRequest, err.Error(), w)
+		return
+	}
+
+	err = paramsRef.validate()
+	if err != nil {
+		writeError(http.StatusBadRequest, err.Error(), w)
+		return
+	}
+
+	resultRef, err := srv.{{ .FuncName }}(r.Context(), *paramsRef)
+	if err != nil {
+		writeSrvError(err, w)
+		return
+	}
+
+	writeSuccess(http.StatusOK, resultRef, w)
+}`
+
+	fillFormTemplate = `// fillFrom write data from 'params' to 'pref'
+func (pref *{{ .StructName }}) fillFrom(params url.Values) error {
+	var err error = nil
+{{ range .TaggedFields }}
+{{- if eq .FieldType "string" }}
+	pref.{{ .FieldName }} = getOrDefault(params, "{{ .ParamNameOrFieldName }}", "{{ .DefaultValue }}")
+{{- else }}
+	pref.{{ .FieldName }}, err = strconv.Atoi(getOrDefault(params, "{{ .ParamNameOrFieldName }}", "{{ .DefaultValue }}"))
+	if err != nil {
+		return errors.New("{{ .ParamNameOrFieldName }} must be int")
+	}
+{{ end }}
+{{ end }}
+	return err
+}`
+
+	validateTemplate = `// validate check data against set of rules
+func (cpref *{{ .StructName }}) validate() error {
+{{ range .TaggedFields }}
+{{- if eq .FieldType "string" }}
+{{ if .Tag.Required }}
+	if cpref.{{ .FieldName }} == "" { // required
+		return errors.New("{{ .ParamNameOrFieldName }}: value required")
+	}
+{{ end }}
+{{ if .Min }}
+	if len(cpref.{{ .FieldName }}) < {{ .Tag.Min }} { // min string
+		return errors.New("{{ .ParamNameOrFieldName }} len must be >= {{ .Tag.Min }}")
+	}
+{{ end }}
+{{ if .Max }}
+	if len(cpref.{{ .FieldName }}) > {{ .Tag.Max }} {
+		return errors.New("{{ .ParamNameOrFieldName }} len must be <= {{ .Tag.Max }}")
+	}
+{{ end }}
+{{ if .Enum }}
+	if !contains(cpref.{{ .FieldName }}, {{ .EnumGoRepr }}) { // enum
+		return errors.New("{{ .ParamNameOrFieldName }} must be one of {{ .EnumListRepr }}")
+	}
+{{ end }}
+{{- else }}
+{{ if .Min }}
+	if cpref.{{ .FieldName }} < {{ .Tag.Min }} { // min int
+		return errors.New("{{ .ParamNameOrFieldName }} must be >= {{ .Tag.Min }}")
+	}
+{{ end }}
+{{ if .Max }}
+	if cpref.{{ .FieldName }} > {{ .Tag.Max }} {
+		return errors.New("{{ .ParamNameOrFieldName }} must be <= {{ .Tag.Max }}")
+	}
+{{ end }}
+{{- end }}
+{{- end }}
+	return nil
+}`
 )
 
 type specMap map[string]any
@@ -699,6 +687,17 @@ func decodeTypeFromExpr(expr ast.Expr, check []string) (string, error) {
 	}
 
 	return exprStr, fmt.Errorf("decodeTypeFromExpr, unknown type: %s", exprStr)
+}
+
+func distinct(xs []string) []string {
+	var ys = make([]string, 0, len(xs))
+	slices.Sort(xs)
+	for i, _ := range xs {
+		if i == 0 || xs[i] != ys[len(ys)-1] {
+			ys = append(ys, xs[i])
+		}
+	}
+	return ys
 }
 
 // ts returns current timestamp in RFC3339 with milliseconds

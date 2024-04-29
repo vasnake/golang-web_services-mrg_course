@@ -55,6 +55,8 @@ go_run_sandbox_week05_codegen_test() {
     # pushd ${moduleDir}/handlers_gen && gofmt -w ./ && go vet -printf=false && popd
     pushd ${moduleDir}/handlers_gen && gofmt -w ./ && go vet && popd
     pushd ${moduleDir} && go build handlers_gen/* && ./codegen api.go api_handlers.go && popd
+    rm ${moduleDir}/codegen # drop binary file
+
     go test -v $module
 
     # go run -race $module
@@ -73,7 +75,7 @@ go_run_sandbox_week05_codegen_test() {
 
     exit_code=$?
     echo "####################################################################################################"
-    popd
+    popd    
     return $exit_code
 }
 
