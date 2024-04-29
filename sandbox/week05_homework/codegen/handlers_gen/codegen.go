@@ -157,7 +157,39 @@ func generateHandlers(funcs []ApiGenFuncMeta, structs []ApiValidatorStructMeta) 
 		// show("reciever routes: ", rcv, rcvRoutes)
 		var text, err = renderServeHTTPTemplate(rcv, rcvRoutes)
 		if err != nil {
-			return "", fmt.Errorf("generateHandlers, renderServeHTTPTemplate failed: %v", err)
+			return "", fmt.Errorf("generateHandlers failed: %v", err)
+		}
+		buffer.WriteString(text)
+	}
+
+	/*
+		for each func: create handler
+		func (srv *OtherApi) handlerCreate(w http.ResponseWriter, r *http.Request) { ... }
+	*/
+	for _, fm := range funcs {
+		var text, err = renderHandlerMethodTemplate(fm)
+		if err != nil {
+			return "", fmt.Errorf("generateHandlers failed: %v", err)
+		}
+		buffer.WriteString(text)
+	}
+
+	/*
+		for each struct: create form parser
+		func (ocpref *OtherCreateParams) fillFrom(params url.Values) error { ... }
+		and data validator
+		func (ocpref *OtherCreateParams) validate() error { ... }
+	*/
+	for _, st := range structs {
+		var text, err = renderFillFormTemplate(st)
+		if err != nil {
+			return "", fmt.Errorf("generateHandlers failed: %v", err)
+		}
+		buffer.WriteString(text)
+
+		text, err = renderValidateTemplate(st)
+		if err != nil {
+			return "", fmt.Errorf("generateHandlers failed: %v", err)
 		}
 		buffer.WriteString(text)
 	}
@@ -165,35 +197,94 @@ func generateHandlers(funcs []ApiGenFuncMeta, structs []ApiValidatorStructMeta) 
 	return buffer.String(), nil
 }
 
+func renderFillFormTemplate(st ApiValidatorStructMeta) (string, error) {
+	return renderTemplate("fillForm", fillFormTemplate, st)
+}
+
+func renderValidateTemplate(st ApiValidatorStructMeta) (string, error) {
+	return renderTemplate("validate", validateTemplate, st)
+}
+
+func renderHandlerMethodTemplate(fm ApiGenFuncMeta) (string, error) {
+	return renderTemplate("handlerMethod", handlerMethodTemplate, fm)
+	/*
+		var template = ttmpl.New("handlerMethod")
+		var err error
+
+		template, err = template.Parse(handlerMethodTemplate)
+		if err != nil {
+			return "", fmt.Errorf("renderHandlerMethodTemplate, failed template.Parse. %v", err)
+		}
+
+		var buffer = new(strings.Builder)
+
+		err = template.Execute(buffer, fm)
+		if err != nil {
+			return "", fmt.Errorf("renderHandlerMethodTemplate, failed template.Execute. %v", err)
+		}
+
+		buffer.WriteString("\n")
+		return buffer.String(), nil
+	*/
+}
+
 func renderServeHTTPTemplate(reciever string, funcs []ApiGenFuncMeta) (string, error) {
-	var template = ttmpl.New("serveHTTP")
-	var err error
-
-	template, err = template.Parse(serveHTTPTemplate)
-	if err != nil {
-		return "", fmt.Errorf("renderServeHTTPTemplate, failed template.Parse. %v", err)
-	}
-
 	type serveHTTPTemplateData struct {
 		Reciever     string
 		RouteHanlers []ApiGenFuncMeta
 	}
-
-	var buffer = new(strings.Builder)
-
-	err = template.Execute(buffer, serveHTTPTemplateData{
+	return renderTemplate("serveHTTP", serveHTTPTemplate, serveHTTPTemplateData{
 		Reciever:     reciever,
 		RouteHanlers: funcs,
 	})
+	/*
+		var template = ttmpl.New("serveHTTP")
+		var err error
+
+		template, err = template.Parse(serveHTTPTemplate)
+		if err != nil {
+			return "", fmt.Errorf("renderServeHTTPTemplate, failed template.Parse. %v", err)
+		}
+
+
+
+		var buffer = new(strings.Builder)
+
+		err = template.Execute(buffer, serveHTTPTemplateData{
+			Reciever:     reciever,
+			RouteHanlers: funcs,
+		})
+		if err != nil {
+			return "", fmt.Errorf("renderServeHTTPTemplate, failed template.Execute. %v", err)
+		}
+
+		buffer.WriteString("\n")
+		return buffer.String(), nil
+	*/
+}
+
+func renderTemplate(name, tmpl string, data any) (string, error) {
+	var template = ttmpl.New(name)
+	var err error
+
+	template, err = template.Parse(tmpl)
 	if err != nil {
-		return "", fmt.Errorf("renderServeHTTPTemplate, failed template.Execute. %v", err)
+		return "", fmt.Errorf("renderTemplate, failed template.Parse. %v", err)
+	}
+
+	var buffer = new(strings.Builder)
+
+	err = template.Execute(buffer, data)
+	if err != nil {
+		return "", fmt.Errorf("renderTemplate, failed template.Execute. %v", err)
 	}
 
 	buffer.WriteString("\n")
 	return buffer.String(), nil
 }
 
-const serveHTTPTemplate = `func (srv {{ .Reciever }} ) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+const serveHTTPTemplate = `// ServeHTTP implements http.Handler
+func (srv {{ .Reciever }} ) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if err := recover(); err != nil {
 			debug.PrintStack()
@@ -211,14 +302,46 @@ const serveHTTPTemplate = `func (srv {{ .Reciever }} ) ServeHTTP(w http.Response
 	}
 }`
 
-/*
-	   	{{range .Users}}
-	   		{{.ID}}
-			<b>{{.Name}}</b>
-	   		{{if .Active}}active{{end}}
-	   		<br />
-	   	{{end}}
-*/
+const handlerMethodTemplate = `// handler{{ .FuncName }} implements http.Handler for '{{ .FuncName }}' method
+func (srv {{ .RecieverName }} ) handler{{ .FuncName }}(w http.ResponseWriter, r *http.Request) {
+{{ $length := len .HttpMethod }} {{ if gt $length 0 }}
+	if r.Method != "{{ .HttpMethod }}" {
+		writeError(http.StatusNotAcceptable, "bad method", w)
+		return
+	}
+{{end}}
+{{ if .Auth }}
+	if !isAuthenticated(r) {
+		writeError(http.StatusForbidden, "unauthorized", w)
+		return
+	}
+{{end}}
+	r.ParseForm()
+	paramsRef := new({{ .ParamName }})
+	err := paramsRef.fillFrom(r.Form)
+	if err != nil {
+		writeError(http.StatusBadRequest, err.Error(), w)
+		return
+	}
+
+	err = paramsRef.validate()
+	if err != nil {
+		writeError(http.StatusBadRequest, err.Error(), w)
+		return
+	}
+
+	resultRef, err := srv.{{ .FuncName }}(r.Context(), *paramsRef)
+	if err != nil {
+		writeSrvError(err, w)
+		return
+	}
+
+	writeSuccess(http.StatusOK, resultRef, w)
+}`
+
+const fillFormTemplate = ``
+
+const validateTemplate = ``
 
 func filterByReciever(xs []ApiGenFuncMeta, rcv string) []ApiGenFuncMeta {
 	var ys = make([]ApiGenFuncMeta, 0, len(xs))
