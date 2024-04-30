@@ -104,13 +104,17 @@ https://stepik.org/course/187490/syllabus
 
 ## source code
 
-Код ко всем лекциями можно скачать по следующей ссылке:
-https://stepik.org/media/attachments/lesson/1177827/golang_web_services_2023-12-28.zip
-- Данный код проверен на версии языка go 1.20
-- В папке каждой недели есть домашка, она находится в подпапке 99_hw
-- При работе с консолью пользуйтесь Bash
+> Код ко всем лекциями можно скачать по следующей ссылке:
+- https://stepik.org/media/attachments/lesson/1177827/golang_web_services_2023-12-28.zip
+- https://stepik.org/media/attachments/lesson/1177827/golang_web_services_2024-04-26.zip
 
-Я уже скачал: [handouts\golang_web_services_2023-12-28.zip](./handouts\golang_web_services_2023-12-28.zip)
+> Данный код проверен на версии языка go 1.20.
+В папке каждой недели есть домашка, она находится в подпапке `99_hw`.
+При работе с консолью пользуйтесь Bash.
+
+Я уже скачал (доступные версии):
+- [handouts/golang_web_services_2023-12-28.zip](./handouts/golang_web_services_2023-12-28.zip)
+- [handouts/golang_web_services_2024-04-26.zip](./handouts/golang_web_services_2024-04-26.zip)
 
 У меня винда и WSL, поэтому я себе сделал такой раннер для кода:
 ```hs

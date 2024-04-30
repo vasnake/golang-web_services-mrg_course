@@ -24,4 +24,5 @@ use (
 	./week04_homework/search
 	./week05
 	./week05_homework/codegen
+	./week06
 )

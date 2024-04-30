@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  mysql:
+    image: mariadb:10.7
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      - MYSQL_DATABASE=coursera
+    ports:
+      - '3306:3306'
+    volumes:
+      - './mysql_items.sql:/docker-entrypoint-initdb.d/items.sql'
+  memcached:
+    image: 'memcached:latest'
+    ports:
+      - '11211:11211'
+  redis:
+    image: 'redis'
+    ports:
+      - '6379:6379'
+  rabbitmq:
+    image: 'rabbitmq'
+    ports:
+      - '5672:5672'
+  mongodb:
+    image: 'mongo'
+    environment:
+      - MONGO_INITDB_DATABASE=coursera
+    ports:
+      - '27017-27019:27017-27019'
