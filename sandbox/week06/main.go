@@ -10,6 +10,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql" // database/sql implementation
 	"github.com/gorilla/mux"
+	"github.com/jinzhu/gorm"
 )
 
 const (
@@ -19,7 +20,8 @@ const (
 )
 
 func main() {
-	mysqlSimple()
+	// mysqlSimple()
+	gormCRUD()
 }
 
 func lessonTemplate() {
@@ -28,6 +30,166 @@ func lessonTemplate() {
 	show(fmt.Sprintf("Open url http://localhost%s/", portStr))
 	err := http.ListenAndServe(portStr, nil)
 	show("end of program. ", err)
+}
+
+func gormCRUD() {
+	show("gormCRUD: program started ...")
+
+	// основные настройки к базе
+	dsn := "root@tcp(localhost:3306)/coursera?"
+	// указываем кодировку
+	dsn += "&charset=utf8"
+	// отказываемся от prapared statements // параметры подставляются сразу
+	dsn += "&interpolateParams=true"
+
+	db, err := gorm.Open("mysql", dsn)
+	db.DB()
+	db.DB().Ping()
+	__err_panic(err)
+	// defer db.Close() // have no effect?
+	show("connected to DB")
+
+	srv := &GormSimpleHttpHandlers{
+		DB:   db,
+		Tmpl: template.Must(template.ParseGlob("./week06/gorm_templates/*")),
+	}
+	show("loaded templates")
+
+	// в целях упрощения примера пропущена авторизация и csrf
+	r := mux.NewRouter()
+	r.HandleFunc("/", srv.List).Methods("GET")
+	r.HandleFunc("/items", srv.List).Methods("GET")
+	r.HandleFunc("/items/new", srv.ShowCreateForm).Methods("GET")
+	r.HandleFunc("/items/new", srv.Create).Methods("POST")
+	r.HandleFunc("/items/{id}", srv.ShowUpdateForm).Methods("GET")
+	r.HandleFunc("/items/{id}", srv.Update).Methods("POST")
+	r.HandleFunc("/items/{id}", srv.Delete).Methods("DELETE")
+
+	show("Starting server at: ", host+portStr)
+	show(fmt.Sprintf("Open url http://localhost%s/", portStr))
+	err = http.ListenAndServe(portStr, r)
+	show("end of program. ", err)
+}
+
+type GormSimplePostItem struct { // added tags, nice
+	Id          int `sql:"AUTO_INCREMENT" gorm:"primary_key"`
+	Title       string
+	Description string
+	Updated     string `sql:"null"`
+}
+
+func (i *GormSimplePostItem) TableName() string { // gorm hook
+	return "items"
+}
+
+func (i *GormSimplePostItem) BeforeSave() (err error) { // gorm hook
+	fmt.Println("trigger on before save")
+	return
+}
+
+type GormSimpleHttpHandlers struct {
+	DB   *gorm.DB
+	Tmpl *template.Template
+}
+
+func (h *GormSimpleHttpHandlers) List(w http.ResponseWriter, r *http.Request) {
+	items := []*GormSimplePostItem{} // slice of references
+
+	db := h.DB.Find(&items)
+	err := db.Error
+	__err_panic(err)
+
+	err = h.Tmpl.ExecuteTemplate(w, "index.html", struct {
+		Items []*GormSimplePostItem
+	}{
+		Items: items,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *GormSimpleHttpHandlers) ShowCreateForm(w http.ResponseWriter, r *http.Request) {
+	err := h.Tmpl.ExecuteTemplate(w, "create.html", nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *GormSimpleHttpHandlers) Create(w http.ResponseWriter, r *http.Request) {
+	newItem := &GormSimplePostItem{
+		Title:       r.FormValue("title"),
+		Description: r.FormValue("description"),
+	}
+	db := h.DB.Create(&newItem)
+	err := db.Error
+	__err_panic(err)
+	affected := db.RowsAffected
+
+	fmt.Println("Insert: RowsAffected", affected, "LastInsertId: ", newItem.Id)
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func (h *GormSimpleHttpHandlers) ShowUpdateForm(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	__err_panic(err)
+
+	post := &GormSimplePostItem{}
+
+	db := h.DB.Find(post, id)
+	err = db.Error
+	if err == gorm.ErrRecordNotFound {
+		fmt.Println("Record not found", id)
+	} else {
+		__err_panic(err)
+	}
+
+	err = h.Tmpl.ExecuteTemplate(w, "edit.html", post)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *GormSimpleHttpHandlers) Update(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	__err_panic(err)
+
+	post := &GormSimplePostItem{}
+	h.DB.Find(post, id)
+
+	post.Title = r.FormValue("title")
+	post.Description = r.FormValue("description")
+	post.Updated = "by gorm"
+
+	db := h.DB.Save(post)
+	err = db.Error
+	__err_panic(err)
+	affected := db.RowsAffected
+
+	fmt.Println("Update: RowsAffected", affected)
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func (h *GormSimpleHttpHandlers) Delete(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	__err_panic(err)
+
+	db := h.DB.Delete(&GormSimplePostItem{Id: id})
+	err = db.Error
+	__err_panic(err)
+	affected := db.RowsAffected
+
+	fmt.Println("Delete: RowsAffected", affected)
+
+	w.Header().Set("Content-type", "application/json")
+	resp := `{"affected": ` + strconv.Itoa(int(affected)) + `}`
+	w.Write([]byte(resp))
 }
 
 func mysqlSimple() {
