@@ -435,8 +435,6 @@ Package `gomemcache/memcache`.
 
 ### Key-Value 2 (redis)
 
-# I_AM_HERE
-
 - [main](week_06/redis_main.go)
 - [session](week_06/redis_session.go)
 
@@ -449,11 +447,13 @@ https://redis.io/docs/latest/commands/
 
 ### Прочие системы 1 (Rabbit MQ)
 
-- [form](week_06/rabbit_form.go) [resize_worker](week_06/rabbit_resize_worker.go)
+# I_AM_HERE
+
+- [form](week_06/rabbit_form.go)
+- [resize_worker](week_06/rabbit_resize_worker.go)
 
 Очереди, Pub/Sub, RabbitMQ `streadway/amqp`.
 Демо веб-сервиса создания превьюшек для картинок, в async офлайн-воркере.
-
 
 ### Прочие системы 2 (MongoDB)
 

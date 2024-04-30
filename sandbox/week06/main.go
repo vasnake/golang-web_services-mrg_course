@@ -77,20 +77,6 @@ var (
 	}
 )
 
-func redisCheckSession(r *http.Request) (*RedisDemoSession, error) {
-	cookieSessionID, err := r.Cookie("session_id")
-	if err == http.ErrNoCookie {
-		return nil, nil
-	} else if err != nil {
-		return nil, err
-	}
-
-	sess := redisSessManager.Check(&RedisDemoSessionID{
-		ID: cookieSessionID.Value,
-	})
-	return sess, nil
-}
-
 func redisDemoInnerPage(w http.ResponseWriter, r *http.Request) {
 	var loginFormTmpl = []byte(`
 	<html>
@@ -109,6 +95,7 @@ func redisDemoInnerPage(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
 	if sess == nil {
 		w.Write(loginFormTmpl)
 		return
@@ -125,18 +112,18 @@ func redisDemoLoginPage(w http.ResponseWriter, r *http.Request) {
 	inputPass := r.FormValue("password")
 	expiration := time.Now().Add(24 * time.Hour)
 
-	pass, exist := usersDB_redisDemo[inputLogin]
-	if !exist || pass != inputPass {
+	passwd, exist := usersDB_redisDemo[inputLogin]
+	if !exist || passwd != inputPass {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	sess, err := redisSessManager.Create(&RedisDemoSession{
+	sess, err := redisSessManager.SaveSession(&RedisDemoSession{
 		Login:     inputLogin,
 		Useragent: r.UserAgent(),
 	})
 	if err != nil {
-		log.Println("cant create session:", err)
+		log.Println("can't create session:", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -146,6 +133,7 @@ func redisDemoLoginPage(w http.ResponseWriter, r *http.Request) {
 		Value:   sess.ID,
 		Expires: expiration,
 	}
+
 	http.SetCookie(w, &cookie)
 	http.Redirect(w, r, "/", http.StatusFound)
 }
@@ -160,14 +148,28 @@ func redisDemoLogoutPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redisSessManager.Delete(&RedisDemoSessionID{
+	redisSessManager.DropSession(&RedisDemoSessionID{
 		ID: session.Value,
 	})
 
 	session.Expires = time.Now().AddDate(0, 0, -1)
-	http.SetCookie(w, session)
 
+	http.SetCookie(w, session)
 	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func redisCheckSession(r *http.Request) (*RedisDemoSession, error) {
+	cookieSessionID, err := r.Cookie("session_id")
+	if err == http.ErrNoCookie {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	sess := redisSessManager.LoadSession(&RedisDemoSessionID{
+		ID: cookieSessionID.Value,
+	})
+	return sess, nil
 }
 
 type RedisDemoSessionID struct {
@@ -186,13 +188,16 @@ func NewRedisDemoSessionManager(conn redis.Conn) *RedisDemoSessionManager {
 		redisConn: conn,
 	}
 }
-func (sm *RedisDemoSessionManager) Create(sess *RedisDemoSession) (*RedisDemoSessionID, error) {
+
+func (sm *RedisDemoSessionManager) SaveSession(sess *RedisDemoSession) (*RedisDemoSessionID, error) {
 	const sessKeyLen = 10
-	id := RedisDemoSessionID{RandStringRunes(sessKeyLen)}
-	dataSerialized, _ := json.Marshal(sess)
+
+	id := RedisDemoSessionID{ID: RandStringRunes(sessKeyLen)}
+
+	sessBytes, _ := json.Marshal(sess)
 	mkey := "sessions:" + id.ID
-	data, err := sm.redisConn.Do("SET", mkey, dataSerialized, "EX", 86400)
-	result, err := redis.String(data, err)
+	reply, err := sm.redisConn.Do("SET", mkey, sessBytes, "EX", 86400)
+	result, err := redis.String(reply, err)
 	if err != nil {
 		return nil, err
 	}
@@ -203,25 +208,25 @@ func (sm *RedisDemoSessionManager) Create(sess *RedisDemoSession) (*RedisDemoSes
 	return &id, nil
 }
 
-func (sm *RedisDemoSessionManager) Check(in *RedisDemoSessionID) *RedisDemoSession {
+func (sm *RedisDemoSessionManager) LoadSession(in *RedisDemoSessionID) *RedisDemoSession {
 	mkey := "sessions:" + in.ID
-	data, err := redis.Bytes(sm.redisConn.Do("GET", mkey))
+	sessBytes, err := redis.Bytes(sm.redisConn.Do("GET", mkey))
 	if err != nil {
-		log.Println("cant get data:", err)
+		log.Println("can't get data:", err)
 		return nil
 	}
 
 	sess := &RedisDemoSession{}
-	err = json.Unmarshal(data, sess)
+	err = json.Unmarshal(sessBytes, sess)
 	if err != nil {
-		log.Println("cant unpack session data:", err)
+		log.Println("can't unpack session data:", err)
 		return nil
 	}
 
 	return sess
 }
 
-func (sm *RedisDemoSessionManager) Delete(in *RedisDemoSessionID) {
+func (sm *RedisDemoSessionManager) DropSession(in *RedisDemoSessionID) {
 	mkey := "sessions:" + in.ID
 	_, err := redis.Int(sm.redisConn.Do("DEL", mkey))
 	if err != nil {
