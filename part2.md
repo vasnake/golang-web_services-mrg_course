@@ -441,21 +441,59 @@ Package `gomemcache/memcache`.
 Использование `redigo/redis` для хранения сессий пользователей веб-сайта.
 id сессии лежит в куке, данные сессии лежат в redis.
 
-Учебный пример для демонстрации основных операций работы с сессией через редис.
+Учебный пример для демонстрации основных операций над бд, для работы с сессией через редис.
 
 https://redis.io/docs/latest/commands/
 
 ### Прочие системы 1 (Rabbit MQ)
 
-# I_AM_HERE
-
 - [form](week_06/rabbit_form.go)
-- [resize_worker](week_06/rabbit_resize_worker.go)
+- [pic resize_worker](week_06/rabbit_resize_worker.go)
 
-Очереди, Pub/Sub, RabbitMQ `streadway/amqp`.
-Демо веб-сервиса создания превьюшек для картинок, в async офлайн-воркере.
+Обмен сообщениями, очереди, Pub/Sub, RabbitMQ "github.com/streadway/amqp".
+
+Демо веб-сервиса создания превьюшек для картинок. Превьюшки создаются в async офлайн воркере.
+Пользователь грузит картинку на сервер через веб-форму.
+Задание на обработку файла идет в очередь, пользователь получает отбивку о запуске фонового процесса.
+По завершению обработки: пользователь получит сообщение о готовности.
+Обмен сообщениями (реализация протокола): через очереди. Так должно быть.
+Как работает демо: пользователь отправляет файл (веб-форма) на сервер.
+Там файл сохраняется на диск, в очередь кладется реф.на файл и задание "генерить превьюшки".
+Пользователь получает ответ, что файл принят в обработку.
+Фоновый воркер (отдельный процесс) берет задания из очереди и строгает превьюшки,
+складывая их на диск. TheEnd.
+
+Показал хитрость, как в один проход чтения файла посчитать хеш и переложить байты из формы.
+
+```s
+pushd sandbox/week06
+mkdir -p rabbit_pic_resize_worker && pushd ./rabbit_pic_resize_worker
+go mod init rabbit_pic_resize_worker
+
+cat > worker.go << EOT
+package main
+func main() { panic("not yet") }
+EOT
+
+go mod tidy
+popd # week06
+
+go run rabbit_pic_resize_worker/worker.go&
+```
+Программа-воркер, ничего не знает про веб-сервис, просто берет задания из очереди и выполняет их.
+Использует модуль `go get github.com/nfnt/resize`
+
+Напоминалка: запуск этой демы в три шага:
+```s
+sandbox/week06$ mkdir -p images
+sandbox/week06$ go run rabbit_pic_resize_worker/worker.go&
+sandbox/week06$ go run week06
+```
+wsl snippets
 
 ### Прочие системы 2 (MongoDB)
+
+# I_AM_HERE
 
 - [main](week_06/mongodb_main.go)
 

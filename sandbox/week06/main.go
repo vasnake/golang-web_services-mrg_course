@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/md5"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
 	"flag"
@@ -11,6 +13,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"reflect"
 	"strconv"
 	"time"
@@ -20,6 +23,7 @@ import (
 	"github.com/gomodule/redigo/redis" // "github.com/garyburd/redigo/redis"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
+	"github.com/streadway/amqp"
 )
 
 const (
@@ -34,7 +38,8 @@ func main() {
 	// sqlInjection()
 	// memcacheSimple()
 	// taggedMemCache()
-	redisSession()
+	// redisSession()
+	rabbitPicResize()
 }
 
 func lessonTemplate() {
@@ -43,6 +48,123 @@ func lessonTemplate() {
 	show(fmt.Sprintf("Open url http://localhost%s/", portStr))
 	err := http.ListenAndServe(portStr, nil)
 	show("end of program. ", err)
+}
+
+func rabbitPicResize() {
+	show("rabbitPicResize: program started ...")
+	show("HINT: worker program should be running by now: `go run rabbit_pic_resize_worker/worker.go&`")
+
+	flag.Parse()
+	var err error
+	rabbitConn, err = amqp.Dial(*rabbitAddr)
+	panicOnError("can't connect to rabbit", err)
+
+	rabbitChan, err = rabbitConn.Channel()
+	panicOnError("can't open AMQP channel", err)
+	defer rabbitChan.Close()
+
+	q, err := rabbitChan.QueueDeclare(
+		ImageResizeQueueName, // name
+		true,                 // durable
+		false,                // delete when unused
+		false,                // exclusive
+		false,                // no-wait
+		nil,                  // arguments
+	)
+	panicOnError("can't init queue", err)
+	fmt.Printf("queue %s have %d msg and %d consumers\n", q.Name, q.Messages, q.Consumers)
+
+	http.HandleFunc("/", imageResizeMainPage)
+	http.HandleFunc("/upload", imageResizeUploadPage)
+
+	show("Starting server at: ", host+portStr)
+	show(fmt.Sprintf("Open url http://localhost%s/", portStr))
+	err = http.ListenAndServe(portStr, nil)
+	show("end of program. ", err)
+}
+
+const (
+	ImageResizeQueueName     = "image_resize"
+	ImageResizeStoragePrefix = "./images" // it's a no-no
+)
+
+var (
+	rabbitAddr = flag.String("addr", "amqp://guest:guest@localhost:5672/", "rabbit addr")
+	rabbitConn *amqp.Connection
+	rabbitChan *amqp.Channel
+)
+
+type ImgResizeTask struct {
+	Name string
+	MD5  string
+}
+
+func imageResizeMainPage(w http.ResponseWriter, r *http.Request) {
+	var uploadFormTmpl = []byte(`
+<html>
+	<body>
+	<form action="/upload" method="post" enctype="multipart/form-data">
+		Image: <input type="file" name="my_file">
+		<input type="submit" value="Upload">
+	</form>
+	</body>
+</html>
+`)
+
+	w.Write(uploadFormTmpl)
+}
+func imageResizeUploadPage(w http.ResponseWriter, r *http.Request) {
+	uploadData, handler, err := r.FormFile("my_file")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer uploadData.Close()
+
+	fmt.Fprintf(w, "handler.Filename %v\n", handler.Filename)
+	fmt.Fprintf(w, "handler.Header %#v\n", handler.Header)
+
+	tmpName := RandStringRunes(32)
+	tmpFile := ImageResizeStoragePrefix + "/" + tmpName + ".jpg"
+	fileRef, err := os.Create(tmpFile) // possible drop of existing file
+	if err != nil {
+		http.Error(w, "can't create file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	hasher := md5.New()
+	writtenBytesCnt, err := ioutil.Copy(fileRef, ioutil.TeeReader(uploadData, hasher))
+	if err != nil {
+		http.Error(w, "can't save file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fileRef.Sync()
+	fileRef.Close()
+
+	md5Sum := hex.EncodeToString(hasher.Sum(nil))
+	realFile := ImageResizeStoragePrefix + "/" + md5Sum + ".jpg"
+	err = os.Rename(tmpFile, realFile)
+	if err != nil {
+		http.Error(w, "can't rename file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	msgBytes, _ := json.Marshal(ImgResizeTask{handler.Filename, md5Sum}) // skip error
+
+	fmt.Println("sending AMQP message ", string(msgBytes))
+	err = rabbitChan.Publish(
+		"",                   // exchange
+		ImageResizeQueueName, // routing key
+		false,                // mandatory
+		false,
+		amqp.Publishing{
+			DeliveryMode: amqp.Persistent,
+			ContentType:  "text/plain",
+			Body:         msgBytes,
+		})
+	panicOnError("can't publish task", err)
+
+	fmt.Fprintf(w, "Upload %d bytes successful\n", writtenBytesCnt)
 }
 
 func redisSession() {
@@ -1052,6 +1174,11 @@ func (h *MysqlSimpleHttpHandlers) DeleteItem(w http.ResponseWriter, r *http.Requ
 func __err_panic(err error) {
 	if err != nil {
 		panic(err)
+	}
+}
+func panicOnError(msg string, err error) {
+	if err != nil {
+		panic(msg + ": " + err.Error())
 	}
 }
 
