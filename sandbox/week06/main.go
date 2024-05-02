@@ -24,6 +24,11 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	"github.com/streadway/amqp"
+
+	// mgo "gopkg.in/mgo.v2"
+	// "gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 )
 
 const (
@@ -39,7 +44,8 @@ func main() {
 	// memcacheSimple()
 	// taggedMemCache()
 	// redisSession()
-	rabbitPicResize()
+	// rabbitPicResize()
+	mongoSimple()
 }
 
 func lessonTemplate() {
@@ -48,6 +54,189 @@ func lessonTemplate() {
 	show(fmt.Sprintf("Open url http://localhost%s/", portStr))
 	err := http.ListenAndServe(portStr, nil)
 	show("end of program. ", err)
+}
+
+func mongoSimple() {
+	show("mongoSimple: program started ...")
+
+	sess, err := mgo.DialWithTimeout("mongodb://localhost/?connect=direct", 1500*time.Millisecond)
+	// sess, err := mgo.Dial("mongodb://localhost/")
+	// sess, err := mgo.Dial("mongodb://localhost:27018/?connect=direct")
+	// sess, err := mgo.Dial("localhost:27018")
+	// hostname -I | cut -f 1 -d ' ' # 172.19.24.89
+	// sess, err := mgo.Dial("mongodb://172.19.24.89")
+	// nc -zv "$(hostname).local" 27019
+	panicOnError("mgo.Dial failed", err)
+
+	// если коллекции не будет, то она создасться автоматически
+	collectionRef := sess.DB("coursera").C("items")
+	// для монги нет такого красивого дампа SQL, так что я вставляю демо-запись если коллекция пуста
+	if n, _ := collectionRef.Count(); n == 0 {
+		collectionRef.Insert(&MongoPostsItem{
+			bson.NewObjectId(),
+			"mongodb",
+			"Рассказать про монгу",
+			"",
+		})
+		collectionRef.Insert(&MongoPostsItem{
+			bson.NewObjectId(),
+			"redis",
+			"Рассказать про redis",
+			"foo",
+		})
+	}
+
+	handlers := &MongoSrvHandler{
+		Sess:  sess,
+		Items: collectionRef,
+		// sandbox\week06\mongo_templates\
+		Tmpl: template.Must(template.ParseGlob("./week06/mongo_templates/*")),
+	}
+
+	// в целяx упрощения примера пропущена авторизация и csrf
+	r := mux.NewRouter()
+	r.HandleFunc("/", handlers.List).Methods("GET")
+	r.HandleFunc("/items", handlers.List).Methods("GET")
+	r.HandleFunc("/items/new", handlers.CreateForm).Methods("GET")
+	r.HandleFunc("/items/new", handlers.Create).Methods("POST")
+	r.HandleFunc("/items/{id}", handlers.UpdateForm).Methods("GET")
+	r.HandleFunc("/items/{id}", handlers.Update).Methods("POST")
+	r.HandleFunc("/items/{id}", handlers.Delete).Methods("DELETE")
+
+	show("Starting server at: ", host+portStr)
+	show(fmt.Sprintf("Open url http://localhost%s/", portStr))
+	err = http.ListenAndServe(portStr, r)
+	show("end of program. ", err)
+}
+
+type MongoPostsItem struct {
+	// struct is not the same, we have mongo-specific types and tags
+	Id          bson.ObjectId `json:"id" bson:"_id"`
+	Title       string        `json:"title" bson:"title"`
+	Description string        `json:"description" bson:"description"`
+	Updated     string        `json:"updated" bson:"updated"`
+}
+
+type MongoSrvHandler struct {
+	Sess  *mgo.Session
+	Items *mgo.Collection
+	Tmpl  *template.Template
+}
+
+func (h *MongoSrvHandler) List(w http.ResponseWriter, r *http.Request) {
+	items := []*MongoPostsItem{}
+
+	// bson.M{} - это типа условия для поиска
+	err := h.Items.Find(bson.M{}).All(&items)
+	__err_panic(err)
+
+	err = h.Tmpl.ExecuteTemplate(w, "index.html", struct {
+		Items []*MongoPostsItem
+	}{
+		Items: items,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *MongoSrvHandler) CreateForm(w http.ResponseWriter, r *http.Request) {
+	err := h.Tmpl.ExecuteTemplate(w, "create.html", nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *MongoSrvHandler) Create(w http.ResponseWriter, r *http.Request) {
+	// unstructures message (vs Item structure)
+	newItem := bson.M{
+		"_id":         bson.NewObjectId(),
+		"title":       r.FormValue("title"),
+		"description": r.FormValue("description"),
+		"some_filed":  123,
+	}
+	err := h.Items.Insert(newItem)
+	__err_panic(err)
+
+	fmt.Println("Insert: LastInsertId:", newItem["id"])
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func (h *MongoSrvHandler) UpdateForm(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	if !bson.IsObjectIdHex(vars["id"]) {
+		http.Error(w, "bad id", 500)
+		return
+	}
+	id := bson.ObjectIdHex(vars["id"])
+
+	item := &MongoPostsItem{}
+	err := h.Items.Find(bson.M{"_id": id}).One(&item)
+	__err_panic(err)
+
+	err = h.Tmpl.ExecuteTemplate(w, "edit.html", item)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *MongoSrvHandler) Update(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	if !bson.IsObjectIdHex(vars["id"]) {
+		http.Error(w, "bad id", 500)
+		return
+	}
+	id := bson.ObjectIdHex(vars["id"])
+
+	item := &MongoPostsItem{}
+	err := h.Items.Find(bson.M{"_id": id}).One(&item)
+
+	item.Title = r.FormValue("title")
+	item.Description = r.FormValue("description")
+	item.Updated = "demo"
+
+	err = h.Items.Update(bson.M{"_id": id}, &item)
+	// err = h.Items.Update( // unstructured message
+	// 	bson.M{"_id": id},
+	// 	bson.M{
+	// 		"title":       r.FormValue("title"),
+	// 		"description": r.FormValue("description"),
+	// 		"updated":     "demo",
+	// 		"newField":    123,
+	// 	})
+	affected := 1
+	if err == mgo.ErrNotFound {
+		affected = 0
+	} else if err != nil {
+		__err_panic(err)
+	}
+
+	fmt.Println("Update: RowsAffected", affected)
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func (h *MongoSrvHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	if !bson.IsObjectIdHex(vars["id"]) {
+		http.Error(w, "bad id", 500)
+		return
+	}
+	id := bson.ObjectIdHex(vars["id"])
+
+	err := h.Items.Remove(bson.M{"_id": id})
+	affected := 1
+	if err == mgo.ErrNotFound {
+		affected = 0
+	} else if err != nil {
+		__err_panic(err)
+	}
+
+	w.Header().Set("Content-type", "application/json")
+	resp := `{"affected": ` + strconv.Itoa(int(affected)) + `}`
+	w.Write([]byte(resp))
 }
 
 func rabbitPicResize() {

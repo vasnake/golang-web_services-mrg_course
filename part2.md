@@ -493,11 +493,64 @@ wsl snippets
 
 ### Прочие системы 2 (MongoDB)
 
-# I_AM_HERE
-
 - [main](week_06/mongodb_main.go)
 
-Хранилище документов в монго `mgo "gopkg.in/mgo.v2"`, демо.
+Хранилище документов в монго `mgo "gopkg.in/mgo.v2"`, демо:
+коллекция "публикаций", операции CRUD.
+Пропедалировал то, что схемы как таковой нет, в запросы к монго можно посылать произвольные сообщения (бинарный джейсон),
+где требуется только object id.
+
+Проблема: коннект аппы к монге не устанавливается. Причина непонятна.
+
+### week6 homework
+
+# I_AM_HERE
+
+Фолдер с задачей: `handouts/golang_web_services_2023-12-28.zip/6/99_hw/db_explorer/`
+
+Описание задачи: `readme.md`
+
+> простой веб-сервис будет представлять собой менеджер MySQL-базы данных,
+который позволяет осуществлять CRUD-запросы к ней по HTTP
+
+Задача выполнена когда: выполняются тесты `go test -v -race`, в браузере можно управлять табличками.
+
+> Для пользователя это выглядит так (GET, PUT, POST, DELETE - это http-метод, которым был отправлен запрос):
+* `GET /` - возвращает список всех таблиц (которые мы можем использовать в дальнейших запросах)
+* `GET /$table?limit=5&offset=7` - возвращает список из 5 записей (limit) начиная с 7-й (offset) из таблицы $table.
+limit по-умолчанию 5, offset 0
+* `GET /$table/$id` - возвращает информацию о самой записи или 404
+* `PUT /$table` - создаёт новую запись, данный по записи в теле запроса (POST-параметры)
+* `POST /$table/$id` - обновляет запись, данные приходят в теле запроса (POST-параметры)
+* `DELETE /$table/$id` - удаляет запись
+
+- `db_explorer.go` здесь надо написать реализацию веб-сервиса, остальные файлы можно не трогать.
+- `docker-compose.yaml`: для запуска сервера бд `docker compose up`
+- `main.go`: для запуска веб-сервиса, чтобы в браузере поиграть
+- `main_test.go`: тесты веб-сервиса `go test -v -race`
+
+[actual homework project](./sandbox/week06_homework/db_explorer/) `GO_APP_SELECTOR=week06_homework gr`
+```s
+pushd sandbox # workspace
+mkdir -p week06_homework/db_explorer
+pushd week06_homework/db_explorer
+
+go mod init db_explorer
+
+# makes go vet happy
+cat > main.go << EOT
+package main
+func main() { panic("not yet") }
+EOT
+
+go mod tidy
+
+popd # workspace
+# go work init
+# go work edit -dropuse=./week05_homework/code_gen
+go work use ./week06_homework/db_explorer
+```
+db_explorer prj.
 
 ## part 2, week 3 (07)
 
