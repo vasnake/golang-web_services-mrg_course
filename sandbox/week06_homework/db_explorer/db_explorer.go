@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
 	"runtime/debug"
 	"slices"
 	"strings"
@@ -74,7 +75,7 @@ func (srv *MysqlExplorerHttpHandlers) ReadTable(w http.ResponseWriter, r *http.R
 		}
 		t, isIn := ts[tableName]
 		if !isIn {
-			return t, fmt.Errorf("table %v not in db list %v", tableName, ts)
+			return t, fmt.Errorf("table `%v` not in db list `%v`", tableName, reflect.ValueOf(ts).MapKeys())
 		}
 		return t, nil
 	}()
@@ -83,7 +84,7 @@ func (srv *MysqlExplorerHttpHandlers) ReadTable(w http.ResponseWriter, r *http.R
 	}
 
 	// records
-	rows, err := srv.DB.Query("SELECT * FROM " + tableName)
+	rows, err := srv.DB.Query(fmt.Sprintf("SELECT * FROM %s LIMIT ? OFFSET ?", tableName), limit, offset)
 	if exitOnError(err) {
 		return
 	}
