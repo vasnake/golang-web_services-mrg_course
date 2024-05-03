@@ -64,7 +64,7 @@ func (srv *MysqlExplorerHttpHandlers) ReadRecord(w http.ResponseWriter, r *http.
 	exitOnError := func(err error) bool {
 		if err != nil {
 			show("ReadRecord, error: ", err)
-			writeError(http.StatusNotFound, "unknown table or record id", w)
+			writeError(http.StatusNotFound, "record not found", w)
 			return true
 		}
 		return false

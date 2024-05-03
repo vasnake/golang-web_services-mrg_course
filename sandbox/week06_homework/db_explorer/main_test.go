@@ -191,7 +191,7 @@ func TestApis(t *testing.T) {
 			ExpectedRespBody: GenericMap{
 				"error": "record not found",
 			},
-		},
+		}, // 7
 
 		// тут идёт создание и редактирование
 		Case{
@@ -207,7 +207,7 @@ func TestApis(t *testing.T) {
 					"id": 3,
 				},
 			},
-		},
+		}, // 8
 		// это пример хрупкого теста
 		// если много раз вызывать один и тот же тест - записи будут добавляться
 		// поэтому придётся сделать сброс базы каждый раз в PrepareTestData
@@ -496,7 +496,7 @@ func TestApis(t *testing.T) {
 		},
 	}
 
-	runCases(t, ts, db, cases[:6])
+	runCases(t, ts, db, cases[:8])
 }
 
 func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []Case) {
