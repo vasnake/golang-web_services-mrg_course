@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 )
 
@@ -179,4 +180,18 @@ func (srv MysqlExplorerHttpHandlers) GetTableColumns(table string) (columns []Ta
 	}
 
 	return columns, nil
+}
+
+func (srv MysqlExplorerHttpHandlers) getTable(tableName string) (Table, error) {
+	ts, err := srv.GetTables()
+	if err != nil {
+		return Table{}, err
+	}
+
+	t, isIn := ts[tableName]
+	if !isIn {
+		return t, fmt.Errorf("table `%v` not in db list `%v`", tableName, reflect.ValueOf(ts).MapKeys())
+	}
+
+	return t, nil
 }

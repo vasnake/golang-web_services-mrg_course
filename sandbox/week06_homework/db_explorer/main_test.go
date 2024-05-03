@@ -111,14 +111,14 @@ func TestApis(t *testing.T) {
 					"tables": []string{"items", "users"},
 				},
 			},
-		},
+		}, // 1
 		Case{
 			Path:           "/unknown_table",
 			ExpectedStatus: http.StatusNotFound,
 			ExpectedRespBody: GenericMap{
 				"error": "unknown table",
 			},
-		},
+		}, // 2
 		Case{
 			Path: "/items",
 			ExpectedRespBody: GenericMap{
@@ -139,7 +139,7 @@ func TestApis(t *testing.T) {
 					},
 				},
 			},
-		},
+		}, // 3
 		Case{
 			Path:  "/items",
 			Query: "limit=1",
@@ -155,7 +155,7 @@ func TestApis(t *testing.T) {
 					},
 				},
 			},
-		},
+		}, // 4
 		Case{
 			Path:  "/items",
 			Query: "limit=1&offset=1",
@@ -171,7 +171,7 @@ func TestApis(t *testing.T) {
 					},
 				},
 			},
-		},
+		}, // 5
 		Case{
 			Path: "/items/1",
 			ExpectedRespBody: GenericMap{
@@ -184,7 +184,7 @@ func TestApis(t *testing.T) {
 					},
 				},
 			},
-		},
+		}, // 6
 		Case{
 			Path:           "/items/100500",
 			ExpectedStatus: http.StatusNotFound,
@@ -496,7 +496,7 @@ func TestApis(t *testing.T) {
 		},
 	}
 
-	runCases(t, ts, db, cases[:4])
+	runCases(t, ts, db, cases[:6])
 }
 
 func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []Case) {

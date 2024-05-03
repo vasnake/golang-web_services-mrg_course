@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"reflect"
 	"runtime/debug"
 	"slices"
 	"strings"
@@ -23,6 +22,7 @@ import (
 * PUT /$table - создаёт новую запись, данный по записи в теле запроса (POST-параметры)
 * POST /$table/$id - обновляет запись, данные приходят в теле запроса (POST-параметры)
 * DELETE /$table/$id - удаляет запись
+
 */
 
 // NewDbExplorer create http handler for db_explorer app
@@ -33,15 +33,71 @@ func NewDbExplorer(dbRef *sql.DB) (http.Handler, error) {
 	r := mux.NewRouter() // gorilla/mux
 
 	r.HandleFunc("/", srv.ListTables).Methods("GET")
-
 	r.HandleFunc("/{table}", srv.ReadTable).Methods("GET")
-	// .Queries("limit", "{limit:[0-9]+}", "offser", "{offset:[0-9]+}",)
+	r.HandleFunc("/{table}/{id}", srv.ReadRecord).Methods("GET")
 
 	return r, nil
 }
 
 type MysqlExplorerHttpHandlers struct {
 	DB *sql.DB
+}
+
+func (srv *MysqlExplorerHttpHandlers) ReadRecord(w http.ResponseWriter, r *http.Request) {
+	/*
+		* GET /$table/$id - возвращает информацию о самой записи или 404
+
+		Path: "/items/1",
+		ExpectedRespBody: GenericMap{
+			"response": GenericMap{
+				"record": GenericMap{
+					"id":          1,
+					"title":       "database/sql",
+					"description": "Рассказать про базы данных",
+					"updated":     "rvasily",
+				},
+			},
+		},
+	*/
+	defer recoverPanic(w)
+
+	exitOnError := func(err error) bool {
+		if err != nil {
+			show("ReadRecord, error: ", err)
+			writeError(http.StatusNotFound, "unknown table or record id", w)
+			return true
+		}
+		return false
+	}
+
+	// params
+	routeVarsMap := MapSS(mux.Vars(r))
+	tableName := routeVarsMap.getOrDefault("table", "")
+	recordID := routeVarsMap.getOrDefault("id", "")
+	show("ReadRecord, table name, recId: ", tableName, recordID)
+
+	// table
+	var table, err = srv.getTable(tableName)
+	if exitOnError(err) {
+		return
+	}
+	var keyName = table.Pk
+
+	// records
+	row := srv.DB.QueryRow(fmt.Sprintf("SELECT * FROM %s where %s = ?", tableName, keyName), recordID)
+	values := table.NewRow()
+	err = row.Scan(values...)
+	if exitOnError(err) {
+		return
+	}
+
+	resultRef := &GenericMap{
+		"response": GenericMap{
+			"record": table.NewRecord(values), // map fieldName:fieldValue
+		},
+	}
+
+	writeSuccess(http.StatusOK, resultRef, w)
 }
 
 func (srv *MysqlExplorerHttpHandlers) ReadTable(w http.ResponseWriter, r *http.Request) {
@@ -68,17 +124,7 @@ func (srv *MysqlExplorerHttpHandlers) ReadTable(w http.ResponseWriter, r *http.R
 	show("ReadTable, name: ", tableName, fmt.Sprintf("limit %v, offset %v", limit, offset))
 
 	// table
-	var table, err = func() (Table, error) {
-		ts, err := srv.GetTables()
-		if err != nil {
-			return Table{}, err
-		}
-		t, isIn := ts[tableName]
-		if !isIn {
-			return t, fmt.Errorf("table `%v` not in db list `%v`", tableName, reflect.ValueOf(ts).MapKeys())
-		}
-		return t, nil
-	}()
+	var table, err = srv.getTable(tableName)
 	if exitOnError(err) {
 		return
 	}
