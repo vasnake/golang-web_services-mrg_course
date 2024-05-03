@@ -14,14 +14,28 @@ import (
 	"github.com/gorilla/mux"
 )
 
+/*
+* GET / - возвращает список все таблиц (которые мы можем использовать в дальнейших запросах)
+* GET /$table?limit=5&offset=7 - возвращает список из 5 записей (limit) начиная с 7-й (offset) из таблицы $table.
+	limit по-умолчанию 5, offset 0
+* GET /$table/$id - возвращает информацию о самой записи или 404
+* PUT /$table - создаёт новую запись, данный по записи в теле запроса (POST-параметры)
+* POST /$table/$id - обновляет запись, данные приходят в теле запроса (POST-параметры)
+* DELETE /$table/$id - удаляет запись
+*/
+
 // NewDbExplorer create http handler for db_explorer app
 func NewDbExplorer(dbRef *sql.DB) (http.Handler, error) {
 	srv := &MysqlExplorerHttpHandlers{
 		DB: dbRef,
 	}
 	r := mux.NewRouter() // gorilla/mux
+
 	r.HandleFunc("/", srv.ListTables).Methods("GET")
+
 	r.HandleFunc("/{table}", srv.ReadTable).Methods("GET")
+	// .Queries("limit", "{limit:[0-9]+}", "offser", "{offset:[0-9]+}",)
+
 	return r, nil
 }
 
@@ -30,24 +44,92 @@ type MysqlExplorerHttpHandlers struct {
 }
 
 func (srv *MysqlExplorerHttpHandlers) ReadTable(w http.ResponseWriter, r *http.Request) {
+	/*
+		* GET /$table?limit=5&offset=7 - возвращает список из 5 записей (limit) начиная с 7-й (offset) из таблицы $table.
+			limit по-умолчанию 5, offset 0
+	*/
 	defer recoverPanic(w)
 
+	exitOnError := func(err error) bool {
+		if err != nil {
+			show("ReadTable, error: ", err)
+			writeError(http.StatusNotFound, "unknown table", w)
+			return true
+		}
+		return false
+	}
+
+	// params
 	routeVarsMap := MapSS(mux.Vars(r))
 	tableName := routeVarsMap.getOrDefault("table", "")
-	show("ReadTable: ", tableName)
+	limit := getOrDefault(r.URL.Query(), "limit", "5")
+	offset := getOrDefault(r.URL.Query(), "offset", "0")
+	show("ReadTable, name: ", tableName, fmt.Sprintf("limit %v, offset %v", limit, offset))
 
-	writeError(http.StatusNotFound, "unknown table", w)
+	// table
+	var table, err = func() (Table, error) {
+		ts, err := srv.GetTables()
+		if err != nil {
+			return Table{}, err
+		}
+		t, isIn := ts[tableName]
+		if !isIn {
+			return t, fmt.Errorf("table %v not in db list %v", tableName, ts)
+		}
+		return t, nil
+	}()
+	if exitOnError(err) {
+		return
+	}
+
+	// records
+	rows, err := srv.DB.Query("SELECT * FROM " + tableName)
+	if exitOnError(err) {
+		return
+	}
+	defer rows.Close()
+
+	var records = make([]TableRecord, 0, 16)
+	for rows.Next() {
+		row := table.NewRow() // values
+		err := rows.Scan(row...)
+		if exitOnError(err) {
+			return
+		}
+		records = append(records, table.NewRecord(row)) // map fieldName:fieldValue
+	}
+	// show("ReadTable, records: ", records)
+
+	resultRef := &GenericMap{
+		"response": GenericMap{
+			"records": records,
+		},
+	}
+
+	writeSuccess(http.StatusOK, resultRef, w)
 }
 
 func (srv *MysqlExplorerHttpHandlers) ListTables(w http.ResponseWriter, r *http.Request) {
 	defer recoverPanic(w)
 
-	tables := []string{"items", "users"}
-	show("ListTables: ", tables)
+	exitOnError := func(err error) bool {
+		if err != nil {
+			show("ListTables, error: ", err)
+			writeError(http.StatusInternalServerError, "probably DB access failed", w)
+			return true
+		}
+		return false
+	}
+
+	allTables, err := srv.GetTableNames()
+	if exitOnError(err) {
+		return
+	}
+	show("ListTables: ", allTables)
 
 	resultRef := &GenericMap{
 		"response": GenericMap{
-			"tables": tables,
+			"tables": allTables,
 		},
 	}
 
