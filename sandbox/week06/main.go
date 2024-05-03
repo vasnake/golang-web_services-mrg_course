@@ -38,14 +38,14 @@ const (
 )
 
 func main() {
-	// mysqlSimple()
+	mysqlSimple()
 	// gormCRUD()
 	// sqlInjection()
 	// memcacheSimple()
 	// taggedMemCache()
 	// redisSession()
 	// rabbitPicResize()
-	mongoSimple()
+	// mongoSimple()
 }
 
 func lessonTemplate() {

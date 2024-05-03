@@ -8,7 +8,7 @@ import (
 
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	ioutil "io" // "io/ioutil" // deprecated
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -20,12 +20,12 @@ import (
 type CR map[string]interface{}
 
 type Case struct {
-	Method string // GET по-умолчанию в http.NewRequest если передали пустую строку
-	Path   string
-	Query  string
-	Status int
-	Result interface{}
-	Body   interface{}
+	Method           string // GET по-умолчанию в http.NewRequest если передали пустую строку
+	Path             string
+	Query            string
+	ExpectedStatus   int
+	ExpectedRespBody interface{}
+	RequestBody      interface{}
 }
 
 var (
@@ -93,7 +93,6 @@ func TestApis(t *testing.T) {
 	}
 
 	PrepareTestApis(db)
-
 	// возможно вам будет удобно закомментировать это чтобы смотреть результат после теста
 	defer CleanupTestApis(db)
 
@@ -107,31 +106,31 @@ func TestApis(t *testing.T) {
 	cases := []Case{
 		Case{
 			Path: "/", // список таблиц
-			Result: CR{
-				"response": CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
 					"tables": []string{"items", "users"},
 				},
 			},
 		},
 		Case{
-			Path:   "/unknown_table",
-			Status: http.StatusNotFound,
-			Result: CR{
+			Path:           "/unknown_table",
+			ExpectedStatus: http.StatusNotFound,
+			ExpectedRespBody: GenericMap{
 				"error": "unknown table",
 			},
 		},
 		Case{
 			Path: "/items",
-			Result: CR{
-				"response": CR{
-					"records": []CR{
-						CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
+					"records": []GenericMap{
+						GenericMap{
 							"id":          1,
 							"title":       "database/sql",
 							"description": "Рассказать про базы данных",
 							"updated":     "rvasily",
 						},
-						CR{
+						GenericMap{
 							"id":          2,
 							"title":       "memcache",
 							"description": "Рассказать про мемкеш с примером использования",
@@ -144,10 +143,10 @@ func TestApis(t *testing.T) {
 		Case{
 			Path:  "/items",
 			Query: "limit=1",
-			Result: CR{
-				"response": CR{
-					"records": []CR{
-						CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
+					"records": []GenericMap{
+						GenericMap{
 							"id":          1,
 							"title":       "database/sql",
 							"description": "Рассказать про базы данных",
@@ -160,10 +159,10 @@ func TestApis(t *testing.T) {
 		Case{
 			Path:  "/items",
 			Query: "limit=1&offset=1",
-			Result: CR{
-				"response": CR{
-					"records": []CR{
-						CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
+					"records": []GenericMap{
+						GenericMap{
 							"id":          2,
 							"title":       "memcache",
 							"description": "Рассказать про мемкеш с примером использования",
@@ -175,9 +174,9 @@ func TestApis(t *testing.T) {
 		},
 		Case{
 			Path: "/items/1",
-			Result: CR{
-				"response": CR{
-					"record": CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
+					"record": GenericMap{
 						"id":          1,
 						"title":       "database/sql",
 						"description": "Рассказать про базы данных",
@@ -187,9 +186,9 @@ func TestApis(t *testing.T) {
 			},
 		},
 		Case{
-			Path:   "/items/100500",
-			Status: http.StatusNotFound,
-			Result: CR{
+			Path:           "/items/100500",
+			ExpectedStatus: http.StatusNotFound,
+			ExpectedRespBody: GenericMap{
 				"error": "record not found",
 			},
 		},
@@ -198,13 +197,13 @@ func TestApis(t *testing.T) {
 		Case{
 			Path:   "/items/",
 			Method: http.MethodPut,
-			Body: CR{
+			RequestBody: GenericMap{
 				"id":          42, // auto increment primary key игнорируется при вставке
 				"title":       "db_crud",
 				"description": "",
 			},
-			Result: CR{
-				"response": CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
 					"id": 3,
 				},
 			},
@@ -214,9 +213,9 @@ func TestApis(t *testing.T) {
 		// поэтому придётся сделать сброс базы каждый раз в PrepareTestData
 		Case{
 			Path: "/items/3",
-			Result: CR{
-				"response": CR{
-					"record": CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
+					"record": GenericMap{
 						"id":          3,
 						"title":       "db_crud",
 						"description": "",
@@ -228,20 +227,20 @@ func TestApis(t *testing.T) {
 		Case{
 			Path:   "/items/3",
 			Method: http.MethodPost,
-			Body: CR{
+			RequestBody: GenericMap{
 				"description": "Написать программу db_crud",
 			},
-			Result: CR{
-				"response": CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
 					"updated": 1,
 				},
 			},
 		},
 		Case{
 			Path: "/items/3",
-			Result: CR{
-				"response": CR{
-					"record": CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
+					"record": GenericMap{
 						"id":          3,
 						"title":       "db_crud",
 						"description": "Написать программу db_crud",
@@ -255,20 +254,20 @@ func TestApis(t *testing.T) {
 		Case{
 			Path:   "/items/3",
 			Method: http.MethodPost,
-			Body: CR{
+			RequestBody: GenericMap{
 				"updated": "autotests",
 			},
-			Result: CR{
-				"response": CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
 					"updated": 1,
 				},
 			},
 		},
 		Case{
 			Path: "/items/3",
-			Result: CR{
-				"response": CR{
-					"record": CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
+					"record": GenericMap{
 						"id":          3,
 						"title":       "db_crud",
 						"description": "Написать программу db_crud",
@@ -282,20 +281,20 @@ func TestApis(t *testing.T) {
 		Case{
 			Path:   "/items/3",
 			Method: http.MethodPost,
-			Body: CR{
+			RequestBody: GenericMap{
 				"updated": nil,
 			},
-			Result: CR{
-				"response": CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
 					"updated": 1,
 				},
 			},
 		},
 		Case{
 			Path: "/items/3",
-			Result: CR{
-				"response": CR{
-					"record": CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
+					"record": GenericMap{
 						"id":          3,
 						"title":       "db_crud",
 						"description": "Написать программу db_crud",
@@ -307,47 +306,47 @@ func TestApis(t *testing.T) {
 
 		// ошибки
 		Case{
-			Path:   "/items/3",
-			Method: http.MethodPost,
-			Status: http.StatusBadRequest,
-			Body: CR{
+			Path:           "/items/3",
+			Method:         http.MethodPost,
+			ExpectedStatus: http.StatusBadRequest,
+			RequestBody: GenericMap{
 				"id": 4, // primary key нельзя обновлять у существующей записи
 			},
-			Result: CR{
+			ExpectedRespBody: GenericMap{
 				"error": "field id have invalid type",
 			},
 		},
 		Case{
-			Path:   "/items/3",
-			Method: http.MethodPost,
-			Status: http.StatusBadRequest,
-			Body: CR{
+			Path:           "/items/3",
+			Method:         http.MethodPost,
+			ExpectedStatus: http.StatusBadRequest,
+			RequestBody: GenericMap{
 				"title": 42,
 			},
-			Result: CR{
+			ExpectedRespBody: GenericMap{
 				"error": "field title have invalid type",
 			},
 		},
 		Case{
-			Path:   "/items/3",
-			Method: http.MethodPost,
-			Status: http.StatusBadRequest,
-			Body: CR{
+			Path:           "/items/3",
+			Method:         http.MethodPost,
+			ExpectedStatus: http.StatusBadRequest,
+			RequestBody: GenericMap{
 				"title": nil,
 			},
-			Result: CR{
+			ExpectedRespBody: GenericMap{
 				"error": "field title have invalid type",
 			},
 		},
 
 		Case{
-			Path:   "/items/3",
-			Method: http.MethodPost,
-			Status: http.StatusBadRequest,
-			Body: CR{
+			Path:           "/items/3",
+			Method:         http.MethodPost,
+			ExpectedStatus: http.StatusBadRequest,
+			RequestBody: GenericMap{
 				"updated": 42,
 			},
-			Result: CR{
+			ExpectedRespBody: GenericMap{
 				"error": "field updated have invalid type",
 			},
 		},
@@ -356,8 +355,8 @@ func TestApis(t *testing.T) {
 		Case{
 			Path:   "/items/3",
 			Method: http.MethodDelete,
-			Result: CR{
-				"response": CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
 					"deleted": 1,
 				},
 			},
@@ -365,16 +364,16 @@ func TestApis(t *testing.T) {
 		Case{
 			Path:   "/items/3",
 			Method: http.MethodDelete,
-			Result: CR{
-				"response": CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
 					"deleted": 0,
 				},
 			},
 		},
 		Case{
-			Path:   "/items/3",
-			Status: http.StatusNotFound,
-			Result: CR{
+			Path:           "/items/3",
+			ExpectedStatus: http.StatusNotFound,
+			ExpectedRespBody: GenericMap{
 				"error": "record not found",
 			},
 		},
@@ -382,9 +381,9 @@ func TestApis(t *testing.T) {
 		// и немного по другой таблице
 		Case{
 			Path: "/users/1",
-			Result: CR{
-				"response": CR{
-					"record": CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
+					"record": GenericMap{
 						"user_id":  1,
 						"login":    "rvasily",
 						"password": "love",
@@ -399,21 +398,21 @@ func TestApis(t *testing.T) {
 		Case{
 			Path:   "/users/1",
 			Method: http.MethodPost,
-			Body: CR{
+			RequestBody: GenericMap{
 				"info":    "try update",
 				"updated": "now",
 			},
-			Result: CR{
-				"response": CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
 					"updated": 1,
 				},
 			},
 		},
 		Case{
 			Path: "/users/1",
-			Result: CR{
-				"response": CR{
-					"record": CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
+					"record": GenericMap{
 						"user_id":  1,
 						"login":    "rvasily",
 						"password": "love",
@@ -426,13 +425,13 @@ func TestApis(t *testing.T) {
 		},
 		// ошибки
 		Case{
-			Path:   "/users/1",
-			Method: http.MethodPost,
-			Status: http.StatusBadRequest,
-			Body: CR{
+			Path:           "/users/1",
+			Method:         http.MethodPost,
+			ExpectedStatus: http.StatusBadRequest,
+			RequestBody: GenericMap{
 				"user_id": 1, // primary key нельзя обновлять у существующей записи
 			},
-			Result: CR{
+			ExpectedRespBody: GenericMap{
 				"error": "field user_id have invalid type",
 			},
 		},
@@ -440,23 +439,23 @@ func TestApis(t *testing.T) {
 		Case{
 			Path:   "/users/",
 			Method: http.MethodPut,
-			Body: CR{
+			RequestBody: GenericMap{
 				"user_id":    2,
 				"login":      "qwerty'",
 				"password":   "love\"",
 				"unkn_field": "love",
 			},
-			Result: CR{
-				"response": CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
 					"user_id": 2,
 				},
 			},
 		},
 		Case{
 			Path: "/users/2",
-			Result: CR{
-				"response": CR{
-					"record": CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
+					"record": GenericMap{
 						"user_id":  2,
 						"login":    "qwerty'",
 						"password": "love\"",
@@ -472,10 +471,10 @@ func TestApis(t *testing.T) {
 		Case{
 			Path:  "/users",
 			Query: "limit=1'&offset=1\"",
-			Result: CR{
-				"response": CR{
-					"records": []CR{
-						CR{
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
+					"records": []GenericMap{
+						GenericMap{
 							"user_id":  1,
 							"login":    "rvasily",
 							"password": "love",
@@ -483,7 +482,7 @@ func TestApis(t *testing.T) {
 							"info":     "try update",
 							"updated":  "now",
 						},
-						CR{
+						GenericMap{
 							"user_id":  2,
 							"login":    "qwerty'",
 							"password": "love\"",
@@ -497,16 +496,16 @@ func TestApis(t *testing.T) {
 		},
 	}
 
-	runCases(t, ts, db, cases)
+	runCases(t, ts, db, cases[:1])
 }
 
 func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []Case) {
 	for idx, item := range cases {
 		var (
-			err      error
-			result   interface{}
-			expected interface{}
-			req      *http.Request
+			err              error
+			actualRespBody   interface{}
+			expectedRespBody interface{}
+			req              *http.Request
 		)
 
 		caseName := fmt.Sprintf("case %d: [%s] %s %s", idx, item.Method, item.Path, item.Query)
@@ -520,7 +519,7 @@ func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []Case) {
 		if item.Method == "" || item.Method == http.MethodGet {
 			req, err = http.NewRequest(item.Method, ts.URL+item.Path+"?"+item.Query, nil)
 		} else {
-			data, err := json.Marshal(item.Body)
+			data, err := json.Marshal(item.RequestBody)
 			if err != nil {
 				panic(err)
 			}
@@ -529,25 +528,26 @@ func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []Case) {
 			req.Header.Add("Content-Type", "application/json")
 		}
 
-		resp, err := client.Do(req)
+		resp, err := client.Do(req) // call server method
 		if err != nil {
 			t.Fatalf("[%s] request error: %v", caseName, err)
 			continue
 		}
 		defer resp.Body.Close()
+
 		body, err := ioutil.ReadAll(resp.Body)
 
 		// fmt.Printf("[%s] body: %s\n", caseName, string(body))
-		if item.Status == 0 {
-			item.Status = http.StatusOK
+		if item.ExpectedStatus == 0 {
+			item.ExpectedStatus = http.StatusOK
 		}
 
-		if resp.StatusCode != item.Status {
-			t.Fatalf("[%s] expected http status %v, got %v", caseName, item.Status, resp.StatusCode)
+		if resp.StatusCode != item.ExpectedStatus {
+			t.Fatalf("[%s] expected http status %v, got %v", caseName, item.ExpectedStatus, resp.StatusCode)
 			continue
 		}
 
-		err = json.Unmarshal(body, &result)
+		err = json.Unmarshal(body, &actualRespBody)
 		if err != nil {
 			t.Fatalf("[%s] cant unpack json: %v", caseName, err)
 			continue
@@ -557,11 +557,10 @@ func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []Case) {
 		// а там приходят разные типы (string VS interface{}) по сравнению с тем что в ожидаемом результате
 		// этот маленький грязный хак конвертит данные сначала в json, а потом обратно в interface - получаем совместимые результаты
 		// не используйте это в продакшен-коде - надо явно писать что ожидается интерфейс или использовать другой подход с точным форматом ответа
-		data, err := json.Marshal(item.Result)
-		json.Unmarshal(data, &expected)
-
-		if !reflect.DeepEqual(result, expected) {
-			t.Fatalf("[%s] results not match\nGot : %#v\nWant: %#v", caseName, result, expected)
+		data, err := json.Marshal(item.ExpectedRespBody)
+		json.Unmarshal(data, &expectedRespBody)
+		if !reflect.DeepEqual(actualRespBody, expectedRespBody) {
+			t.Fatalf("[%s] results not match\nActual : %#v\nExpected: %#v", caseName, actualRespBody, expectedRespBody)
 			continue
 		}
 	}

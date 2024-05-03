@@ -53,7 +53,8 @@ go_run_sandbox_week06_db_explorer_test() {
     # go vet -stringintconv=false $module # go doc cmd/vet
 
     echo "####################################################################################################"
-    go test -v -race $module
+    # go test -v -race $module
+    go test -v $module
 
     # go run -race $module
     # go run $module

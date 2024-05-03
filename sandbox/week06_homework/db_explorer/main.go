@@ -15,7 +15,7 @@ var (
 	// вы можете изменить этот на тот который вам нужен
 	// docker run -p 3306:3306 -v $(PWD):/docker-entrypoint-initdb.d -e MYSQL_ROOT_PASSWORD=1234 -e MYSQL_DATABASE=golang -d mysql
 	// DSN = "root@tcp(localhost:3306)/golang2017?charset=utf8"
-	DSN = "coursera:5QPbAUufx7@tcp(localhost:3306)/coursera?charset=utf8"
+	DSN = "root:love@tcp(localhost:3306)/coursera?charset=utf8"
 )
 
 func main() {
