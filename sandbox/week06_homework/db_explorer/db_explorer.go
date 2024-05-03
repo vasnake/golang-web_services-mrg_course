@@ -20,7 +20,8 @@ func NewDbExplorer(dbRef *sql.DB) (http.Handler, error) {
 		DB: dbRef,
 	}
 	r := mux.NewRouter() // gorilla/mux
-	r.HandleFunc("/", srv.DefaultRead).Methods("GET")
+	r.HandleFunc("/", srv.ListTables).Methods("GET")
+	r.HandleFunc("/{table}", srv.ReadTable).Methods("GET")
 	return r, nil
 }
 
@@ -28,23 +29,25 @@ type MysqlExplorerHttpHandlers struct {
 	DB *sql.DB
 }
 
-type GenericMap map[string]interface{}
+func (srv *MysqlExplorerHttpHandlers) ReadTable(w http.ResponseWriter, r *http.Request) {
+	defer recoverPanic(w)
 
-func (srv *MysqlExplorerHttpHandlers) DefaultRead(w http.ResponseWriter, r *http.Request) {
-	// http.Error(w, "not yet", http.StatusInternalServerError)
-	show("DefaultRead, request: ", r)
+	routeVarsMap := MapSS(mux.Vars(r))
+	tableName := routeVarsMap.getOrDefault("table", "")
+	show("ReadTable: ", tableName)
 
-	defer func() {
-		if err := recover(); err != nil {
-			debug.PrintStack()
-			show("DefaultRead recover from error: ", err)
-			writeError(http.StatusInternalServerError, "Internal server error", w)
-		}
-	}()
+	writeError(http.StatusNotFound, "unknown table", w)
+}
+
+func (srv *MysqlExplorerHttpHandlers) ListTables(w http.ResponseWriter, r *http.Request) {
+	defer recoverPanic(w)
+
+	tables := []string{"items", "users"}
+	show("ListTables: ", tables)
 
 	resultRef := &GenericMap{
 		"response": GenericMap{
-			"tables": []string{"items", "users"},
+			"tables": tables,
 		},
 	}
 
@@ -68,6 +71,15 @@ func writeResponse(status int, err error, msg []byte, w http.ResponseWriter) {
 	w.Write(msg)
 }
 
+// recoverPanic concocted for using in `defer recoverPanic ...` in http handlers
+func recoverPanic(w http.ResponseWriter) {
+	if err := recover(); err != nil {
+		debug.PrintStack()
+		show("recover from error: ", err)
+		writeError(http.StatusInternalServerError, "Internal server error", w)
+	}
+}
+
 type ApiSuccessResponse struct {
 	Error    string      `json:"error"`
 	Response interface{} `json:"response"`
@@ -76,6 +88,8 @@ type ApiSuccessResponse struct {
 type ApiErrorResponse struct {
 	Error string `json:"error"`
 }
+
+type GenericMap map[string]interface{}
 
 func getOrDefault(values url.Values, key string, defaultValue string) string {
 	items, ok := values[key]
@@ -88,6 +102,15 @@ func getOrDefault(values url.Values, key string, defaultValue string) string {
 	}
 
 	return items[0] // TODO: or find first not empty
+}
+
+type MapSS map[string]string
+
+func (m MapSS) getOrDefault(key, dflt string) string {
+	if v, isIn := m[key]; isIn {
+		return v
+	}
+	return dflt
 }
 
 func contains(str string, lst []string) bool {
@@ -121,8 +144,8 @@ func show(msg string, xs ...any) {
 
 	for _, x := range xs {
 		// https://pkg.go.dev/fmt
-		line += fmt.Sprintf("%T(%v); ", x, x) // type(value)
-		// line += fmt.Sprintf("%#v; ", x) // repr
+		// line += fmt.Sprintf("%T(%v); ", x, x) // type(value)
+		line += fmt.Sprintf("%#v; ", x) // repr
 	}
 	fmt.Println(line)
 }

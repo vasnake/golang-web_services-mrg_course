@@ -496,7 +496,7 @@ func TestApis(t *testing.T) {
 		},
 	}
 
-	runCases(t, ts, db, cases[:1])
+	runCases(t, ts, db, cases[:2])
 }
 
 func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []Case) {
@@ -549,7 +549,7 @@ func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []Case) {
 
 		err = json.Unmarshal(body, &actualRespBody)
 		if err != nil {
-			t.Fatalf("[%s] cant unpack json: %v", caseName, err)
+			t.Fatalf("[%s] can't unpack json: %v; (body: %s)", caseName, err, body)
 			continue
 		}
 
