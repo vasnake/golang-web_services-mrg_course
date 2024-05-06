@@ -504,8 +504,6 @@ wsl snippets
 
 ### week6 homework
 
-# I_AM_HERE
-
 Фолдер с задачей: `handouts/golang_web_services_2023-12-28.zip/6/99_hw/db_explorer/`
 
 Описание задачи: `readme.md`
@@ -555,12 +553,43 @@ db_explorer prj.
 Своими словами: надо написать http хендлеры (json), для CRUD операций.
 Спека задается тестами. Просто но трудоемко.
 
+Done. Добился прохождения всех тестов и на этом закончил.
+Слишком рутинно и трудоемко, жаль времени на рефакторинг и приведение к production-ready виду.
+Может быть потом, когда-нибудь, сделаю рефакторинг.
+
 ## part 2, week 3 (07)
 
 Микросервисы
-[Код, домашки, литература](week_07/materials.zip) https://cloud.mail.ru/public/GyVL/2YfhX2unF
+[Код, домашки, литература](week_07/materials.zip)
+
+UPD:
+- `handouts/golang_web_services_2023-12-28.zip/7/`
+- `handouts/golang_web_services_2024-04-26.zip/7/`
+
+```s
+pushd sandbox
+mkdir -p week06 && pushd ./week06
+go mod init week06
+
+cat > main.go << EOT
+package main
+func main() { panic("not yet") }
+EOT
+
+go mod tidy
+popd
+
+go work use ./week06
+go vet week06
+gofmt -w week06
+go test -v week06
+go run week06
+```
+[week 7 playground](./sandbox/week07/main.go) `GO_APP_SELECTOR=week07 gr`
 
 ### Что такое микросервис - 1 (вводная)
+
+# I_AM_HERE
 
 Упрощение и борьба со сложностью.
 Монолит vs микросервисы.

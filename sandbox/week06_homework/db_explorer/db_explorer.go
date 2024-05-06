@@ -25,7 +25,6 @@ import (
 * POST /$table/$id - обновляет запись, данные приходят в теле запроса (POST-параметры)
 * DELETE /$table/$id - удаляет запись
 
-
 */
 
 // NewDbExplorer create http handler for db_explorer app
@@ -239,40 +238,23 @@ func (srv *MysqlExplorerHttpHandlers) UpdateRecord(w http.ResponseWriter, r *htt
 
 func (srv *MysqlExplorerHttpHandlers) CreateRecord(w http.ResponseWriter, r *http.Request) {
 	/*
-				* PUT /$table - создаёт новую запись, данный по записи в теле запроса (POST-параметры)
+		* PUT /$table - создаёт новую запись, данный по записи в теле запроса (POST-параметры)
 
-				r.HandleFunc("/{table}/", srv.CreateRecord).Methods("PUT")
+		r.HandleFunc("/{table}/", srv.CreateRecord).Methods("PUT")
 
-				Path:   "/items/",
-				Method: http.MethodPut,
-				RequestBody: GenericMap{
-					"id":          42, // auto increment primary key игнорируется при вставке
-					"title":       "db_crud",
-					"description": "",
-				},
-				ExpectedRespBody: GenericMap{
-					"response": GenericMap{
-						"id": 3,
-					},
-				},
+		Path:   "/items/",
+		Method: http.MethodPut,
+		RequestBody: GenericMap{
+			"id":          42, // auto increment primary key игнорируется при вставке
+			"title":       "db_crud",
+			"description": "",
+		},
+		ExpectedRespBody: GenericMap{
+			"response": GenericMap{
+				"id": 3,
+			},
+		},
 
-				Case{
-					Path:   "/users/",
-					Method: http.MethodPut,
-					RequestBody: GenericMap{
-						"user_id":    2,
-						"login":      "qwerty'",
-						"password":   "love\"",
-						"unkn_field": "love",
-					},
-					ExpectedRespBody: GenericMap{
-						"response": GenericMap{
-							"user_id": 2,
-						},
-					},
-				}, // 26
-		        Actual : map[string]interface {}{"response":map[string]interface {}{"id":4}}
-		        Expected: map[string]interface {}{"response":map[string]interface {}{"user_id":2}}
 	*/
 
 	defer recoverPanic(w)

@@ -93,6 +93,7 @@ func TestApis(t *testing.T) {
 	}
 
 	PrepareTestApis(db)
+	defer db.Close()
 	// возможно вам будет удобно закомментировать это чтобы смотреть результат после теста
 	defer CleanupTestApis(db)
 

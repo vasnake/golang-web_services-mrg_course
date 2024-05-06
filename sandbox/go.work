@@ -26,4 +26,5 @@ use (
 	./week05_homework/codegen
 	./week06
 	./week06_homework/db_explorer
+	./week07
 )

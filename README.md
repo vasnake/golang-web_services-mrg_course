@@ -161,6 +161,12 @@ Consequently, there are no constants denoting the IEEE-754 negative zero, infini
 [week 4, extra homework](./part1.md#week4-homework)
 Часть задания, в которой надо реализовать поиск "юзеров" в файле XML, согласно переданным параметрам.
 
+### week 6, db_explorer
+
+[week 6, homework](./part2.md#week6-homework)
+Сделан только необходимый минимум. Надо бы навести красоту, отрефакторить, поработать над эффективностью, валидацией.
+Добавить поддержку большего количества кейсов (типов данных, комбинаций параметров колонок).
+
 ## Info, links
 
 - `Communicating Sequential Processes` by Tony Hoare
