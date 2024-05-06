@@ -496,7 +496,7 @@ func TestApis(t *testing.T) {
 		}, // 28
 	}
 
-	runCases(t, ts, db, cases[:20])
+	runCases(t, ts, db, cases)
 }
 
 func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []Case) {

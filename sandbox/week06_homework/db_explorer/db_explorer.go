@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"runtime/debug"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,19 +25,7 @@ import (
 * POST /$table/$id - обновляет запись, данные приходят в теле запроса (POST-параметры)
 * DELETE /$table/$id - удаляет запись
 
-* DELETE /$table/$id - удаляет запись
 
-2024-05-06T07:35:58.612Z: UpdateRecord, table name, recId: "items"; "3";
-    main_test.go:546: [case 19: [DELETE] /items/3 ] expected http status 200, got 405
-Case{
-	Path:   "/items/3",
-	Method: http.MethodDelete,
-	ExpectedRespBody: GenericMap{
-		"response": GenericMap{
-			"deleted": 1,
-		},
-	},
-}, // 19
 */
 
 // NewDbExplorer create http handler for db_explorer app
@@ -51,12 +40,78 @@ func NewDbExplorer(dbRef *sql.DB) (http.Handler, error) {
 	r.HandleFunc("/{table}/{id}", srv.ReadRecord).Methods("GET")
 	r.HandleFunc("/{table}/", srv.CreateRecord).Methods("PUT")
 	r.HandleFunc("/{table}/{id}", srv.UpdateRecord).Methods("POST")
+	r.HandleFunc("/{table}/{id}", srv.DeleteRecord).Methods("DELETE")
 
 	return r, nil
 }
 
 type MysqlExplorerHttpHandlers struct {
 	DB *sql.DB
+}
+
+func (srv *MysqlExplorerHttpHandlers) DeleteRecord(w http.ResponseWriter, r *http.Request) {
+	/*
+	   * DELETE /$table/$id - удаляет запись
+
+	   2024-05-06T07:35:58.612Z: UpdateRecord, table name, recId: "items"; "3";
+
+	   	main_test.go:546: [case 19: [DELETE] /items/3 ] expected http status 200, got 405
+
+	   	Case{
+	   		Path:   "/items/3",
+	   		Method: http.MethodDelete,
+	   		ExpectedRespBody: GenericMap{
+	   			"response": GenericMap{
+	   				"deleted": 1,
+	   			},
+	   		},
+	   	}, // 19
+	*/
+
+	defer recoverPanic(w)
+
+	exitOnError := func(err error, status int, msg string) bool {
+		if err != nil {
+			show("DeleteRecord, error: ", err)
+			writeError(status, msg, w)
+			return true
+		}
+		return false
+	}
+
+	// params
+	routeVarsMap := MapSS(mux.Vars(r))
+	tableName := routeVarsMap.getOrDefault("table", "")
+	recordID := routeVarsMap.getOrDefault("id", "")
+	show("DeleteRecord, table name, recId: ", tableName, recordID)
+
+	// table
+	table, err := srv.getTable(tableName)
+	if exitOnError(err, http.StatusInternalServerError, "DeleteRecord, wrong table") {
+		return
+	}
+
+	// query
+	execResult, err := srv.DB.Exec(
+		fmt.Sprintf("DELETE FROM %s WHERE %s = ?", tableName, table.Pk),
+		recordID,
+	)
+	if exitOnError(err, http.StatusInternalServerError, "`DELETE` failed") {
+		return
+	}
+
+	affectedCount, err := execResult.RowsAffected()
+	if exitOnError(err, http.StatusInternalServerError, "RowsAffected failed") {
+		return
+	}
+
+	// result
+	respData := &GenericMap{
+		"response": GenericMap{
+			"deleted": affectedCount,
+		},
+	}
+	writeSuccess(http.StatusOK, respData, w)
 }
 
 func (srv *MysqlExplorerHttpHandlers) UpdateRecord(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +131,9 @@ func (srv *MysqlExplorerHttpHandlers) UpdateRecord(w http.ResponseWriter, r *htt
 				},
 			},
 		},
+
 	*/
+
 	defer recoverPanic(w)
 
 	exitOnError := func(err error) bool {
@@ -111,8 +168,6 @@ func (srv *MysqlExplorerHttpHandlers) UpdateRecord(w http.ResponseWriter, r *htt
 		return true
 	}
 
-	var err error
-
 	// params
 	routeVarsMap := MapSS(mux.Vars(r))
 	tableName := routeVarsMap.getOrDefault("table", "")
@@ -138,7 +193,7 @@ func (srv *MysqlExplorerHttpHandlers) UpdateRecord(w http.ResponseWriter, r *htt
 
 	// validate
 	if wrongId(recordID, record[table.Pk]) {
-		writeError(http.StatusBadRequest, "field id have invalid type", w)
+		writeError(http.StatusBadRequest, "field "+table.Pk+" have invalid type", w)
 		return
 	}
 
@@ -184,52 +239,130 @@ func (srv *MysqlExplorerHttpHandlers) UpdateRecord(w http.ResponseWriter, r *htt
 
 func (srv *MysqlExplorerHttpHandlers) CreateRecord(w http.ResponseWriter, r *http.Request) {
 	/*
-	   * PUT /$table - создаёт новую запись, данный по записи в теле запроса (POST-параметры)
+				* PUT /$table - создаёт новую запись, данный по записи в теле запроса (POST-параметры)
 
-	   Path:   "/items/",
-	   Method: http.MethodPut,
+				r.HandleFunc("/{table}/", srv.CreateRecord).Methods("PUT")
 
-	   	RequestBody: GenericMap{
-	   		"id":          42, // auto increment primary key игнорируется при вставке
-	   		"title":       "db_crud",
-	   		"description": "",
-	   	},
+				Path:   "/items/",
+				Method: http.MethodPut,
+				RequestBody: GenericMap{
+					"id":          42, // auto increment primary key игнорируется при вставке
+					"title":       "db_crud",
+					"description": "",
+				},
+				ExpectedRespBody: GenericMap{
+					"response": GenericMap{
+						"id": 3,
+					},
+				},
 
-	   	ExpectedRespBody: GenericMap{
-	   		"response": GenericMap{
-	   			"id": 3,
-	   		},
-	   	},
-
-	   }, // 8
-
-	   r.HandleFunc("/{table}/", srv.CreateRecord).Methods("PUT")
+				Case{
+					Path:   "/users/",
+					Method: http.MethodPut,
+					RequestBody: GenericMap{
+						"user_id":    2,
+						"login":      "qwerty'",
+						"password":   "love\"",
+						"unkn_field": "love",
+					},
+					ExpectedRespBody: GenericMap{
+						"response": GenericMap{
+							"user_id": 2,
+						},
+					},
+				}, // 26
+		        Actual : map[string]interface {}{"response":map[string]interface {}{"id":4}}
+		        Expected: map[string]interface {}{"response":map[string]interface {}{"user_id":2}}
 	*/
 
 	defer recoverPanic(w)
 
-	result, err := srv.DB.Exec(
-		"INSERT INTO items (`title`, `description`) VALUES (?, ?)",
-		"db_crud",
-		"",
-	)
-	panicOnError("'INSERT INTO' failed", err)
-
-	affectedCount, err := result.RowsAffected()
-	panicOnError("RowsAffected failed", err)
-	lastId, err := result.LastInsertId()
-	panicOnError("LastInsertId failed", err)
-
-	show("CreateRecord, affectedCount, lastId: ", affectedCount, lastId)
-
-	resultRef := &GenericMap{
-		"response": GenericMap{
-			"id": lastId,
-		},
+	exitOnError := func(err error, status int, msg string) bool {
+		if err != nil {
+			show("CreateRecord, error: ", err)
+			writeError(status, msg, w)
+			return true
+		}
+		return false
 	}
 
-	writeSuccess(http.StatusOK, resultRef, w)
+	// params
+	routeVarsMap := MapSS(mux.Vars(r))
+	tableName := routeVarsMap.getOrDefault("table", "")
+	show("CreateRecord, table name: ", tableName)
 
+	// table
+	table, err := srv.getTable(tableName)
+	if exitOnError(err, http.StatusInternalServerError, "wrong table") {
+		return
+	}
+	// show("CreateRecord, table legit: ", table.Name)
+
+	// record
+	bodyBytes, err := io.ReadAll(r.Body)
+	if exitOnError(err, http.StatusInternalServerError, "can't read body bytes") {
+		return
+	}
+	record := TableRecord{}
+	err = json.Unmarshal(bodyBytes, &record)
+	if exitOnError(err, http.StatusInternalServerError, "can't unmarshal body") {
+		return
+	}
+
+	// "Field 'email' doesn't have a default value"};
+	for _, c := range table.Columns {
+		_, isIn := record[c.Field]
+		if !isIn && !c.Null {
+			record[c.Field] = c.Type.NewVar()
+		}
+	}
+
+	// query
+	var insertCols, insertVals = make([]string, 0, len(record)), make([]any, 0, len(record))
+	for k, v := range record {
+		if k == table.Pk {
+			continue // skip key, it's autoincrement
+		}
+		_, err := table.getColumn(k)
+		if err != nil {
+			continue // skip unknown columns
+		}
+		// show("column legit: ", c.Field)
+
+		insertCols = append(insertCols, fmt.Sprintf("`%s`", k))
+		insertVals = append(insertVals, v)
+	}
+	if len(insertCols) < 1 {
+		writeError(http.StatusInternalServerError, "Nothing to insert", w)
+		return
+	}
+
+	placeholders := strings.Repeat("?, ", len(insertCols))
+	insertQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES (%s)",
+		tableName,
+		strings.Join(insertCols, ", "),
+		placeholders[:len(placeholders)-2],
+	)
+
+	// sql
+	execResult, err := srv.DB.Exec(
+		insertQuery,
+		insertVals...,
+	)
+	if exitOnError(err, http.StatusInternalServerError, "DB.Exec failed") {
+		return
+	}
+
+	// result
+	lastId, err := execResult.LastInsertId()
+	panicOnError("LastInsertId failed", err)
+	resultRef := &GenericMap{
+		"response": GenericMap{
+			table.Pk: lastId,
+		},
+	}
+	writeSuccess(http.StatusOK, resultRef, w)
 }
 
 func (srv *MysqlExplorerHttpHandlers) ReadRecord(w http.ResponseWriter, r *http.Request) {
@@ -294,6 +427,7 @@ func (srv *MysqlExplorerHttpHandlers) ReadTable(w http.ResponseWriter, r *http.R
 	/*
 		* GET /$table?limit=5&offset=7 - возвращает список из 5 записей (limit) начиная с 7-й (offset) из таблицы $table.
 			limit по-умолчанию 5, offset 0
+
 	*/
 	defer recoverPanic(w)
 
@@ -309,8 +443,10 @@ func (srv *MysqlExplorerHttpHandlers) ReadTable(w http.ResponseWriter, r *http.R
 	// params
 	routeVarsMap := MapSS(mux.Vars(r))
 	tableName := routeVarsMap.getOrDefault("table", "")
-	limit := getOrDefault(r.URL.Query(), "limit", "5")
-	offset := getOrDefault(r.URL.Query(), "offset", "0")
+
+	// если пришло не число на вход - берём дефолтное значене для лимита-оффсета
+	limit := getOrDefaultInt(r.URL.Query(), "limit", "5")
+	offset := getOrDefaultInt(r.URL.Query(), "offset", "0")
 	show("ReadTable, name: ", tableName, fmt.Sprintf("limit %v, offset %v", limit, offset))
 
 	// table
@@ -421,6 +557,25 @@ func getOrDefault(values url.Values, key string, defaultValue string) string {
 	}
 
 	return items[0] // TODO: or find first not empty
+}
+
+func getOrDefaultInt(values url.Values, key string, defaultValue string) string {
+	items, ok := values[key]
+	if !ok {
+		return defaultValue
+	}
+
+	if len(items) == 0 {
+		return defaultValue
+	}
+
+	v := items[0] // TODO: or find first not empty
+	_, err := strconv.Atoi(v)
+	if err != nil {
+		return defaultValue
+	}
+
+	return v
 }
 
 type MapSS map[string]string
