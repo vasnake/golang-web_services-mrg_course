@@ -552,6 +552,9 @@ go work use ./week06_homework/db_explorer
 ```
 db_explorer prj.
 
+Своими словами: надо написать http хендлеры (json), для CRUD операций.
+Спека задается тестами. Просто но трудоемко.
+
 ## part 2, week 3 (07)
 
 Микросервисы

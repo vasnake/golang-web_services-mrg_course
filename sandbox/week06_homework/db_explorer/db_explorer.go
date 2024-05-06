@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"runtime/debug"
@@ -35,12 +36,153 @@ func NewDbExplorer(dbRef *sql.DB) (http.Handler, error) {
 	r.HandleFunc("/", srv.ListTables).Methods("GET")
 	r.HandleFunc("/{table}", srv.ReadTable).Methods("GET")
 	r.HandleFunc("/{table}/{id}", srv.ReadRecord).Methods("GET")
+	r.HandleFunc("/{table}/", srv.CreateRecord).Methods("PUT")
+	r.HandleFunc("/{table}/{id}", srv.UpdateRecord).Methods("POST")
 
 	return r, nil
 }
 
 type MysqlExplorerHttpHandlers struct {
 	DB *sql.DB
+}
+
+func (srv *MysqlExplorerHttpHandlers) UpdateRecord(w http.ResponseWriter, r *http.Request) {
+	/*
+		   * POST /$table/$id - обновляет запись, данные приходят в теле запроса (POST-параметры)
+		   r.HandleFunc("/{table}/{id}", srv.UpdateRecord).Methods("POST")
+
+			Case{
+				Path:   "/items/3",
+				Method: http.MethodPost,
+				RequestBody: GenericMap{
+					"updated": "autotests",
+				},
+				ExpectedRespBody: GenericMap{
+					"response": GenericMap{
+						"updated": 1,
+					},
+				},
+			}, // 11
+	*/
+	defer recoverPanic(w)
+
+	exitOnError := func(err error) bool {
+		if err != nil {
+			show("UpdateRecord, error: ", err)
+			writeError(http.StatusInternalServerError, "UpdateRecord failed", w)
+			return true
+		}
+		return false
+	}
+
+	var err error
+
+	// params
+	routeVarsMap := MapSS(mux.Vars(r))
+	tableName := routeVarsMap.getOrDefault("table", "")
+	recordID := routeVarsMap.getOrDefault("id", "")
+	show("UpdateRecord, table name, recId: ", tableName, recordID)
+
+	// table
+	table, err := srv.getTable(tableName)
+	if exitOnError(err) {
+		return
+	}
+
+	// record
+	bodyBytes, err := io.ReadAll(r.Body)
+	if exitOnError(err) {
+		return
+	}
+	record := TableRecord{}
+	err = json.Unmarshal(bodyBytes, &record)
+	if exitOnError(err) {
+		return
+	}
+
+	// query
+	var updateCols, updateVals = make([]string, 0, len(record)), make([]any, 0, len(record))
+	for k, v := range record {
+		updateCols = append(updateCols, fmt.Sprintf("%s = ?", k))
+		updateVals = append(updateVals, v)
+	}
+	updateQuery := fmt.Sprintf(
+		"UPDATE %s SET %s WHERE %s = ?",
+		tableName,
+		strings.Join(updateCols, ", "),
+		table.Pk,
+	)
+
+	// sql
+	execResult, err := srv.DB.Exec(
+		updateQuery,
+		append(updateVals, recordID)...,
+	)
+	if exitOnError(err) {
+		return
+	}
+	affectedCount, err := execResult.RowsAffected()
+	if exitOnError(err) {
+		return
+	}
+
+	// result
+	respData := &GenericMap{
+		"response": GenericMap{
+			"updated": affectedCount,
+		},
+	}
+	writeSuccess(http.StatusOK, respData, w)
+}
+
+func (srv *MysqlExplorerHttpHandlers) CreateRecord(w http.ResponseWriter, r *http.Request) {
+	/*
+	   * PUT /$table - создаёт новую запись, данный по записи в теле запроса (POST-параметры)
+
+	   Path:   "/items/",
+	   Method: http.MethodPut,
+
+	   	RequestBody: GenericMap{
+	   		"id":          42, // auto increment primary key игнорируется при вставке
+	   		"title":       "db_crud",
+	   		"description": "",
+	   	},
+
+	   	ExpectedRespBody: GenericMap{
+	   		"response": GenericMap{
+	   			"id": 3,
+	   		},
+	   	},
+
+	   }, // 8
+
+	   r.HandleFunc("/{table}/", srv.CreateRecord).Methods("PUT")
+	*/
+
+	defer recoverPanic(w)
+
+	result, err := srv.DB.Exec(
+		"INSERT INTO items (`title`, `description`) VALUES (?, ?)",
+		"db_crud",
+		"",
+	)
+	panicOnError("'INSERT INTO' failed", err)
+
+	affectedCount, err := result.RowsAffected()
+	panicOnError("RowsAffected failed", err)
+	lastId, err := result.LastInsertId()
+	panicOnError("LastInsertId failed", err)
+
+	show("CreateRecord, affectedCount, lastId: ", affectedCount, lastId)
+
+	resultRef := &GenericMap{
+		"response": GenericMap{
+			"id": lastId,
+		},
+	}
+
+	writeSuccess(http.StatusOK, resultRef, w)
+
 }
 
 func (srv *MysqlExplorerHttpHandlers) ReadRecord(w http.ResponseWriter, r *http.Request) {
@@ -59,6 +201,7 @@ func (srv *MysqlExplorerHttpHandlers) ReadRecord(w http.ResponseWriter, r *http.
 			},
 		},
 	*/
+
 	defer recoverPanic(w)
 
 	exitOnError := func(err error) bool {

@@ -111,14 +111,14 @@ func TestApis(t *testing.T) {
 					"tables": []string{"items", "users"},
 				},
 			},
-		}, // 1
+		}, // 0
 		Case{
 			Path:           "/unknown_table",
 			ExpectedStatus: http.StatusNotFound,
 			ExpectedRespBody: GenericMap{
 				"error": "unknown table",
 			},
-		}, // 2
+		}, // 1
 		Case{
 			Path: "/items",
 			ExpectedRespBody: GenericMap{
@@ -139,7 +139,7 @@ func TestApis(t *testing.T) {
 					},
 				},
 			},
-		}, // 3
+		}, // 2
 		Case{
 			Path:  "/items",
 			Query: "limit=1",
@@ -155,7 +155,7 @@ func TestApis(t *testing.T) {
 					},
 				},
 			},
-		}, // 4
+		}, // 3
 		Case{
 			Path:  "/items",
 			Query: "limit=1&offset=1",
@@ -171,7 +171,7 @@ func TestApis(t *testing.T) {
 					},
 				},
 			},
-		}, // 5
+		}, // 4
 		Case{
 			Path: "/items/1",
 			ExpectedRespBody: GenericMap{
@@ -184,14 +184,14 @@ func TestApis(t *testing.T) {
 					},
 				},
 			},
-		}, // 6
+		}, // 5
 		Case{
 			Path:           "/items/100500",
 			ExpectedStatus: http.StatusNotFound,
 			ExpectedRespBody: GenericMap{
 				"error": "record not found",
 			},
-		}, // 7
+		}, // 6
 
 		// тут идёт создание и редактирование
 		Case{
@@ -207,7 +207,7 @@ func TestApis(t *testing.T) {
 					"id": 3,
 				},
 			},
-		}, // 8
+		}, // 7
 		// это пример хрупкого теста
 		// если много раз вызывать один и тот же тест - записи будут добавляться
 		// поэтому придётся сделать сброс базы каждый раз в PrepareTestData
@@ -223,7 +223,7 @@ func TestApis(t *testing.T) {
 					},
 				},
 			},
-		},
+		}, // 8
 		Case{
 			Path:   "/items/3",
 			Method: http.MethodPost,
@@ -235,7 +235,7 @@ func TestApis(t *testing.T) {
 					"updated": 1,
 				},
 			},
-		},
+		}, // 9
 		Case{
 			Path: "/items/3",
 			ExpectedRespBody: GenericMap{
@@ -248,7 +248,7 @@ func TestApis(t *testing.T) {
 					},
 				},
 			},
-		},
+		}, // 10
 
 		// обновление null-поля в таблице
 		Case{
@@ -262,7 +262,7 @@ func TestApis(t *testing.T) {
 					"updated": 1,
 				},
 			},
-		},
+		}, // 11
 		Case{
 			Path: "/items/3",
 			ExpectedRespBody: GenericMap{
@@ -496,7 +496,7 @@ func TestApis(t *testing.T) {
 		},
 	}
 
-	runCases(t, ts, db, cases[:8])
+	runCases(t, ts, db, cases[:12])
 }
 
 func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []Case) {
