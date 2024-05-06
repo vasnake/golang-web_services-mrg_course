@@ -195,3 +195,12 @@ func (srv MysqlExplorerHttpHandlers) getTable(tableName string) (Table, error) {
 
 	return t, nil
 }
+
+func (t Table) getColumn(columnName string) (TableColumn, error) {
+	for _, c := range t.Columns {
+		if c.Field == columnName {
+			return c, nil
+		}
+	}
+	return TableColumn{}, fmt.Errorf("Column `%s` not found", columnName)
+}

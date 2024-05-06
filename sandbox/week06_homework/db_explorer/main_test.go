@@ -275,7 +275,7 @@ func TestApis(t *testing.T) {
 					},
 				},
 			},
-		},
+		}, // 12
 
 		// обновление null-поля в таблице
 		Case{
@@ -289,7 +289,7 @@ func TestApis(t *testing.T) {
 					"updated": 1,
 				},
 			},
-		},
+		}, // 13
 		Case{
 			Path: "/items/3",
 			ExpectedRespBody: GenericMap{
@@ -302,7 +302,7 @@ func TestApis(t *testing.T) {
 					},
 				},
 			},
-		},
+		}, // 14
 
 		// ошибки
 		Case{
@@ -315,7 +315,7 @@ func TestApis(t *testing.T) {
 			ExpectedRespBody: GenericMap{
 				"error": "field id have invalid type",
 			},
-		},
+		}, // 15
 		Case{
 			Path:           "/items/3",
 			Method:         http.MethodPost,
@@ -326,7 +326,7 @@ func TestApis(t *testing.T) {
 			ExpectedRespBody: GenericMap{
 				"error": "field title have invalid type",
 			},
-		},
+		}, // 16
 		Case{
 			Path:           "/items/3",
 			Method:         http.MethodPost,
@@ -337,7 +337,7 @@ func TestApis(t *testing.T) {
 			ExpectedRespBody: GenericMap{
 				"error": "field title have invalid type",
 			},
-		},
+		}, // 17
 
 		Case{
 			Path:           "/items/3",
@@ -349,7 +349,7 @@ func TestApis(t *testing.T) {
 			ExpectedRespBody: GenericMap{
 				"error": "field updated have invalid type",
 			},
-		},
+		}, // 18
 
 		// удаление
 		Case{
@@ -360,7 +360,7 @@ func TestApis(t *testing.T) {
 					"deleted": 1,
 				},
 			},
-		},
+		}, // 19
 		Case{
 			Path:   "/items/3",
 			Method: http.MethodDelete,
@@ -369,14 +369,14 @@ func TestApis(t *testing.T) {
 					"deleted": 0,
 				},
 			},
-		},
+		}, // 20
 		Case{
 			Path:           "/items/3",
 			ExpectedStatus: http.StatusNotFound,
 			ExpectedRespBody: GenericMap{
 				"error": "record not found",
 			},
-		},
+		}, // 21
 
 		// и немного по другой таблице
 		Case{
@@ -393,7 +393,7 @@ func TestApis(t *testing.T) {
 					},
 				},
 			},
-		},
+		}, // 22
 
 		Case{
 			Path:   "/users/1",
@@ -407,7 +407,7 @@ func TestApis(t *testing.T) {
 					"updated": 1,
 				},
 			},
-		},
+		}, // 23
 		Case{
 			Path: "/users/1",
 			ExpectedRespBody: GenericMap{
@@ -422,7 +422,7 @@ func TestApis(t *testing.T) {
 					},
 				},
 			},
-		},
+		}, // 24
 		// ошибки
 		Case{
 			Path:           "/users/1",
@@ -434,7 +434,7 @@ func TestApis(t *testing.T) {
 			ExpectedRespBody: GenericMap{
 				"error": "field user_id have invalid type",
 			},
-		},
+		}, // 25
 		// не забываем про sql-инъекции
 		Case{
 			Path:   "/users/",
@@ -450,7 +450,7 @@ func TestApis(t *testing.T) {
 					"user_id": 2,
 				},
 			},
-		},
+		}, // 26
 		Case{
 			Path: "/users/2",
 			ExpectedRespBody: GenericMap{
@@ -465,7 +465,7 @@ func TestApis(t *testing.T) {
 					},
 				},
 			},
-		},
+		}, // 27
 		// тут тоже возможна sql-инъекция
 		// если пришло не число на вход - берём дефолтное значене для лимита-оффсета
 		Case{
@@ -493,10 +493,10 @@ func TestApis(t *testing.T) {
 					},
 				},
 			},
-		},
+		}, // 28
 	}
 
-	runCases(t, ts, db, cases[:12])
+	runCases(t, ts, db, cases[:20])
 }
 
 func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []Case) {

@@ -24,6 +24,19 @@ import (
 * POST /$table/$id - обновляет запись, данные приходят в теле запроса (POST-параметры)
 * DELETE /$table/$id - удаляет запись
 
+* DELETE /$table/$id - удаляет запись
+
+2024-05-06T07:35:58.612Z: UpdateRecord, table name, recId: "items"; "3";
+    main_test.go:546: [case 19: [DELETE] /items/3 ] expected http status 200, got 405
+Case{
+	Path:   "/items/3",
+	Method: http.MethodDelete,
+	ExpectedRespBody: GenericMap{
+		"response": GenericMap{
+			"deleted": 1,
+		},
+	},
+}, // 19
 */
 
 // NewDbExplorer create http handler for db_explorer app
@@ -48,21 +61,21 @@ type MysqlExplorerHttpHandlers struct {
 
 func (srv *MysqlExplorerHttpHandlers) UpdateRecord(w http.ResponseWriter, r *http.Request) {
 	/*
-		   * POST /$table/$id - обновляет запись, данные приходят в теле запроса (POST-параметры)
-		   r.HandleFunc("/{table}/{id}", srv.UpdateRecord).Methods("POST")
+		* POST /$table/$id - обновляет запись, данные приходят в теле запроса (POST-параметры)
+		r.HandleFunc("/{table}/{id}", srv.UpdateRecord).Methods("POST")
 
-			Case{
-				Path:   "/items/3",
-				Method: http.MethodPost,
-				RequestBody: GenericMap{
-					"updated": "autotests",
+		Case{
+			Path:   "/items/3",
+			Method: http.MethodPost,
+			RequestBody: GenericMap{
+				"updated": "autotests",
+			},
+			ExpectedRespBody: GenericMap{
+				"response": GenericMap{
+					"updated": 1,
 				},
-				ExpectedRespBody: GenericMap{
-					"response": GenericMap{
-						"updated": 1,
-					},
-				},
-			}, // 11
+			},
+		},
 	*/
 	defer recoverPanic(w)
 
@@ -73,6 +86,29 @@ func (srv *MysqlExplorerHttpHandlers) UpdateRecord(w http.ResponseWriter, r *htt
 			return true
 		}
 		return false
+	}
+
+	var wrongId = func(selectedId string, newId any) bool {
+		if newId == nil {
+			return false
+		}
+		if fmt.Sprintf("%s", selectedId) == fmt.Sprintf("%s", newId) {
+			return false
+		}
+		return true
+	}
+
+	var invalid = func(v any, colName string, tab Table) bool {
+		c, err := tab.getColumn(colName)
+		if err != nil {
+			return true
+		}
+
+		if c.Type.IsValidValue(v) {
+			return false
+		}
+
+		return true
 	}
 
 	var err error
@@ -100,11 +136,22 @@ func (srv *MysqlExplorerHttpHandlers) UpdateRecord(w http.ResponseWriter, r *htt
 		return
 	}
 
+	// validate
+	if wrongId(recordID, record[table.Pk]) {
+		writeError(http.StatusBadRequest, "field id have invalid type", w)
+		return
+	}
+
 	// query
 	var updateCols, updateVals = make([]string, 0, len(record)), make([]any, 0, len(record))
 	for k, v := range record {
 		updateCols = append(updateCols, fmt.Sprintf("%s = ?", k))
 		updateVals = append(updateVals, v)
+		// validate
+		if invalid(v, k, table) {
+			writeError(http.StatusBadRequest, "field "+k+" have invalid type", w)
+			return
+		}
 	}
 	updateQuery := fmt.Sprintf(
 		"UPDATE %s SET %s WHERE %s = ?",
