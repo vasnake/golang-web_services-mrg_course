@@ -2,15 +2,23 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"log"
 	"math/rand"
+	"net"
 	"net/http"
+	"net/rpc"
+	"net/rpc/jsonrpc"
 	"sync"
 	"time"
 )
 
 func main() {
 	// sessionServiceBefore()
-	sessionServiceAfter()
+	// sessionServiceAfter()
+
+	// netRpcClientServerSessions()
+	netRpcJsonServerSessions()
 }
 
 func lessonTemplate() {
@@ -27,10 +35,257 @@ const (
 	host    = "127.0.0.1"
 )
 
+func netRpcJsonServerSessions() {
+	show("netRpcJsonServerSessions: SERVER started ...")
+	/*
+	   {
+	      "jsonrpc":"2.0",
+	      "id":1,
+	      "method":"SessionManager.Create",
+	      "params":[
+	         {
+	            "login":"rvasily",
+	            "useragent":"chrome"
+	         }
+	      ]
+	   }
+
+	   curl -v -X POST -H "Content-Type: application/json" -H "X-Auth: 123" -d '{"jsonrpc":"2.0", "id": 1, "method": "SessionManager_Server.Create", "params": [{"login":"rvasily", "useragent": "chrome"}]}' http://localhost:8081/rpc
+
+	   curl -v -X POST -H "Content-Type: application/json" -H "X-Auth: 123" -d '{"jsonrpc":"2.0", "id": 2, "method": "SessionManager_Server.Check", "params": [{"id":"XVlBzgbaiC"}]}' http://localhost:8081/rpc
+
+	*/
+	_ = `
+	Note: Unnecessary use of -X or --request, POST is already inferred.
+	*   Trying 127.0.0.1:8081...
+	* Connected to localhost (127.0.0.1) port 8081 (#0)
+	> POST /rpc HTTP/1.1
+	> Host: localhost:8081
+	> User-Agent: curl/7.81.0
+	> Accept: */*
+	> Content-Type: application/json
+	> X-Auth: 123
+	> Content-Length: 124
+	>
+	rpc auth:  123
+	call Create &{rvasily chrome}
+	2024/05/06 15:50:44 http: superfluous response.WriteHeader call from main.(*SessionManagerHttpRpcHandler).ServeHTTP (main.go:95)
+	* Mark bundle as not supporting multiuse
+	< HTTP/1.1 200 OK
+	< Content-Type: application/json
+	< Date: Mon, 06 May 2024 12:50:44 GMT
+	< Content-Length: 51
+	<
+	{"id":1,"result":{"ID":"hXGFMaeTAE"},"error":null}
+	* Connection #0 to host localhost left intact
+	`
+
+	sessManager := NewSessManager_Server()
+	server := rpc.NewServer()
+	server.Register(sessManager)
+
+	sessionHandler := &SessionManagerHttpRpcHandler{
+		rpcServer: server,
+	}
+	http.Handle("/rpc", sessionHandler)
+
+	fmt.Println("starting server at :8081")
+	err := http.ListenAndServe(":8081", nil)
+
+	show("end of program. ", err)
+}
+
+type SessionManagerHttpRpcHandler struct {
+	rpcServer *rpc.Server
+}
+
+func (h *SessionManagerHttpRpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("rpc auth: ", r.Header.Get("X-Auth"))
+
+	serverCodec := jsonrpc.NewServerCodec(&ReadWriteSkipClose{
+		in:  r.Body,
+		out: w,
+	})
+
+	w.Header().Set("Content-type", "application/json")
+	err := h.rpcServer.ServeRequest(serverCodec)
+	if err != nil {
+		log.Printf("Error while serving JSON request: %v", err)
+		http.Error(w, `{"error":"cant serve request"}`, 500)
+	} else {
+		w.WriteHeader(200)
+	}
+}
+
+type ReadWriteSkipClose struct {
+	in  io.Reader
+	out io.Writer
+}
+
+func (c *ReadWriteSkipClose) Read(p []byte) (n int, err error)  { return c.in.Read(p) }
+func (c *ReadWriteSkipClose) Write(d []byte) (n int, err error) { return c.out.Write(d) }
+func (c *ReadWriteSkipClose) Close() error                      { return nil }
+
+func netRpcClientServerSessions() {
+	show("netRpcClientServerSessions: program started ...")
+
+	var server = func() {
+		sessManager := NewSessManager_Server()
+		rpc.Register(sessManager)
+		rpc.HandleHTTP()
+
+		listener, err := net.Listen("tcp", ":8081")
+		if err != nil {
+			log.Fatal("listen error:", err)
+		}
+
+		fmt.Println("starting server at :8081")
+		http.Serve(listener, nil)
+	}
+
+	var client = func() {
+		var sessManager SessionManagerI_Client
+
+		sessManager = NewSessManager()
+
+		// создаем сессию
+		sessId, err := sessManager.Create(
+			&Session{
+				Login:     "baz",
+				Useragent: "chrome",
+			})
+		fmt.Println("sessId", sessId, err)
+
+		// проеряем сессию
+		sess := sessManager.Check(
+			&SessionID{
+				ID: sessId.ID,
+			})
+		fmt.Println("sess", sess)
+
+		// удаляем сессию
+		sessManager.Delete(
+			&SessionID{
+				ID: sessId.ID,
+			})
+
+		// проверяем еще раз
+		sess = sessManager.Check(
+			&SessionID{
+				ID: sessId.ID,
+			})
+		fmt.Println("sess", sess)
+	}
+
+	go server()
+	time.Sleep(987 * time.Millisecond)
+
+	client()
+	show("end of program")
+}
+
+type SessionID struct {
+	ID string
+}
+type Session struct {
+	Login     string
+	Useragent string
+}
+
+type SessionManagerI_Client interface {
+	Create(*Session) (*SessionID, error)
+	Check(*SessionID) *Session
+	Delete(*SessionID)
+}
+
+type SessionManager_Client struct {
+	client *rpc.Client
+}
+
+func NewSessManager() *SessionManager_Client {
+	client, err := rpc.DialHTTP("tcp", "localhost:8081")
+	if err != nil {
+		log.Fatal("dialing:", err)
+	}
+
+	return &SessionManager_Client{
+		client: client,
+	}
+}
+func (sm *SessionManager_Client) Create(in *Session) (*SessionID, error) {
+	id := new(SessionID)
+	err := sm.client.Call("SessionManager_Server.Create", in, id)
+	if err != nil {
+		fmt.Println("SessionManager_Server.Create error:", err)
+		return nil, nil
+	}
+	return id, nil
+}
+
+func (sm *SessionManager_Client) Check(in *SessionID) *Session {
+	sess := new(Session)
+	err := sm.client.Call("SessionManager_Server.Check", in, sess)
+	if err != nil {
+		fmt.Println("SessionManager_Server.Check error:", err)
+		return nil
+	}
+	return sess
+}
+
+func (sm *SessionManager_Client) Delete(in *SessionID) {
+	var reply int
+	err := sm.client.Call("SessionManager_Server.Delete", in, &reply)
+	if err != nil {
+		fmt.Println("SessionManager_Server.Delete error:", err)
+	}
+}
+
+type SessionManager_Server struct {
+	mu       sync.RWMutex
+	sessions map[SessionID]*Session
+}
+
+func NewSessManager_Server() *SessionManager_Server {
+	return &SessionManager_Server{
+		mu:       sync.RWMutex{},
+		sessions: map[SessionID]*Session{},
+	}
+}
+func (sm *SessionManager_Server) Create(in *Session, out *SessionID) error {
+	const sessKeyLen = 10
+
+	fmt.Println("call Create", in)
+	id := &SessionID{RandStringRunes(sessKeyLen)}
+	sm.mu.Lock()
+	sm.sessions[*id] = in
+	sm.mu.Unlock()
+	*out = *id
+	return nil
+}
+
+func (sm *SessionManager_Server) Check(in *SessionID, out *Session) error {
+	fmt.Println("call Check", in)
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+	if sess, ok := sm.sessions[*in]; ok {
+		*out = *sess
+	}
+	return nil
+}
+
+func (sm *SessionManager_Server) Delete(in *SessionID, out *int) error {
+	fmt.Println("call Delete", in)
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	delete(sm.sessions, *in)
+	*out = 1
+	return nil
+}
+
 func sessionServiceAfter() {
 	show("sessionServiceAfter: program started ...")
 
-	var sessManager SessionManagerI
+	var sessManager SessionManagerI_demo2
 	sessManager = NewSessManager_demo2()
 
 	// создаем сессию
@@ -67,7 +322,7 @@ func sessionServiceAfter() {
 	show("end of program. ", err)
 }
 
-type SessionManagerI interface {
+type SessionManagerI_demo2 interface {
 	Create(*Session_after) (*SessionID_after, error)
 	Check(*SessionID_after) *Session_after
 	Delete(*SessionID_after)
