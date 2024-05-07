@@ -15,6 +15,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"week07/grpc_1"
+	"week07/grpc_2"
 )
 
 const (
@@ -31,7 +32,8 @@ func main() {
 	// netRpcJsonServerSessions()
 
 	// protobufSessionIntro()
-	grpcSession()
+	// grpcSession()
+	grpcDecoratorsAndMetadata()
 
 }
 
@@ -41,6 +43,90 @@ func lessonTemplate() {
 	show(fmt.Sprintf("Open url http://localhost%s/", portStr))
 	err := http.ListenAndServe(portStr, nil)
 	show("end of program. ", err)
+}
+
+func grpcDecoratorsAndMetadata() {
+	show("grpcDecoratorsAndMetadata: program started ...")
+
+	go grpc_2.MainServer()
+	time.Sleep(987 * time.Millisecond)
+	grpc_2.MainClient()
+
+	show("end of program. ")
+	/*
+		2024-05-07T08:28:56.061Z: grpcDecoratorsAndMetadata: program started ...
+		starting server at :8081
+		--
+		check ratelim for /grpc_1.AuthChecker/Create
+		call Create login:"rvasily"  useragent:"chrome"
+		--
+		        after incoming call=/grpc_1.AuthChecker/Create
+		        req=&grpc_1.Session{state:impl.MessageState{NoUnkeyedLiterals:pragma.NoUnkeyedLiterals{}, DoNotCompare:pragma.DoNotCompare{}, DoNotCopy:pragma.DoNotCopy{}, atomicMessageInfo:(*impl.MessageInfo)(0xc00019d150)}, sizeCache:0, unknownFields:[]uint8(nil), Login:"rvasily", Useragent:"chrome"}
+		        reply=&grpc_1.SessionID{state:impl.MessageState{NoUnkeyedLiterals:pragma.NoUnkeyedLiterals{}, DoNotCompare:pragma.DoNotCompare{}, DoNotCopy:pragma.DoNotCopy{}, atomicMessageInfo:(*impl.MessageInfo)(nil)}, sizeCache:0, unknownFields:[]uint8(nil), ID:"YVOXJcACJU"}
+		        time=132.842µs
+		        md=map[:authority:[127.0.0.1:8081] access-token:[100500] api-req-id:[123] content-type:[application/grpc] subsystem:[cli] user-agent:[grpc-go/1.63.2]]
+		        err=<nil>
+		--
+		        call=/grpc_1.AuthChecker/Create
+		        req=&grpc_1.Session{state:impl.MessageState{NoUnkeyedLiterals:pragma.NoUnkeyedLiterals{}, DoNotCompare:pragma.DoNotCompare{}, DoNotCopy:pragma.DoNotCopy{}, atomicMessageInfo:(*impl.MessageInfo)(0xc00019d150)}, sizeCache:17, unknownFields:[]uint8(nil), Login:"rvasily", Useragent:"chrome"}
+		        reply=&grpc_1.SessionID{state:impl.MessageState{NoUnkeyedLiterals:pragma.NoUnkeyedLiterals{}, DoNotCompare:pragma.DoNotCompare{}, DoNotCopy:pragma.DoNotCopy{}, atomicMessageInfo:(*impl.MessageInfo)(0xc00019d008)}, sizeCache:0, unknownFields:[]uint8(nil), ID:"YVOXJcACJU"}
+		        time=3.752709ms
+		        err=<nil>
+		sessId ID:"YVOXJcACJU" <nil>
+		header map[content-type:[application/grpc]]
+		trailer map[]
+		--
+		check ratelim for /grpc_1.AuthChecker/Check
+		call Check ID:"YVOXJcACJU"
+		--
+		        after incoming call=/grpc_1.AuthChecker/Check
+		        req=&grpc_1.SessionID{state:impl.MessageState{NoUnkeyedLiterals:pragma.NoUnkeyedLiterals{}, DoNotCompare:pragma.DoNotCompare{}, DoNotCopy:pragma.DoNotCopy{}, atomicMessageInfo:(*impl.MessageInfo)(0xc00019d008)}, sizeCache:0, unknownFields:[]uint8(nil), ID:"YVOXJcACJU"}
+		        reply=&grpc_1.Session{state:impl.MessageState{NoUnkeyedLiterals:pragma.NoUnkeyedLiterals{}, DoNotCompare:pragma.DoNotCompare{}, DoNotCopy:pragma.DoNotCopy{}, atomicMessageInfo:(*impl.MessageInfo)(0xc00019d150)}, sizeCache:0, unknownFields:[]uint8(nil), Login:"rvasily", Useragent:"chrome"}
+		        time=76.143µs
+		        md=map[:authority:[127.0.0.1:8081] access-token:[100500] api-req-id:[123] content-type:[application/grpc] subsystem:[cli] user-agent:[grpc-go/1.63.2]]
+		        err=<nil>
+		--
+		        call=/grpc_1.AuthChecker/Check
+		        req=&grpc_1.SessionID{state:impl.MessageState{NoUnkeyedLiterals:pragma.NoUnkeyedLiterals{}, DoNotCompare:pragma.DoNotCompare{}, DoNotCopy:pragma.DoNotCopy{}, atomicMessageInfo:(*impl.MessageInfo)(0xc00019d008)}, sizeCache:12, unknownFields:[]uint8(nil), ID:"YVOXJcACJU"}
+		        reply=&grpc_1.Session{state:impl.MessageState{NoUnkeyedLiterals:pragma.NoUnkeyedLiterals{}, DoNotCompare:pragma.DoNotCompare{}, DoNotCopy:pragma.DoNotCopy{}, atomicMessageInfo:(*impl.MessageInfo)(0xc00019d150)}, sizeCache:0, unknownFields:[]uint8(nil), Login:"rvasily", Useragent:"chrome"}
+		        time=1.063473ms
+		        err=<nil>
+		sess login:"rvasily"  useragent:"chrome" <nil>
+		--
+		check ratelim for /grpc_1.AuthChecker/Delete
+		call Delete ID:"YVOXJcACJU"
+		--
+		        after incoming call=/grpc_1.AuthChecker/Delete
+		        req=&grpc_1.SessionID{state:impl.MessageState{NoUnkeyedLiterals:pragma.NoUnkeyedLiterals{}, DoNotCompare:pragma.DoNotCompare{}, DoNotCopy:pragma.DoNotCopy{}, atomicMessageInfo:(*impl.MessageInfo)(0xc00019d008)}, sizeCache:0, unknownFields:[]uint8(nil), ID:"YVOXJcACJU"}
+		        reply=&grpc_1.Nothing{state:impl.MessageState{NoUnkeyedLiterals:pragma.NoUnkeyedLiterals{}, DoNotCompare:pragma.DoNotCompare{}, DoNotCopy:pragma.DoNotCopy{}, atomicMessageInfo:(*impl.MessageInfo)(nil)}, sizeCache:0, unknownFields:[]uint8(nil), Dummy:true}
+		        time=97.299µs
+		        md=map[:authority:[127.0.0.1:8081] access-token:[100500] api-req-id:[123] content-type:[application/grpc] subsystem:[cli] user-agent:[grpc-go/1.63.2]]
+		        err=<nil>
+		--
+		        call=/grpc_1.AuthChecker/Delete
+		        req=&grpc_1.SessionID{state:impl.MessageState{NoUnkeyedLiterals:pragma.NoUnkeyedLiterals{}, DoNotCompare:pragma.DoNotCompare{}, DoNotCopy:pragma.DoNotCopy{}, atomicMessageInfo:(*impl.MessageInfo)(0xc00019d008)}, sizeCache:12, unknownFields:[]uint8(nil), ID:"YVOXJcACJU"}
+		        reply=&grpc_1.Nothing{state:impl.MessageState{NoUnkeyedLiterals:pragma.NoUnkeyedLiterals{}, DoNotCompare:pragma.DoNotCompare{}, DoNotCopy:pragma.DoNotCopy{}, atomicMessageInfo:(*impl.MessageInfo)(0xc00019d298)}, sizeCache:0, unknownFields:[]uint8(nil), Dummy:true}
+		        time=1.631202ms
+		        err=<nil>
+		--
+		check ratelim for /grpc_1.AuthChecker/Check
+		call Check ID:"YVOXJcACJU"
+		--
+		        after incoming call=/grpc_1.AuthChecker/Check
+		        req=&grpc_1.SessionID{state:impl.MessageState{NoUnkeyedLiterals:pragma.NoUnkeyedLiterals{}, DoNotCompare:pragma.DoNotCompare{}, DoNotCopy:pragma.DoNotCopy{}, atomicMessageInfo:(*impl.MessageInfo)(0xc00019d008)}, sizeCache:0, unknownFields:[]uint8(nil), ID:"YVOXJcACJU"}
+		        reply=(*grpc_1.Session)(nil)
+		        time=39.422µs
+		        md=map[:authority:[127.0.0.1:8081] access-token:[100500] api-req-id:[123] content-type:[application/grpc] subsystem:[cli] user-agent:[grpc-go/1.63.2]]
+		        err=rpc error: code = NotFound desc = session not found
+		--
+		        call=/grpc_1.AuthChecker/Check
+		        req=&grpc_1.SessionID{state:impl.MessageState{NoUnkeyedLiterals:pragma.NoUnkeyedLiterals{}, DoNotCompare:pragma.DoNotCompare{}, DoNotCopy:pragma.DoNotCopy{}, atomicMessageInfo:(*impl.MessageInfo)(0xc00019d008)}, sizeCache:12, unknownFields:[]uint8(nil), ID:"YVOXJcACJU"}
+		        reply=&grpc_1.Session{state:impl.MessageState{NoUnkeyedLiterals:pragma.NoUnkeyedLiterals{}, DoNotCompare:pragma.DoNotCompare{}, DoNotCopy:pragma.DoNotCopy{}, atomicMessageInfo:(*impl.MessageInfo)(nil)}, sizeCache:0, unknownFields:[]uint8(nil), Login:"", Useragent:""}
+		        time=346.556µs
+		        err=rpc error: code = NotFound desc = session not found
+		sess <nil> rpc error: code = NotFound desc = session not found
+		2024-05-07T08:28:57.058Z: end of program.
+	*/
 }
 
 func grpcSession() {
