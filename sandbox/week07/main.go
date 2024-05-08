@@ -16,6 +16,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"week07/grpc_1"
 	"week07/grpc_2"
+	"week07/grpc_3_stream"
 )
 
 const (
@@ -33,7 +34,8 @@ func main() {
 
 	// protobufSessionIntro()
 	// grpcSession()
-	grpcDecoratorsAndMetadata()
+	// grpcDecoratorsAndMetadata()
+	grpcStreamTranslit()
 
 }
 
@@ -43,6 +45,32 @@ func lessonTemplate() {
 	show(fmt.Sprintf("Open url http://localhost%s/", portStr))
 	err := http.ListenAndServe(portStr, nil)
 	show("end of program. ", err)
+}
+
+func grpcStreamTranslit() {
+	show("grpcStreamTranslit: program started ...")
+
+	go grpc_3_stream.MainServer()
+	time.Sleep(987 * time.Millisecond)
+	grpc_3_stream.MainClient()
+
+	show("end of program. ")
+	/*
+		2024-05-08T06:04:24.527Z: grpcStreamTranslit: program started ...
+		starting server at :8081
+		->  privet
+		->  kak
+		->  dela
+		        client send done
+		privet -> привет
+		kak -> как
+		 <- привет
+		 <- как
+		dela -> дела
+		 <- дела
+		        client stream closed
+		2024-05-08T06:04:25.520Z: end of program.
+	*/
 }
 
 func grpcDecoratorsAndMetadata() {

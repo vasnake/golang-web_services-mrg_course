@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+// export PATH=${PATH}:/mnt/c/bin/protoc-26.1-linux-x86_64/bin:${HOME}/go/bin
+// pushd sandbox/week07/grpc_3_stream
+// protoc --go_out=. --go-grpc_out=. *.proto
+
+package grpc_3_stream;
+option go_package = "../grpc_3_stream";
+
+message Word {
+  string Word = 1;
+}
+
+// grpc-сервис транслитерации
+service Transliteration {
+    rpc EnRu (stream Word) returns (stream Word) {}
+}

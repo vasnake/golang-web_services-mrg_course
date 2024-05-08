@@ -1,3 +1,5 @@
+github.com/gen1us2k/go-translit v0.0.0-20160120121136-46f1a0be552c h1:J8HJ/lfhIBjmTPB0dZVRKciFaO60DJ+3n3ZXYU73CaQ=
+github.com/gen1us2k/go-translit v0.0.0-20160120121136-46f1a0be552c/go.mod h1:DCO0xCUjZ8eznOd/fx0E75c06B1hCrFHMTqXAQoYffk=
 github.com/golang/protobuf v1.5.4 h1:i7eJL8qZTpSEXOPTxNKhASYpMn+8e5Q6AdndVa1dWek=
 github.com/golang/protobuf v1.5.4/go.mod h1:lnTiLA8Wa4RWRcIUkrtSVa5nRhsEGBg48fD6rSs7xps=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
