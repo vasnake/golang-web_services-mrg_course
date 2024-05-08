@@ -1,0 +1,171 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "session_grpc5.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "AuthChecker"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/session/check/{ID}": {
+      "get": {
+        "operationId": "AuthChecker_Check",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/grpc_5_gatewaySession"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "ID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AuthChecker"
+        ]
+      }
+    },
+    "/v1/session/create": {
+      "post": {
+        "operationId": "AuthChecker_Create",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/grpc_5_gatewaySessionID"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/grpc_5_gatewaySession"
+            }
+          }
+        ],
+        "tags": [
+          "AuthChecker"
+        ]
+      }
+    },
+    "/v1/session/delete": {
+      "post": {
+        "operationId": "AuthChecker_Delete",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/grpc_5_gatewayNothing"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/grpc_5_gatewaySessionID"
+            }
+          }
+        ],
+        "tags": [
+          "AuthChecker"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "grpc_5_gatewayNothing": {
+      "type": "object",
+      "properties": {
+        "dummy": {
+          "type": "boolean"
+        }
+      }
+    },
+    "grpc_5_gatewaySession": {
+      "type": "object",
+      "properties": {
+        "login": {
+          "type": "string"
+        },
+        "useragent": {
+          "type": "string"
+        }
+      }
+    },
+    "grpc_5_gatewaySessionID": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  }
+}

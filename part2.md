@@ -762,8 +762,6 @@ See `sandbox/week07/grpc_3_stream/`
 
 ### protobuf and gRPC - 5 (Consul: service discovery, load balancing)
 
-# I_AM_HERE
-
 Микросервисы запускаются и падают, разные ноды, хосты, адреса.
 Клиентам надо иметь возможность получать информацию о доступных (активных) сервисах -- discovery.
 
@@ -810,31 +808,42 @@ See `sandbox/week07/grpc_4_balanced/`
 
 ### Дополнительные темы - 1 (JSON REST API grpc-gateway)
 
+grpc-gateway дает возможность использовать под капотом grpc и protobuf, но для клиента выглядеть это будет как RESTful JSON API.
+`handouts/golang_web_services_2023-12-28.zip/7/microservices/gateway/`
+
 - [session.proto](week_07/gateway_session.proto)
 - [gateway](week_07/gateway_gateway.go)
 
-grpc-gateway дает возможность использовать под капотом grpc и protobuf, но выглядеть это будет как RESTful JSON API.
 Reverse-proxy.
 Как это выглядит на практике.
 
 Спека proto дополнена опциями с указанием REST ендпойнтов.
-Кодогенерация создает обвязки go, grpc-gateway, swagger.
+Кодогенерация создает обвязки go, grpc-gateway, swagger-спеку.
 
 Код собственно прокси, использующий grpc-gateway, выступает как клиент с сервису grpc.
 Запускает коннект к сервису grpc, запускает HTTP сервер построенный на сгенерированном прокси.
 
+запрос от клиента проходит по пайплайну: json -> proxy -> grpc/protobuf -> proxy -> json
+
+- https://github.com/grpc-ecosystem/grpc-gateway
+- OpenAPI https://swagger.io/
+
+See `/sandbox/week07/grpc_5_gateway/`
+
 ### Дополнительные темы - 2 (swagger)
 
-- [session.swagger.json](week_07/swagger_session.swagger.json) сгенерирован сваггером по proto
+# I_AM_HERE
+
+Open API Specification (OAS) tools, framework. https://swagger.io/
+
+- [session.swagger.json](week_07/swagger_session.swagger.json) сгенерирован сваггером по proto-файлу
 - [consumer](week_07/swagger_consumer.go)
 
-Open API Specification (OAS) tools, framework.
+schema first подход: декларация API, кодогенерация, документация, тестирование, ...
 
-Декларация API, кодогенерация, документация, тестирование, ...
+Показал JSON файл описания API. Команда `swagger serve ...` для запуска интерактива.
 
-JSON файл описания API. `swagger serve ...` для запуска интерактива.
-
-`swagger generate client ...`
+Для генерации кода клиента (по описанию апи в джейсоне) даем команду `swagger generate client ...`
 
 Демонстрация использования сгенерированного клиентского кода.
 Клиент (REST) ходит в grpc-gateway, который обращается к backend на grpc.

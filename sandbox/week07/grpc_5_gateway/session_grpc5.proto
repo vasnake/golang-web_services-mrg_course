@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+// export PATH=${PATH}:/mnt/c/bin/protoc-26.1-linux-x86_64/bin:${HOME}/go/bin
+// pushd sandbox/week07/grpc_5_gateway
+
+/*
+go install \
+    github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway \
+    github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2 \
+    google.golang.org/protobuf/cmd/protoc-gen-go \
+    google.golang.org/grpc/cmd/protoc-gen-go-grpc
+
+protoc -I=${HOME}/go/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v1.16.0/third_party/googleapis\
+  --proto_path=.\
+  --go_out=. --go-grpc_out=. --grpc-gateway_out=. --openapiv2_out=. *.proto
+
+*/
+
+package grpc_5_gateway;
+option go_package = "../grpc_5_gateway";
+
+import "google/api/annotations.proto";
+
+message SessionID {
+  string ID = 1;
+}
+
+message Session {
+  string login = 1;
+  string useragent = 2;
+}
+
+message Nothing {
+  bool dummy = 1;
+}
+
+// grpc-сервис проверки авторизации
+service AuthChecker {
+    rpc Create (Session) returns (SessionID) {
+      option (google.api.http) = {
+        post: "/v1/session/create"
+        body: "*"
+      };
+    }
+    rpc Check (SessionID) returns (Session) {
+      option (google.api.http) = {
+        get: "/v1/session/check/{ID}"
+      };
+    }
+    rpc Delete (SessionID) returns (Nothing) {
+      option (google.api.http) = {
+        post: "/v1/session/delete"
+        body: "*"
+      };
+    }
+}

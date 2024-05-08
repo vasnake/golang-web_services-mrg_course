@@ -18,6 +18,7 @@ import (
 	"week07/grpc_2"
 	"week07/grpc_3_stream"
 	"week07/grpc_4_balanced"
+	"week07/grpc_5_gateway"
 )
 
 const (
@@ -37,7 +38,8 @@ func main() {
 	// grpcSession()
 	// grpcDecoratorsAndMetadata()
 	// grpcStreamTranslit()
-	grpcServicesBalanced()
+	// grpcServicesBalanced()
+	grpcGateway()
 
 }
 
@@ -47,6 +49,44 @@ func lessonTemplate() {
 	show(fmt.Sprintf("Open url http://localhost%s/", portStr))
 	err := http.ListenAndServe(portStr, nil)
 	show("end of program. ", err)
+}
+
+func grpcGateway() {
+	show("grpcGateway: program started ...")
+
+	go grpc_5_gateway.MainServer()
+	time.Sleep(321 * time.Millisecond)
+	grpc_5_gateway.MainClient()
+	time.Sleep(59 * time.Second)
+	/*
+	   http client example requests
+
+	   curl -X POST -k http://localhost:8080/v1/session/create -H "Content-Type: text/plain" -d '{"login":"rvasily", "useragent": "chrome"}'
+	   curl http://localhost:8080/v1/session/check/XVlBzgbaiC
+	   curl -X POST -k http://localhost:8080/v1/session/delete -H "Content-Type: text/plain" -d '{"ID":"XVlBzgbaiC"}'
+	*/
+
+	show("end of program. ")
+	/*
+	   2024-05-08T10:20:49.406Z: grpcGateway: program started ...
+	   starting HTTP server at :8080
+	   starting gRPC server at 127.0.0.1:8081
+	   call Create login:"rvasily"  useragent:"chrome"
+	   sessId ID:"cQSJkdlVIZ" <nil>
+	   call Check ID:"cQSJkdlVIZ"
+	   sess login:"rvasily"  useragent:"chrome" <nil>
+	   call Delete ID:"cQSJkdlVIZ"
+	   call Check ID:"cQSJkdlVIZ"
+	   sess <nil> rpc error: code = NotFound desc = session not found
+
+	   week07/grpc_5_gateway$ curl -X POST -k http://localhost:8080/v1/session/create -H "Content-Type: text/plain" -d '{"login":"rvasily", "useragent": "chrome"}'
+	   call Create login:"rvasily"  useragent:"chrome"
+	   week07/grpc_5_gateway$ curl http://localhost:8080/v1/session/check/XVlBzgbaiCon/check/XVlBzgbaiC
+	   call Check ID:"XVlBzgbaiC"
+	   week07/grpc_5_gateway$ curl -X POST -k http://localhost:8080/v1/session/delete -H "Content-Type: text/plain" -d '{"ID":"XVlBzgbaiC"}' -H "Content-Type: text/plain" -d '{"ID":"XVlBzgbaiC"}'
+	   call Delete ID:"XVlBzgbaiC"
+	   {"dummy":true}
+	*/
 }
 
 func grpcServicesBalanced() {
