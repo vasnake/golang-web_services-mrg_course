@@ -17,6 +17,7 @@ import (
 	"week07/grpc_1"
 	"week07/grpc_2"
 	"week07/grpc_3_stream"
+	"week07/grpc_4_balanced"
 )
 
 const (
@@ -35,7 +36,8 @@ func main() {
 	// protobufSessionIntro()
 	// grpcSession()
 	// grpcDecoratorsAndMetadata()
-	grpcStreamTranslit()
+	// grpcStreamTranslit()
+	grpcServicesBalanced()
 
 }
 
@@ -45,6 +47,41 @@ func lessonTemplate() {
 	show(fmt.Sprintf("Open url http://localhost%s/", portStr))
 	err := http.ListenAndServe(portStr, nil)
 	show("end of program. ", err)
+}
+
+func grpcServicesBalanced() {
+	show("grpcServicesBalanced: program started ...")
+
+	go grpc_4_balanced.MainServer_1() // add first server
+	time.Sleep(321 * time.Millisecond)
+
+	go grpc_4_balanced.MainClient() // start client
+	time.Sleep(3000 * time.Millisecond)
+
+	go grpc_4_balanced.MainServer_2() // add second server
+	time.Sleep(7000 * time.Millisecond)
+
+	show("end of program. ")
+	/*
+		// many lines are skipped
+		2024-05-08T08:56:33.553Z: grpcServicesBalanced: program started ...
+		grpc_4_balanced-consul-1  | 2024-05-08T08:56:33.564Z [DEBUG] agent: Service in sync: service=SAPI_127.0.0.1:8081
+		server registered in consul SAPI_127.0.0.1:8081
+		starting server at 8081
+		client created grpc conn, servers [{Addr: "127.0.0.1:8081", ServerName: "", }]
+		call Check ID:"not_exist_1"
+		client get sess 1 login:"8081 not_exist_1" <nil>
+		client, servers alive 1 [{Addr: "127.0.0.1:8081", ServerName: "", }]
+		grpc_4_balanced-consul-1  | 2024-05-08T08:56:36.889Z [DEBUG] agent: Service in sync: service=SAPI_127.0.0.1:8081
+		grpc_4_balanced-consul-1  | 2024-05-08T08:56:36.890Z [INFO]  agent: Synced service: service=SAPI_127.0.0.1:8082
+		server registered in consul SAPI_127.0.0.1:8082
+		starting server at 8082
+		client, servers alive 2 [{Addr: "127.0.0.1:8081", ServerName: "", } {Addr: "127.0.0.1:8082", ServerName: "", }]
+		client add server 127.0.0.1:8082
+		call Check ID:"not_exist_5"
+		client get sess 5 login:"8082 not_exist_5" <nil>
+		...
+	*/
 }
 
 func grpcStreamTranslit() {
