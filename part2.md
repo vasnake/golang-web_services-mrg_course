@@ -832,23 +832,30 @@ See `/sandbox/week07/grpc_5_gateway/`
 
 ### Дополнительные темы - 2 (swagger)
 
-# I_AM_HERE
-
 Open API Specification (OAS) tools, framework. https://swagger.io/
+`handouts/golang_web_services_2023-12-28.zip/7/microservices/swagger/`
 
 - [session.swagger.json](week_07/swagger_session.swagger.json) сгенерирован сваггером по proto-файлу
-- [consumer](week_07/swagger_consumer.go)
+- [consumer](week_07/swagger_consumer.go) простой клиент для демо
 
-schema first подход: декларация API, кодогенерация, документация, тестирование, ...
+Концепция schema first: декларация API, кодогенерация, документация, тестирование, ...
 
-Показал JSON файл описания API. Команда `swagger serve ...` для запуска интерактива.
+Показал JSON файл описания API (сгенерированный `protoc --openapiv2_out=. ...` на предыдущем шаге).
+
+Команда `swagger serve ...` для запуска веб-сайта документации.
 
 Для генерации кода клиента (по описанию апи в джейсоне) даем команду `swagger generate client ...`
 
-Демонстрация использования сгенерированного клиентского кода.
+Демонстрация использования сгенерированного клиентского кода (сервер сгенерили на предыдущем шаге).
 Клиент (REST) ходит в grpc-gateway, который обращается к backend на grpc.
 
-Рекомендовано к использованию в проектах с большим количеством сервисов и API.
+Технология рекомендована к использованию в проектах с большим количеством сервисов и API.
+
+See `sandbox/week07/grpc_5_gateway/swagger/`
+
+### week7 homework
+
+# I_AM_HERE
 
 ## part 2, week 4 (08)
 

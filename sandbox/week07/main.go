@@ -19,6 +19,7 @@ import (
 	"week07/grpc_3_stream"
 	"week07/grpc_4_balanced"
 	"week07/grpc_5_gateway"
+	gw_swagger "week07/grpc_5_gateway/swagger"
 )
 
 const (
@@ -39,7 +40,8 @@ func main() {
 	// grpcDecoratorsAndMetadata()
 	// grpcStreamTranslit()
 	// grpcServicesBalanced()
-	grpcGateway()
+	// grpcGateway()
+	grpcGatewaySwagger()
 
 }
 
@@ -51,13 +53,37 @@ func lessonTemplate() {
 	show("end of program. ", err)
 }
 
+func grpcGatewaySwagger() {
+	show("grpcGatewaySwagger: program started ...")
+
+	go grpc_5_gateway.MainServer()
+	time.Sleep(321 * time.Millisecond)
+	gw_swagger.MainClient() // http json service, simple client test
+
+	show("end of program. ")
+	/*
+	   2024-05-08T14:23:28.517Z: grpcGatewaySwagger: program started ...
+	   starting gRPC server at 127.0.0.1:8081
+	   starting HTTP server at :8080
+	   call Create login:"rvasily"  useragent:"chrome"
+	   sessId [POST /v1/session/create][200] authCheckerCreateOK  &{ID:XZpiKgzPEn} <nil>
+	   call Check ID:"XZpiKgzPEn"
+	   after create [GET /v1/session/check/{ID}][200] authCheckerCheckOK  &{Login:rvasily Useragent:chrome} <nil>
+	   call Delete ID:"XZpiKgzPEn"
+	   call Check ID:"XZpiKgzPEn"
+	   after delete <nil> [GET /v1/session/check/{ID}][404] AuthChecker_Check default  &{Code:5 Details:[] Message:session not found}
+	   2024-05-08T14:23:28.850Z: end of program.
+	*/
+}
+
 func grpcGateway() {
 	show("grpcGateway: program started ...")
 
 	go grpc_5_gateway.MainServer()
 	time.Sleep(321 * time.Millisecond)
-	grpc_5_gateway.MainClient()
+	grpc_5_gateway.MainClient() // grpc client test
 	time.Sleep(59 * time.Second)
+	// http json service simple test
 	/*
 	   http client example requests
 
