@@ -72,7 +72,7 @@ EOT
 
     echo "####################################################################################################"
     # go test -v -race $module
-    go test -v $module
+    go test -v --failfast $module
 
     # go run -race $module
     # go run $module

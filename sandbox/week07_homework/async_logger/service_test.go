@@ -14,7 +14,9 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	status "google.golang.org/grpc/status"
 )
 
 const (
@@ -42,11 +44,13 @@ func wait(tenMillis int) {
 func getGrpcConn(t *testing.T) *grpc.ClientConn {
 	grcpConn, err := grpc.Dial(
 		listenAddr,
-		grpc.WithInsecure(),
+		// grpc.WithInsecure(), deprecated
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		t.Fatalf("cant connect to grpc: %v", err)
+		t.Fatalf("can't connect to grpc: %v", err)
 	}
+
 	return grcpConn
 }
 
@@ -57,6 +61,7 @@ func getConsumerCtx(consumerName string) context.Context {
 	md := metadata.Pairs(
 		"consumer", consumerName,
 	)
+
 	return metadata.NewOutgoingContext(ctx, md)
 }
 
@@ -66,6 +71,7 @@ func getConsumerCtxWithCancel(consumerName string) (context.Context, context.Can
 	md := metadata.Pairs(
 		"consumer", consumerName,
 	)
+
 	return metadata.NewOutgoingContext(ctx, md), cancelFn
 }
 
@@ -74,8 +80,9 @@ func TestServerStartStop(t *testing.T) {
 	ctx, finish := context.WithCancel(context.Background())
 	err := StartMyMicroservice(ctx, listenAddr, ACLData)
 	if err != nil {
-		t.Fatalf("cant start server initial: %v", err)
+		t.Fatalf("can't start server initial: %v", err)
 	}
+
 	wait(1)
 	finish() // при вызове этой функции ваш сервер должен остановиться и освободить порт
 	wait(1)
@@ -84,8 +91,9 @@ func TestServerStartStop(t *testing.T) {
 	ctx, finish = context.WithCancel(context.Background())
 	err = StartMyMicroservice(ctx, listenAddr, ACLData)
 	if err != nil {
-		t.Fatalf("cant start server again: %v", err)
+		t.Fatalf("can't start server again: %v", err)
 	}
+
 	wait(1)
 	finish()
 	wait(1)
@@ -94,7 +102,7 @@ func TestServerStartStop(t *testing.T) {
 // у вас наверняка будет что-то выполняться в отдельных горутинах
 // этим тестом мы проверяем что вы останавливаете все горутины которые у вас были и нет утечек
 // некоторый запас ( goroutinesPerTwoIterations*5 ) остаётся на случай рантайм горутин
-func TestServerLeak(t *testing.T) {
+func TstServerLeak(t *testing.T) {
 	//return
 	goroutinesStart := runtime.NumGoroutine()
 	TestServerStartStop(t)
@@ -106,6 +114,7 @@ func TestServerLeak(t *testing.T) {
 		TestServerStartStop(t)
 		goroutinesStat = append(goroutinesStat, runtime.NumGoroutine())
 	}
+
 	goroutinesPerFiftyIterations := runtime.NumGoroutine() - goroutinesStart
 	if goroutinesPerFiftyIterations > goroutinesPerTwoIterations*5 {
 		t.Fatalf("looks like you have goroutines leak: %+v", goroutinesStat)
@@ -117,7 +126,7 @@ func TestACLParseError(t *testing.T) {
 	// finish'а тут нет потому что стартовать у вас ничего не должно если не получилось распаковать ACL
 	err := StartMyMicroservice(context.Background(), listenAddr, "{.;")
 	if err == nil {
-		t.Fatalf("expacted error on bad acl json, have nil")
+		t.Fatalf("expacted error on bad acl json, got nil")
 	}
 }
 
@@ -127,9 +136,10 @@ func TestACL(t *testing.T) {
 	ctx, finish := context.WithCancel(context.Background())
 	err := StartMyMicroservice(ctx, listenAddr, ACLData)
 	if err != nil {
-		t.Fatalf("cant start server initial: %v", err)
+		t.Fatalf("can't start server: %v", err)
 	}
 	wait(1)
+
 	defer func() {
 		finish()
 		wait(1)
@@ -141,15 +151,15 @@ func TestACL(t *testing.T) {
 	biz := NewBizClient(conn)
 	adm := NewAdminClient(conn)
 
-	for idx, ctx := range []context.Context{
+	for idx, ctx := range []context.Context{ // three cases of 'forbidden':
 		context.Background(),       // нет поля для ACL
 		getConsumerCtx("unknown"),  // поле есть, неизвестный консюмер
 		getConsumerCtx("biz_user"), // поле есть, нет доступа
 	} {
 		_, err = biz.Test(ctx, &Nothing{})
 		if err == nil {
-			t.Fatalf("[%d] ACL fail: expected err on disallowed method", idx)
-		} else if code := grpc.Code(err); code != codes.Unauthenticated {
+			t.Fatalf("[%d] ACL fail: expected err on this call", idx)
+		} else if code := status.Code(err); code != codes.Unauthenticated {
 			t.Fatalf("[%d] ACL fail: expected Unauthenticated code, got %v", idx, code)
 		}
 	}
@@ -182,7 +192,7 @@ func TestLogging(t *testing.T) {
 	ctx, finish := context.WithCancel(context.Background())
 	err := StartMyMicroservice(ctx, listenAddr, ACLData)
 	if err != nil {
-		t.Fatalf("cant start server initial: %v", err)
+		t.Fatalf("can't start server initial: %v", err)
 	}
 	wait(1)
 	defer func() {
@@ -293,7 +303,7 @@ func TestStat(t *testing.T) {
 	ctx, finish := context.WithCancel(context.Background())
 	err := StartMyMicroservice(ctx, listenAddr, ACLData)
 	if err != nil {
-		t.Fatalf("cant start server initial: %v", err)
+		t.Fatalf("can't start server initial: %v", err)
 	}
 	wait(1)
 	defer func() {
@@ -432,7 +442,7 @@ func TestWorkAfterDisconnect(t *testing.T) {
 	ctx, finish := context.WithCancel(context.Background())
 	err := StartMyMicroservice(ctx, listenAddr, ACLData)
 	if err != nil {
-		t.Fatalf("cant start server initial: %v", err)
+		t.Fatalf("can't start server initial: %v", err)
 	}
 	wait(1)
 	defer func() {
