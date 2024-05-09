@@ -5,10 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	sync "sync"
+	"strings"
+	"sync"
+
+	// sync "sync"
 	"time"
 
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	status "google.golang.org/grpc/status"
 )
 
 // тут вы пишете код
@@ -17,9 +23,9 @@ import (
 type AclListType map[string][]string
 
 func StartMyMicroservice(ctx context.Context, listenAddr, ACLData string) error {
-	show("StartMyMicroservice, addr: ", listenAddr)
+	// show("StartMyMicroservice, addr: ", listenAddr)
 
-	// TODO: parse acl json: map[login:str]listUrls:listStr
+	// parse params
 	var acl = make(AclListType, 16)
 	err := json.Unmarshal([]byte(ACLData), &acl)
 	if err != nil {
@@ -28,63 +34,184 @@ func StartMyMicroservice(ctx context.Context, listenAddr, ACLData string) error 
 	}
 	// show("StartMyMicroservice, ACL parsed: ", acl)
 
+	// setup transport
 	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		show("StartMyMicroservice failed, net.Listen error: ", err)
 		return err
 	}
-
+	// register server
 	server := grpc.NewServer()
-	RegisterBizServer(server, NewBizManager())
-	show("starting gRPC Biz server at " + listenAddr)
-
+	RegisterBizServer(server, NewBizServerImpl())
+	RegisterAdminServer(server, NewAdminServerImpl())
+	// start server
+	show("StartMyMicroservice, starting gRPC server at ", listenAddr)
 	go server.Serve(listener)
+
+	// stop server
+	go func() {
+		var stopSignal = <-ctx.Done()
+		show("StartMyMicroservice, stopping gRPC server at ", listenAddr, stopSignal)
+		// subs.RemoveAll()
+		server.GracefulStop()
+	}()
 
 	return nil
 }
 
 /*
-add implementation
+
 type BizClient interface {
 	Test(ctx context.Context, in *Nothing, opts ...grpc.CallOption) (*Nothing, error)
 	Check(ctx context.Context, in *Nothing, opts ...grpc.CallOption) (*Nothing, error)
 	Add(ctx context.Context, in *Nothing, opts ...grpc.CallOption) (*Nothing, error)
 }
 
-*/
-
-type BizManager struct {
-	acl   AclListType
-	mutex sync.RWMutex
-	data  map[string]string
+message Nothing {
+    bool dummy = 1;
 }
 
-func NewBizManager() *BizManager {
-	return &BizManager{
-		acl:   make(AclListType, 16),
-		mutex: sync.RWMutex{},
-		data:  make(map[string]string, 16),
+service Biz {
+    rpc Check(Nothing) returns(Nothing) {}
+    rpc Add(Nothing) returns(Nothing) {}
+    rpc Test(Nothing) returns(Nothing) {}
+}
+
+*/
+
+type BizServerImpl struct {
+	// acl AclListType
+	// mutex sync.RWMutex
+	// data  map[string]string
+	UnimplementedBizServer
+}
+
+func NewBizServerImpl() *BizServerImpl {
+	return &BizServerImpl{
+		// acl: make(AclListType, 16),
+		// mutex: sync.RWMutex{},
+		// data:  make(map[string]string, 16),
 	}
 }
 
-func (sm *BizManager) Check(ctx context.Context, in *Nothing) (*Nothing, error) {
+func (bs *BizServerImpl) Check(ctx context.Context, in *Nothing) (*Nothing, error) {
 	// return nil, status.Errorf(codes.NotFound, "session not found")
-	return nil, nil
+	return &Nothing{}, nil
 }
 
 // Add implements BizServer.
-func (sm *BizManager) Add(context.Context, *Nothing) (*Nothing, error) {
-	return nil, nil
+func (bs *BizServerImpl) Add(context.Context, *Nothing) (*Nothing, error) {
+	return &Nothing{}, nil
 }
 
 // Test implements BizServer.
-func (sm *BizManager) Test(context.Context, *Nothing) (*Nothing, error) {
-	return nil, nil
+func (bs *BizServerImpl) Test(ctx context.Context, _ *Nothing) (*Nothing, error) {
+	md, exist := metadata.FromIncomingContext(ctx)
+	if !exist {
+		return nil, status.Errorf(codes.InvalidArgument, "context w/o metadata")
+	}
+	consumer := strings.Join(md.Get("consumer"), "")
+	show("biz test, consumer: ", consumer)
+	if consumer == "biz_admin" {
+		return &Nothing{}, nil
+	}
+
+	return nil, status.Errorf(codes.Unauthenticated, "access denied")
 }
 
-// mustEmbedUnimplementedBizServer implements BizServer.
-func (sm *BizManager) mustEmbedUnimplementedBizServer() {
-	panic("unimplemented")
+/*
+	service Admin {
+	    rpc Logging (Nothing) returns (stream Event) {}
+	    rpc Statistics (StatInterval) returns (stream Stat) {}
+	}
+*/
+
+type AdminServerImpl struct {
+	subscribers subscribersDB
+	UnimplementedAdminServer
+}
+
+func NewAdminServerImpl() *AdminServerImpl {
+	var as = AdminServerImpl{
+		subscribers: *NewSubscribersDB(),
+	}
+
+	return &as
+}
+
+// Logging implements AdminServer.
+func (as *AdminServerImpl) Logging(_ *Nothing, srv Admin_LoggingServer) error {
+	var ctx = srv.Context()
+	show("Logging, context: ", ctx)
+	return status.Errorf(codes.Unauthenticated, "Statistics not implemented yet")
+
+	// subscriberId, events := as.subscribers.AddSubscriber()
+	// defer as.subscribers.RemoveSubscriber(subscriberId)
+	// for e := range events {
+	// 	if err := srv.Send(e); err != nil {
+	// 		return err
+	// 	}
+	// }
+	// return nil
+}
+
+// Statistics implements AdminServer.
+func (as *AdminServerImpl) Statistics(*StatInterval, Admin_StatisticsServer) error {
+	return status.Errorf(codes.Unauthenticated, "Statistics not implemented yet")
+}
+
+type subscribersDB struct {
+	mutex    sync.RWMutex
+	lastId   uint64 // TODO: should be pool of available id's
+	channels map[uint64]chan *Event
+}
+
+func NewSubscribersDB() *subscribersDB {
+	var db = subscribersDB{}
+	return db.Clear()
+}
+
+func (db *subscribersDB) Clear() *subscribersDB {
+	db.mutex.Lock()
+	defer db.mutex.Unlock()
+
+	for _, ch := range db.channels {
+		close(ch)
+	}
+	db.lastId = 0
+	db.channels = make(map[uint64]chan *Event, 16)
+
+	return db
+}
+
+func (db *subscribersDB) AddSubscriber() (newId uint64, events chan *Event) {
+	const queueSize = 1 // TODO: queue size should be configurable
+	db.mutex.Lock()
+	defer db.mutex.Unlock()
+
+	db.lastId++
+	db.channels[db.lastId] = make(chan *Event, queueSize)
+
+	return db.lastId, db.channels[db.lastId]
+}
+
+func (db *subscribersDB) RemoveSubscriber(id uint64) {
+	db.mutex.Lock()
+	defer db.mutex.Unlock()
+
+	if ch, exist := db.channels[id]; exist {
+		close(ch)
+		delete(db.channels, id)
+	}
+}
+
+func (db *subscribersDB) Push(e *Event) {
+	db.mutex.RLock()
+	defer db.mutex.RUnlock()
+
+	for _, ch := range db.channels {
+		ch <- e
+	}
 }
 
 func panicOnError(msg string, err error) {

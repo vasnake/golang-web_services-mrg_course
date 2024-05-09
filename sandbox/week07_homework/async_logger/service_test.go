@@ -151,7 +151,8 @@ func TestACL(t *testing.T) {
 	biz := NewBizClient(conn)
 	adm := NewAdminClient(conn)
 
-	for idx, ctx := range []context.Context{ // three cases of 'forbidden':
+	// three cases of 'forbidden':
+	for idx, ctx := range []context.Context{
 		context.Background(),       // нет поля для ACL
 		getConsumerCtx("unknown"),  // поле есть, неизвестный консюмер
 		getConsumerCtx("biz_user"), // поле есть, нет доступа
@@ -167,15 +168,15 @@ func TestACL(t *testing.T) {
 	// есть доступ
 	_, err = biz.Check(getConsumerCtx("biz_user"), &Nothing{})
 	if err != nil {
-		t.Fatalf("ACL fail: unexpected error: %v", err)
+		t.Fatalf("[1] ACL fail: unexpected error: %v", err)
 	}
 	_, err = biz.Check(getConsumerCtx("biz_admin"), &Nothing{})
 	if err != nil {
-		t.Fatalf("ACL fail: unexpected error: %v", err)
+		t.Fatalf("[2] ACL fail: unexpected error: %v", err)
 	}
 	_, err = biz.Test(getConsumerCtx("biz_admin"), &Nothing{})
 	if err != nil {
-		t.Fatalf("ACL fail: unexpected error: %v", err)
+		t.Fatalf("[3] ACL fail: unexpected error: %v", err)
 	}
 
 	// ACL на методах, которые возвращают поток данных
@@ -183,7 +184,7 @@ func TestACL(t *testing.T) {
 	_, err = logger.Recv()
 	if err == nil {
 		t.Fatalf("ACL fail: expected err on disallowed method")
-	} else if code := grpc.Code(err); code != codes.Unauthenticated {
+	} else if code := status.Code(err); code != codes.Unauthenticated {
 		t.Fatalf("ACL fail: expected Unauthenticated code, got %v", code)
 	}
 }
@@ -192,7 +193,7 @@ func TestLogging(t *testing.T) {
 	ctx, finish := context.WithCancel(context.Background())
 	err := StartMyMicroservice(ctx, listenAddr, ACLData)
 	if err != nil {
-		t.Fatalf("can't start server initial: %v", err)
+		t.Fatalf("can't start server: %v", err)
 	}
 	wait(1)
 	defer func() {
@@ -208,15 +209,10 @@ func TestLogging(t *testing.T) {
 
 	logStream1, err := adm.Logging(getConsumerCtx("logger1"), &Nothing{})
 	time.Sleep(1 * time.Millisecond)
-
 	logStream2, err := adm.Logging(getConsumerCtx("logger2"), &Nothing{})
-
-	logData1 := []*Event{}
-	logData2 := []*Event{}
-
 	wait(1)
 
-	go func() {
+	go func() { // should be finished before 3 sec timeout
 		select {
 		case <-ctx.Done():
 			return
@@ -226,6 +222,7 @@ func TestLogging(t *testing.T) {
 		}
 	}()
 
+	logData1 := []*Event{}
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
@@ -234,12 +231,12 @@ func TestLogging(t *testing.T) {
 			evt, err := logStream1.Recv()
 			// log.Println("logger 1", evt, err)
 			if err != nil {
-				t.Errorf("unexpected error: %v, awaiting event", err)
+				t.Errorf("[1] awaiting event but got error: %v", err)
 				return
 			}
 			// evt.Host читайте как evt.RemoteAddr
 			if !strings.HasPrefix(evt.GetHost(), "127.0.0.1:") || evt.GetHost() == listenAddr {
-				t.Errorf("bad host: %v", evt.GetHost())
+				t.Errorf("[1] bad host: %v", evt.GetHost())
 				return
 			}
 			// это грязный хак
@@ -248,17 +245,19 @@ func TestLogging(t *testing.T) {
 			logData1 = append(logData1, &Event{Consumer: evt.Consumer, Method: evt.Method})
 		}
 	}()
+
+	logData2 := []*Event{}
 	go func() {
 		defer wg.Done()
 		for i := 0; i < 3; i++ {
 			evt, err := logStream2.Recv()
 			// log.Println("logger 2", evt, err)
 			if err != nil {
-				t.Errorf("unexpected error: %v, awaiting event", err)
+				t.Errorf("[2] awaiting event but got error: %v", err)
 				return
 			}
 			if !strings.HasPrefix(evt.GetHost(), "127.0.0.1:") || evt.GetHost() == listenAddr {
-				t.Errorf("bad host: %v", evt.GetHost())
+				t.Errorf("[2] bad host: %v", evt.GetHost())
 				return
 			}
 			// это грязный хак

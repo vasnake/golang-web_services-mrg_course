@@ -50,7 +50,7 @@ go_run_sandbox_week07_async_logger_test(){
     local exit_code=0
     pushd ${PRJ_DIR}/sandbox/week07_homework
 
-    create_project(){
+    create_project(){ # need this only once
         create project
         pushd ${PRJ_DIR}/sandbox # workspace
         mkdir -p week07_homework/async_logger
@@ -71,8 +71,8 @@ EOT
     # go vet -stringintconv=false $module # go doc cmd/vet
 
     echo "####################################################################################################"
-    # go test -v -race $module
-    go test -v --failfast $module
+    go test -v --failfast $module # during development: failfast
+    # go test -v -race $module # final check
 
     # go run -race $module
     # go run $module
