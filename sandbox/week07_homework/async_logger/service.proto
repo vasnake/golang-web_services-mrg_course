@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+/*
+export PATH=${PATH}:/mnt/c/bin/protoc-26.1-linux-x86_64/bin:${HOME}/go/bin
+pushd sandbox/week07_homework/async_logger
+
+go install \
+    google.golang.org/protobuf/cmd/protoc-gen-go \
+    google.golang.org/grpc/cmd/protoc-gen-go-grpc
+*/
+// protoc --go_out=. --go-grpc_out=. *.proto && cp -v ../main/*.go ./ && rm -rfv ../main
+
+option go_package = "../main";
+package main;
+
+message Event {
+    int64  timestamp = 1;
+    string consumer  = 2;
+    string method    = 3;
+    string host      = 4; // читайте это поле как remote_addr
+}
+
+message Stat {
+    int64               timestamp   = 1;
+    map<string, uint64> by_method   = 2;
+    map<string, uint64> by_consumer = 3;
+}
+
+message StatInterval {
+    uint64              interval_seconds   = 1;
+}
+
+message Nothing {
+    bool dummy = 1;
+}
+
+service Admin {
+    rpc Logging (Nothing) returns (stream Event) {}
+    rpc Statistics (StatInterval) returns (stream Stat) {}
+}
+
+service Biz {
+    rpc Check(Nothing) returns(Nothing) {}
+    rpc Add(Nothing) returns(Nothing) {}
+    rpc Test(Nothing) returns(Nothing) {}
+}

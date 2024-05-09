@@ -857,6 +857,46 @@ See `sandbox/week07/grpc_5_gateway/swagger/`
 
 # I_AM_HERE
 
+Фолдер с задачей: `handouts/golang_web_services_2023-12-28.zip/7/99_hw/async_logger/`
+
+Описание задачи: `readme.md`
+
+- `main.go`: заглушка.
+- `service.proto`: схема сервиса для кодогена (в комментариях инструкции к кодогену).
+- `service_test.go`: тесты сервиса, `go test -v -race`.
+- `service.go`: здесь надо писать код.
+
+> Микросервис будет состоять из 2-х частей:
+* Какая-то бизнес-логика. В нашем примере она ничего не делает, её достаточно просто вызывать
+* Модуль администрирования, где находится логирование и статистика
+
+Задача выполнена когда: проходят тесты `go test -v -race`.
+
+[actual homework project](./sandbox/week07_homework/async_logger/) `GO_APP_SELECTOR=week07_homework gr`
+```s
+pushd sandbox # workspace
+mkdir -p week07_homework/async_logger
+pushd week07_homework/async_logger
+
+go mod init async_logger
+
+# makes go vet happy
+cat > main.go << EOT
+package main
+func main() { panic("not yet") }
+EOT
+
+go mod tidy
+
+popd # workspace
+# go work init
+# go work edit -dropuse=./week05_homework/code_gen
+go work use ./week07_homework/async_logger
+```
+async_logger prj.
+
+Своими словами: надо 1) сгенерить обвязку сервиса по grpc proto файлу; 2) реализовать логику сервиса так, чтобы тесты были happy.
+
 ## part 2, week 4 (08)
 
 Сервис в работе

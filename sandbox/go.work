@@ -27,4 +27,5 @@ use (
 	./week06
 	./week06_homework/db_explorer
 	./week07
+	./week07_homework/async_logger
 )

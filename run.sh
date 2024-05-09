@@ -2,7 +2,7 @@
 # alias gr='bash -vxe /mnt/c/Users/valik/data/github/golang-web_services-mrg_course/run.sh'
 PRJ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-APP_SELECTOR=${GO_APP_SELECTOR:-week07}
+APP_SELECTOR=${GO_APP_SELECTOR:-week07_homework}
 
 go_run() {
     local selector="${1}"
@@ -23,6 +23,7 @@ go_run() {
         week06)                     go_run_sandbox week06;;
         week06_homework)            go_run_sandbox_week06_db_explorer_test;;
         week07)                     go_run_sandbox week07;;
+        week07_homework)            go_run_sandbox_week07_async_logger_test;;
         *)                          errorExit "Unknown program: ${selector}";;
     esac
 }
@@ -40,6 +41,56 @@ go_test_module() {
     go test -v ${1}
     exit_code=$?
     echo "####################################################################################################"
+    return $exit_code
+}
+
+go_run_sandbox_week07_async_logger_test(){
+    local module="async_logger"
+    local moduleDir=${PRJ_DIR}/sandbox/week07_homework/${module}
+    local exit_code=0
+    pushd ${PRJ_DIR}/sandbox/week07_homework
+
+    create_project(){
+        create project
+        pushd ${PRJ_DIR}/sandbox # workspace
+        mkdir -p week07_homework/async_logger
+        pushd week07_homework/async_logger
+        go mod init async_logger
+        cat > main.go << EOT
+package main
+func main() { panic("not yet") }
+EOT
+        go mod tidy
+        popd # workspace
+        go work use ./week07_homework/async_logger
+    }
+
+    pushd ${moduleDir} && go mod tidy && popd
+    gofmt -w $module || exit
+    go vet $module
+    # go vet -stringintconv=false $module # go doc cmd/vet
+
+    echo "####################################################################################################"
+    # go test -v -race $module
+    go test -v $module
+
+    # go run -race $module
+    # go run $module
+    # go_run_module $module
+
+    # https://pkg.go.dev/cmd/go#hdr-Testing_flags
+    # go test -bench . $module
+    # go test -bench . -benchmem $module
+    # go test -bench '.*Mem.*' -benchmem $module
+    # go test -bench '.*Xml.*' -benchmem $module
+
+    # go test -v -cover $module
+    # go test -coverprofile=cover.out $module
+    # go tool cover -html=cover.out -o cover.html
+
+    exit_code=$?
+    echo "####################################################################################################"
+    popd    
     return $exit_code
 }
 
