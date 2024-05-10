@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	// sync "sync"
 	"time"
 
 	grpc "google.golang.org/grpc"
@@ -22,22 +21,26 @@ import (
 // тут вы пишете код
 // обращаю ваше внимание - в этом задании запрещены глобальные переменные
 
-type AclListType map[string][]string
+type UserMethodsAclMap map[string][]string
 
 func StartMyMicroservice(ctx context.Context, listenAddr, ACLData string) error {
 	// show("StartMyMicroservice, addr: ", listenAddr)
 
 	// parse params
-	var aclData = make(AclListType, 16)
-	err := json.Unmarshal([]byte(ACLData), &aclData)
+	var aclMap = make(UserMethodsAclMap, 16)
+	err := json.Unmarshal([]byte(ACLData), &aclMap)
 	if err != nil {
 		show("StartMyMicroservice failed, invalid ACL json: ", err)
 		return err
 	}
 
 	// setup server
-	adminRef := NewAdminServerImpl().SetAuth(aclData)
+	adminRef := NewAdminServerImpl().SetAuth(aclMap)
+
+	// TODO: use grpc.ServerOption to add middleware (request decorators).
+	// decorators should perform auth and event processing (see methods implementation)
 	server := grpc.NewServer()
+
 	RegisterBizServer(server, NewBizServerImpl(adminRef))
 	RegisterAdminServer(server, adminRef)
 
@@ -56,7 +59,6 @@ func StartMyMicroservice(ctx context.Context, listenAddr, ACLData string) error 
 	go func() {
 		var stopSignal = <-ctx.Done()
 		show("StartMyMicroservice, stopping gRPC server at ", listenAddr, stopSignal)
-		// subs.RemoveAll()
 		server.GracefulStop()
 	}()
 
@@ -64,18 +66,12 @@ func StartMyMicroservice(ctx context.Context, listenAddr, ACLData string) error 
 }
 
 type BizServerImpl struct {
-	// acl AclListType
-	// mutex sync.RWMutex
-	// data  map[string]string
-	adminRef *AdminServerImpl
-	UnimplementedBizServer
+	adminRef               *AdminServerImpl
+	UnimplementedBizServer // grpc garbage
 }
 
 func NewBizServerImpl(admin *AdminServerImpl) *BizServerImpl {
 	return &BizServerImpl{
-		// acl: make(AclListType, 16),
-		// mutex: sync.RWMutex{},
-		// data:  make(map[string]string, 16),
 		adminRef: admin,
 	}
 }
@@ -105,15 +101,12 @@ func (bs *BizServerImpl) Test(ctx context.Context, _ *Nothing) (*Nothing, error)
 	bs.adminRef.pushEvent(ctx)
 
 	// auth
-	md, exist := metadata.FromIncomingContext(ctx)
-	if !exist {
-		return nil, status.Errorf(codes.InvalidArgument, "context w/o metadata")
+	err := bs.adminRef.auth(ctx)
+	if err != nil {
+		show("Biz Test, access denied: ", err)
+		return nil, err
 	}
-	consumer := strings.Join(md.Get("consumer"), "")
-	if consumer != "biz_admin" {
-		return nil, status.Errorf(codes.Unauthenticated, "access denied")
-
-	}
+	show("Biz Test, access granted")
 
 	// business logic?
 
@@ -121,7 +114,7 @@ func (bs *BizServerImpl) Test(ctx context.Context, _ *Nothing) (*Nothing, error)
 }
 
 type AdminServerImpl struct {
-	subscribers subscribersDB
+	subscribers eventsSubscribersDB
 	authSvc     authService
 	UnimplementedAdminServer
 }
@@ -132,24 +125,12 @@ func NewAdminServerImpl() *AdminServerImpl {
 		authSvc:     *NewAuthService(),
 	}
 }
-func (as *AdminServerImpl) SetAuth(db AclListType) *AdminServerImpl {
+func (as *AdminServerImpl) SetAuth(db UserMethodsAclMap) *AdminServerImpl {
 	as.authSvc.SetAuth(db)
 	return as
 }
 
-// Logging implements AdminServer. Take nothing, produce stream Event
 func (as *AdminServerImpl) Logging(_ *Nothing, outStream Admin_LoggingServer) error {
-	/*
-		service Admin ...
-			rpc Logging (Nothing) returns (stream Event) {}
-		...
-		message Event {
-			int64  timestamp = 1;
-			string consumer  = 2;
-			string method    = 3;
-			string host      = 4; // читайте это поле как remote_addr
-		}
-	*/
 	var ctx = outStream.Context()
 	ctx = context.WithValue(ctx, "method", "/main.Admin/Logging") // TODO: get value from grpc.*ServerInfo.FullMethod
 
@@ -249,7 +230,7 @@ func (as *AdminServerImpl) sendStats(outStream Admin_StatisticsServer, interval 
 	ticker := time.NewTicker(time.Duration(interval) * time.Second)
 	defer ticker.Stop()
 
-	stats := NewMetricsService()
+	metrics := NewMetricsService()
 
 	for {
 		select {
@@ -257,13 +238,14 @@ func (as *AdminServerImpl) sendStats(outStream Admin_StatisticsServer, interval 
 		// update calls stats
 		case evt, ok := <-events:
 			if ok {
-				stats.AddEvent(evt)
+				metrics.AddEvent(evt)
 			} else {
 				return nil
 			}
 
+		// send collected during interval
 		case <-ticker.C:
-			if err := outStream.Send(stats.CollectStat()); err != nil {
+			if err := outStream.Send(metrics.CollectStatAndRestart()); err != nil {
 				return err
 			}
 		}
@@ -277,11 +259,6 @@ type metricsService struct {
 func NewMetricsService() *metricsService {
 	return (&metricsService{}).reset()
 }
-func (ms *metricsService) reset() *metricsService {
-	ms.ByMethod = make(map[string]uint64, 16)
-	ms.ByConsumer = make(map[string]uint64, 16)
-	return ms
-}
 
 func (ms *metricsService) AddEvent(evt *Event) *metricsService {
 	ms.ByMethod[evt.Method] += 1
@@ -289,7 +266,7 @@ func (ms *metricsService) AddEvent(evt *Event) *metricsService {
 	return ms
 }
 
-func (ms *metricsService) CollectStat() *Stat {
+func (ms *metricsService) CollectStatAndRestart() *Stat {
 	s := Stat{
 		Timestamp:  time.Now().Unix(),
 		ByMethod:   ms.ByMethod,
@@ -301,24 +278,60 @@ func (ms *metricsService) CollectStat() *Stat {
 	return &s
 }
 
+func (ms *metricsService) reset() *metricsService {
+	ms.ByMethod = make(map[string]uint64, 16)
+	ms.ByConsumer = make(map[string]uint64, 16)
+	return ms
+}
+
 type authService struct {
-	authDB AclListType // user: list of methods
+	authDB UserMethodsAclMap // user: list of methods
 	mutex  *sync.RWMutex
 }
 
 func NewAuthService() *authService {
 	return &authService{
-		authDB: make(AclListType, 16),
+		authDB: make(UserMethodsAclMap, 16),
 		mutex:  &sync.RWMutex{},
 	}
 }
-func (as *authService) SetAuth(db AclListType) *authService {
+func (as *authService) SetAuth(db UserMethodsAclMap) *authService {
+	// the only operation that needs mutex
+	// TODO: move this code to constructor, remove mutex
 	as.lock()
 	defer as.unlock()
 
 	as.authDB = db
 	return as
 }
+
+func (as *authService) IsAllowed(user, method string) bool {
+	/*
+		given: "biz_admin"; "/main.Biz/Test"
+		acl:   "biz_admin":        ["/main.Biz/*"],
+		expect: true
+	*/
+	as.lockRead()
+	defer as.unlockRead()
+
+	methods, exist := as.authDB[user]
+	if !exist {
+		return false
+	}
+
+	return slices.ContainsFunc(methods, func(pattern string) bool {
+		if strings.HasSuffix(pattern, method) {
+			return true
+		}
+		if strings.HasSuffix(pattern, "*") {
+			if strings.HasPrefix(method, pattern[:len(pattern)-1]) {
+				return true
+			}
+		}
+		return false
+	})
+}
+
 func (as *authService) lock() {
 	as.mutex.Lock()
 
@@ -334,35 +347,18 @@ func (as *authService) unlockRead() {
 	as.mutex.RUnlock()
 }
 
-func (as *authService) IsAllowed(user, method string) bool {
-	as.lockRead()
-	defer as.unlockRead()
-
-	methods, exist := as.authDB[user]
-	if !exist {
-		return false
-	}
-
-	return slices.ContainsFunc(methods, func(x string) bool {
-		if strings.HasSuffix(x, method) {
-			return true
-		}
-		return false
-	})
-}
-
-type subscribersDB struct {
+type eventsSubscribersDB struct {
 	mutex    sync.RWMutex
 	lastId   uint64 // TODO: should be pool of available id's
 	channels map[uint64]chan *Event
 }
 
-func NewSubscribersDB() *subscribersDB {
-	var db = subscribersDB{}
+func NewSubscribersDB() *eventsSubscribersDB {
+	var db = eventsSubscribersDB{}
 	return db.Clear()
 }
 
-func (db *subscribersDB) Clear() *subscribersDB {
+func (db *eventsSubscribersDB) Clear() *eventsSubscribersDB {
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 
@@ -375,7 +371,7 @@ func (db *subscribersDB) Clear() *subscribersDB {
 	return db
 }
 
-func (db *subscribersDB) AddSubscriber() (newId uint64, events chan *Event) {
+func (db *eventsSubscribersDB) AddSubscriber() (newId uint64, events chan *Event) {
 	const queueSize = 1 // TODO: queue size should be configurable
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
@@ -386,7 +382,7 @@ func (db *subscribersDB) AddSubscriber() (newId uint64, events chan *Event) {
 	return db.lastId, db.channels[db.lastId]
 }
 
-func (db *subscribersDB) RemoveSubscriber(id uint64) *subscribersDB {
+func (db *eventsSubscribersDB) RemoveSubscriber(id uint64) *eventsSubscribersDB {
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 
@@ -398,7 +394,7 @@ func (db *subscribersDB) RemoveSubscriber(id uint64) *subscribersDB {
 	return db
 }
 
-func (db *subscribersDB) Push(e *Event) *subscribersDB {
+func (db *eventsSubscribersDB) Push(e *Event) *eventsSubscribersDB {
 	db.mutex.RLock()
 	defer db.mutex.RUnlock()
 
@@ -409,23 +405,23 @@ func (db *subscribersDB) Push(e *Event) *subscribersDB {
 	return db
 }
 
-// GetContextMetaDataValue returns value under given key from context metadata.
+func getConsumer(ctx context.Context) string {
+	return getContextMetaDataValue(ctx, "consumer", "")
+}
+
+// getContextMetaDataValue returns value under given key from context metadata.
 // If no data in context or value is empty, return `dflt` value
-func GetContextMetaDataValue(ctx context.Context, key, dflt string) string {
+func getContextMetaDataValue(ctx context.Context, key, dflt string) string {
 	md, exist := metadata.FromIncomingContext(ctx)
 	if !exist {
-		show("GetContextMetaDataValue failed, context w/o metadata")
+		show("getContextMetaDataValue failed, context w/o metadata")
 		return dflt
 	}
-	x := strings.Join(md.Get("consumer"), "")
+	x := strings.Join(md.Get(key), "")
 	if x == "" {
 		return dflt
 	}
 	return x
-}
-
-func getConsumer(ctx context.Context) string {
-	return GetContextMetaDataValue(ctx, "consumer", "")
 }
 
 func panicOnError(msg string, err error) {

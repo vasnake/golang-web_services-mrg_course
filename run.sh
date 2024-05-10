@@ -71,8 +71,8 @@ EOT
     # go vet -stringintconv=false $module # go doc cmd/vet
 
     echo "####################################################################################################"
-    go test -v --failfast $module # during development: failfast
-    # go test -v -race $module # final check
+    # go test -v --failfast $module # during development: failfast
+    go test -v -race $module # final check
 
     # go run -race $module
     # go run $module
