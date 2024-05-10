@@ -2,7 +2,7 @@
 # alias gr='bash -vxe /mnt/c/Users/valik/data/github/golang-web_services-mrg_course/run.sh'
 PRJ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-APP_SELECTOR=${GO_APP_SELECTOR:-week07_homework}
+APP_SELECTOR=${GO_APP_SELECTOR:-week08}
 
 go_run() {
     local selector="${1}"
@@ -24,13 +24,14 @@ go_run() {
         week06_homework)            go_run_sandbox_week06_db_explorer_test;;
         week07)                     go_run_sandbox week07;;
         week07_homework)            go_run_sandbox_week07_async_logger_test;;
+        week08)                     go_run_sandbox week08;;
         *)                          errorExit "Unknown program: ${selector}";;
     esac
 }
 
 go_run_module() {
     echo "####################################################################################################"
-    go run ${1}
+    go run -ldflags="-X 'main.Version=$(git rev-parse HEAD)' -X 'main.Branch=$(git rev-parse --abbrev-ref HEAD)'" ${1} --comments=true --servers="127.0.0.1:8081,127.0.0.1:8082"
     exit_code=$?
     echo "####################################################################################################"
     return $exit_code
@@ -289,6 +290,24 @@ go_run_sandbox() {
     local module="${1}"
     local exit_code=0
     pushd ${PRJ_DIR}/sandbox
+
+    create_module_script(){
+        pushd ${PRJ_DIR}/sandbox
+        mkdir -p ${module} && pushd ./${module}
+        go mod init ${module}
+        cat > main.go << EOT
+        package main
+        func main() { panic("not yet") }
+EOT
+        go mod tidy
+        popd
+        go work use ./${module}
+        go vet ${module}
+        gofmt -w ${module}
+        go test -v ${module}
+        go run ${module}
+        exit 42
+    }
 
     # pushd ${module} && docker compose up&; popd
 
