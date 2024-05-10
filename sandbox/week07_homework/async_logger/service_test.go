@@ -348,6 +348,7 @@ func TestStat(t *testing.T) {
 			mu.Unlock()
 		}
 	}()
+
 	go func() {
 		for {
 			stat, err := statStream2.Recv()

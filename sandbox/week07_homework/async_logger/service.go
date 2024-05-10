@@ -89,7 +89,12 @@ func (bs *BizServerImpl) Check(ctx context.Context, in *Nothing) (*Nothing, erro
 	return &Nothing{}, nil
 }
 
-func (bs *BizServerImpl) Add(context.Context, *Nothing) (*Nothing, error) {
+func (bs *BizServerImpl) Add(ctx context.Context, in *Nothing) (*Nothing, error) {
+	ctx = context.WithValue(ctx, "method", "/main.Biz/Add") // TODO: get value from grpc.*ServerInfo.FullMethod
+
+	// event
+	bs.adminRef.pushEvent(ctx)
+
 	return &Nothing{}, nil
 }
 
@@ -104,10 +109,7 @@ func (bs *BizServerImpl) Test(ctx context.Context, _ *Nothing) (*Nothing, error)
 	if !exist {
 		return nil, status.Errorf(codes.InvalidArgument, "context w/o metadata")
 	}
-
 	consumer := strings.Join(md.Get("consumer"), "")
-	// show("biz test, consumer: ", consumer)
-
 	if consumer != "biz_admin" {
 		return nil, status.Errorf(codes.Unauthenticated, "access denied")
 
@@ -172,8 +174,29 @@ func (as *AdminServerImpl) Logging(_ *Nothing, outStream Admin_LoggingServer) er
 	return nil
 }
 
-func (as *AdminServerImpl) Statistics(*StatInterval, Admin_StatisticsServer) error {
-	return status.Errorf(codes.Unauthenticated, "Statistics not implemented yet")
+func (as *AdminServerImpl) Statistics(si *StatInterval, outStream Admin_StatisticsServer) error {
+	var ctx = outStream.Context()
+	ctx = context.WithValue(ctx, "method", "/main.Admin/Statistics") // TODO: get value from grpc.*ServerInfo.FullMethod
+
+	// event
+	as.pushEvent(ctx)
+
+	// auth
+	err := as.auth(ctx)
+	if err != nil {
+		show("Admin Statistics, access denied: ", err)
+		return err
+	}
+	show("Admin Statistics, access granted")
+
+	// serve stats
+	err = as.sendStats(outStream, si.IntervalSeconds)
+	if err != nil {
+		show("Admin Statistics, sendStats failed: ", err)
+		return err
+	}
+
+	return nil
 }
 
 func (as *AdminServerImpl) pushEvent(ctx context.Context) {
@@ -217,6 +240,65 @@ func (as *AdminServerImpl) sendLog(outStream Admin_LoggingServer) error {
 	}
 
 	return nil
+}
+
+func (as *AdminServerImpl) sendStats(outStream Admin_StatisticsServer, interval uint64) error {
+	subscriberId, events := as.subscribers.AddSubscriber()
+	defer as.subscribers.RemoveSubscriber(subscriberId)
+
+	ticker := time.NewTicker(time.Duration(interval) * time.Second)
+	defer ticker.Stop()
+
+	stats := NewMetricsService()
+
+	for {
+		select {
+
+		// update calls stats
+		case evt, ok := <-events:
+			if ok {
+				stats.AddEvent(evt)
+			} else {
+				return nil
+			}
+
+		case <-ticker.C:
+			if err := outStream.Send(stats.CollectStat()); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+type metricsService struct {
+	Stat
+}
+
+func NewMetricsService() *metricsService {
+	return (&metricsService{}).reset()
+}
+func (ms *metricsService) reset() *metricsService {
+	ms.ByMethod = make(map[string]uint64, 16)
+	ms.ByConsumer = make(map[string]uint64, 16)
+	return ms
+}
+
+func (ms *metricsService) AddEvent(evt *Event) *metricsService {
+	ms.ByMethod[evt.Method] += 1
+	ms.ByConsumer[evt.Consumer] += 1
+	return ms
+}
+
+func (ms *metricsService) CollectStat() *Stat {
+	s := Stat{
+		Timestamp:  time.Now().Unix(),
+		ByMethod:   ms.ByMethod,
+		ByConsumer: ms.ByConsumer,
+	}
+
+	ms.reset()
+
+	return &s
 }
 
 type authService struct {
