@@ -15,6 +15,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 	status "google.golang.org/grpc/status"
 )
 
@@ -35,9 +36,10 @@ func StartMyMicroservice(ctx context.Context, listenAddr, ACLData string) error 
 	}
 
 	// setup server
+	adminRef := NewAdminServerImpl().SetAuth(aclData)
 	server := grpc.NewServer()
-	RegisterBizServer(server, NewBizServerImpl())
-	RegisterAdminServer(server, NewAdminServerImpl().SetAuth(aclData))
+	RegisterBizServer(server, NewBizServerImpl(adminRef))
+	RegisterAdminServer(server, adminRef)
 
 	// setup transport
 	listener, err := net.Listen("tcp", listenAddr)
@@ -65,18 +67,25 @@ type BizServerImpl struct {
 	// acl AclListType
 	// mutex sync.RWMutex
 	// data  map[string]string
+	adminRef *AdminServerImpl
 	UnimplementedBizServer
 }
 
-func NewBizServerImpl() *BizServerImpl {
+func NewBizServerImpl(admin *AdminServerImpl) *BizServerImpl {
 	return &BizServerImpl{
 		// acl: make(AclListType, 16),
 		// mutex: sync.RWMutex{},
 		// data:  make(map[string]string, 16),
+		adminRef: admin,
 	}
 }
 
 func (bs *BizServerImpl) Check(ctx context.Context, in *Nothing) (*Nothing, error) {
+	ctx = context.WithValue(ctx, "method", "/main.Biz/Check") // TODO: get value from grpc.*ServerInfo.FullMethod
+
+	// event
+	bs.adminRef.pushEvent(ctx)
+
 	return &Nothing{}, nil
 }
 
@@ -85,6 +94,11 @@ func (bs *BizServerImpl) Add(context.Context, *Nothing) (*Nothing, error) {
 }
 
 func (bs *BizServerImpl) Test(ctx context.Context, _ *Nothing) (*Nothing, error) {
+	ctx = context.WithValue(ctx, "method", "/main.Biz/Test") // TODO: get value from grpc.*ServerInfo.FullMethod
+
+	// event
+	bs.adminRef.pushEvent(ctx)
+
 	// auth
 	md, exist := metadata.FromIncomingContext(ctx)
 	if !exist {
@@ -135,7 +149,10 @@ func (as *AdminServerImpl) Logging(_ *Nothing, outStream Admin_LoggingServer) er
 		}
 	*/
 	var ctx = outStream.Context()
-	ctx = context.WithValue(ctx, "method", "Admin/Logging") // TODO: get value from grp.*ServerInfo.FullMethod
+	ctx = context.WithValue(ctx, "method", "/main.Admin/Logging") // TODO: get value from grpc.*ServerInfo.FullMethod
+
+	// event
+	as.pushEvent(ctx)
 
 	// auth
 	err := as.auth(ctx)
@@ -155,9 +172,26 @@ func (as *AdminServerImpl) Logging(_ *Nothing, outStream Admin_LoggingServer) er
 	return nil
 }
 
-// Statistics implements AdminServer.
 func (as *AdminServerImpl) Statistics(*StatInterval, Admin_StatisticsServer) error {
 	return status.Errorf(codes.Unauthenticated, "Statistics not implemented yet")
+}
+
+func (as *AdminServerImpl) pushEvent(ctx context.Context) {
+	h := "unknown"
+	p, ok := peer.FromContext(ctx)
+	if ok {
+		h = p.Addr.String()
+	}
+
+	evt := Event{
+		Method:    ctx.Value("method").(string),
+		Consumer:  getConsumer(ctx),
+		Timestamp: time.Now().Unix(),
+		Host:      h,
+	}
+	show("event: ", evt.Consumer, evt.Method)
+
+	as.subscribers.Push(&evt)
 }
 
 func (as *AdminServerImpl) auth(ctx context.Context) error {
@@ -172,16 +206,17 @@ func (as *AdminServerImpl) auth(ctx context.Context) error {
 }
 
 func (as *AdminServerImpl) sendLog(outStream Admin_LoggingServer) error {
-	// subscriberId, events := as.subscribers.AddSubscriber()
-	// defer as.subscribers.RemoveSubscriber(subscriberId)
-	// for e := range events {
-	// 	if err := srv.Send(e); err != nil {
-	// 		return err
-	// 	}
-	// }
+	subscriberId, events := as.subscribers.AddSubscriber()
+	defer as.subscribers.RemoveSubscriber(subscriberId)
 
-	// return status.Errorf(codes.Unauthenticated, "Logging not implemented yet")
-	panic("Admin sendLog, not yet")
+	for e := range events {
+		if err := outStream.Send(e); err != nil {
+			show("Admin sendLog; stream.Send failed: ", err)
+			return err
+		}
+	}
+
+	return nil
 }
 
 type authService struct {

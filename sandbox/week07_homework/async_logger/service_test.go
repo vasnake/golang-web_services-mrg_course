@@ -212,16 +212,6 @@ func TestLogging(t *testing.T) {
 	logStream2, err := adm.Logging(getConsumerCtx("logger2"), &Nothing{})
 	wait(1)
 
-	go func() { // should be finished before 3 sec timeout
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(3 * time.Second):
-			fmt.Println("looks like you dont send anything to log stream in 3 sec")
-			t.Errorf("looks like you dont send anything to log stream in 3 sec")
-		}
-	}()
-
 	logData1 := []*Event{}
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
@@ -267,6 +257,18 @@ func TestLogging(t *testing.T) {
 		}
 	}()
 
+	// watchdog
+	go func() { // should be finished before 3 sec timeout
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(3 * time.Second):
+			fmt.Println("looks like you dont send anything to log stream in 3 sec")
+			t.Errorf("looks like you dont send anything to log stream in 3 sec")
+			wg.Add(-2)
+		}
+	}()
+
 	biz.Check(getConsumerCtx("biz_user"), &Nothing{})
 	time.Sleep(2 * time.Millisecond)
 
@@ -289,12 +291,11 @@ func TestLogging(t *testing.T) {
 		{Consumer: "biz_admin", Method: "/main.Biz/Check"},
 		{Consumer: "biz_admin", Method: "/main.Biz/Test"},
 	}
-
 	if !reflect.DeepEqual(logData1, expectedLogData1) {
-		t.Fatalf("logs1 dont match\nhave %+v\nwant %+v", logData1, expectedLogData1)
+		t.Fatalf("logs1 don't match\nactual %+v\nexpected %+v", logData1, expectedLogData1)
 	}
 	if !reflect.DeepEqual(logData2, expectedLogData2) {
-		t.Fatalf("logs2 dont match\nhave %+v\nwant %+v", logData2, expectedLogData2)
+		t.Fatalf("logs2 don't match\nactual %+v\nexpected %+v", logData2, expectedLogData2)
 	}
 }
 
@@ -393,7 +394,7 @@ func TestStat(t *testing.T) {
 
 	mu.Lock()
 	if !reflect.DeepEqual(stat1, expectedStat1) {
-		t.Fatalf("stat1-1 dont match\nhave %+v\nwant %+v", stat1, expectedStat1)
+		t.Fatalf("stat1-1 don't match\nactual %+v\nexpected %+v", stat1, expectedStat1)
 	}
 	mu.Unlock()
 
@@ -425,10 +426,10 @@ func TestStat(t *testing.T) {
 
 	mu.Lock()
 	if !reflect.DeepEqual(stat1, expectedStat1) {
-		t.Fatalf("stat1-2 dont match\nhave %+v\nwant %+v", stat1, expectedStat1)
+		t.Fatalf("stat1-2 don't match\nactual %+v\nexpected %+v", stat1, expectedStat1)
 	}
 	if !reflect.DeepEqual(stat2, expectedStat2) {
-		t.Fatalf("stat2 dont match\nhave %+v\nwant %+v", stat2, expectedStat2)
+		t.Fatalf("stat2 don't match\nactual %+v\nexpected %+v", stat2, expectedStat2)
 	}
 	mu.Unlock()
 
@@ -556,10 +557,10 @@ func TestWorkAfterDisconnect(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(logData1, expectedLogData1) {
-		t.Fatalf("logs1 dont match\nhave %+v\nwant %+v", logData1, expectedLogData1)
+		t.Fatalf("logs1 don't match\nactual %+v\nexpected %+v", logData1, expectedLogData1)
 	}
 	if !reflect.DeepEqual(logData2, expectedLogData2) {
-		t.Fatalf("logs2 dont match\nhave %+v\nwant %+v", logData2, expectedLogData2)
+		t.Fatalf("logs2 don't match\nactual %+v\nexpected %+v", logData2, expectedLogData2)
 	}
 }
 
