@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"slices"
 	"strings"
 	"sync"
 
@@ -26,13 +27,17 @@ func StartMyMicroservice(ctx context.Context, listenAddr, ACLData string) error 
 	// show("StartMyMicroservice, addr: ", listenAddr)
 
 	// parse params
-	var acl = make(AclListType, 16)
-	err := json.Unmarshal([]byte(ACLData), &acl)
+	var aclData = make(AclListType, 16)
+	err := json.Unmarshal([]byte(ACLData), &aclData)
 	if err != nil {
 		show("StartMyMicroservice failed, invalid ACL json: ", err)
 		return err
 	}
-	// show("StartMyMicroservice, ACL parsed: ", acl)
+
+	// setup server
+	server := grpc.NewServer()
+	RegisterBizServer(server, NewBizServerImpl())
+	RegisterAdminServer(server, NewAdminServerImpl().SetAuth(aclData))
 
 	// setup transport
 	listener, err := net.Listen("tcp", listenAddr)
@@ -40,10 +45,7 @@ func StartMyMicroservice(ctx context.Context, listenAddr, ACLData string) error 
 		show("StartMyMicroservice failed, net.Listen error: ", err)
 		return err
 	}
-	// register server
-	server := grpc.NewServer()
-	RegisterBizServer(server, NewBizServerImpl())
-	RegisterAdminServer(server, NewAdminServerImpl())
+
 	// start server
 	show("StartMyMicroservice, starting gRPC server at ", listenAddr)
 	go server.Serve(listener)
@@ -58,26 +60,6 @@ func StartMyMicroservice(ctx context.Context, listenAddr, ACLData string) error 
 
 	return nil
 }
-
-/*
-
-type BizClient interface {
-	Test(ctx context.Context, in *Nothing, opts ...grpc.CallOption) (*Nothing, error)
-	Check(ctx context.Context, in *Nothing, opts ...grpc.CallOption) (*Nothing, error)
-	Add(ctx context.Context, in *Nothing, opts ...grpc.CallOption) (*Nothing, error)
-}
-
-message Nothing {
-    bool dummy = 1;
-}
-
-service Biz {
-    rpc Check(Nothing) returns(Nothing) {}
-    rpc Add(Nothing) returns(Nothing) {}
-    rpc Test(Nothing) returns(Nothing) {}
-}
-
-*/
 
 type BizServerImpl struct {
 	// acl AclListType
@@ -95,56 +77,101 @@ func NewBizServerImpl() *BizServerImpl {
 }
 
 func (bs *BizServerImpl) Check(ctx context.Context, in *Nothing) (*Nothing, error) {
-	// return nil, status.Errorf(codes.NotFound, "session not found")
 	return &Nothing{}, nil
 }
 
-// Add implements BizServer.
 func (bs *BizServerImpl) Add(context.Context, *Nothing) (*Nothing, error) {
 	return &Nothing{}, nil
 }
 
-// Test implements BizServer.
 func (bs *BizServerImpl) Test(ctx context.Context, _ *Nothing) (*Nothing, error) {
+	// auth
 	md, exist := metadata.FromIncomingContext(ctx)
 	if !exist {
 		return nil, status.Errorf(codes.InvalidArgument, "context w/o metadata")
 	}
+
 	consumer := strings.Join(md.Get("consumer"), "")
-	show("biz test, consumer: ", consumer)
-	if consumer == "biz_admin" {
-		return &Nothing{}, nil
+	// show("biz test, consumer: ", consumer)
+
+	if consumer != "biz_admin" {
+		return nil, status.Errorf(codes.Unauthenticated, "access denied")
+
 	}
 
-	return nil, status.Errorf(codes.Unauthenticated, "access denied")
+	// business logic?
+
+	return &Nothing{}, nil
 }
-
-/*
-	service Admin {
-	    rpc Logging (Nothing) returns (stream Event) {}
-	    rpc Statistics (StatInterval) returns (stream Stat) {}
-	}
-*/
 
 type AdminServerImpl struct {
 	subscribers subscribersDB
+	authSvc     authService
 	UnimplementedAdminServer
 }
 
 func NewAdminServerImpl() *AdminServerImpl {
-	var as = AdminServerImpl{
+	return &AdminServerImpl{
 		subscribers: *NewSubscribersDB(),
+		authSvc:     *NewAuthService(),
 	}
-
-	return &as
+}
+func (as *AdminServerImpl) SetAuth(db AclListType) *AdminServerImpl {
+	as.authSvc.SetAuth(db)
+	return as
 }
 
-// Logging implements AdminServer.
-func (as *AdminServerImpl) Logging(_ *Nothing, srv Admin_LoggingServer) error {
-	var ctx = srv.Context()
-	show("Logging, context: ", ctx)
-	return status.Errorf(codes.Unauthenticated, "Statistics not implemented yet")
+// Logging implements AdminServer. Take nothing, produce stream Event
+func (as *AdminServerImpl) Logging(_ *Nothing, outStream Admin_LoggingServer) error {
+	/*
+		service Admin ...
+			rpc Logging (Nothing) returns (stream Event) {}
+		...
+		message Event {
+			int64  timestamp = 1;
+			string consumer  = 2;
+			string method    = 3;
+			string host      = 4; // читайте это поле как remote_addr
+		}
+	*/
+	var ctx = outStream.Context()
+	ctx = context.WithValue(ctx, "method", "Admin/Logging") // TODO: get value from grp.*ServerInfo.FullMethod
 
+	// auth
+	err := as.auth(ctx)
+	if err != nil {
+		show("Admin Logging, access denied: ", err)
+		return err
+	}
+	show("Admin Logging, access granted")
+
+	// serve log
+	err = as.sendLog(outStream)
+	if err != nil {
+		show("Admin Logging, sendLog failed: ", err)
+		return err
+	}
+
+	return nil
+}
+
+// Statistics implements AdminServer.
+func (as *AdminServerImpl) Statistics(*StatInterval, Admin_StatisticsServer) error {
+	return status.Errorf(codes.Unauthenticated, "Statistics not implemented yet")
+}
+
+func (as *AdminServerImpl) auth(ctx context.Context) error {
+	var consumer string = getConsumer(ctx)
+	var method = ctx.Value("method").(string)
+	var isAllowed bool = as.authSvc.IsAllowed(consumer, method)
+	show("Admin auth; consumer, method, allowed: ", consumer, method, isAllowed)
+	if isAllowed {
+		return nil
+	}
+	return status.Errorf(codes.Unauthenticated, "access denied")
+}
+
+func (as *AdminServerImpl) sendLog(outStream Admin_LoggingServer) error {
 	// subscriberId, events := as.subscribers.AddSubscriber()
 	// defer as.subscribers.RemoveSubscriber(subscriberId)
 	// for e := range events {
@@ -152,12 +179,59 @@ func (as *AdminServerImpl) Logging(_ *Nothing, srv Admin_LoggingServer) error {
 	// 		return err
 	// 	}
 	// }
-	// return nil
+
+	// return status.Errorf(codes.Unauthenticated, "Logging not implemented yet")
+	panic("Admin sendLog, not yet")
 }
 
-// Statistics implements AdminServer.
-func (as *AdminServerImpl) Statistics(*StatInterval, Admin_StatisticsServer) error {
-	return status.Errorf(codes.Unauthenticated, "Statistics not implemented yet")
+type authService struct {
+	authDB AclListType // user: list of methods
+	mutex  *sync.RWMutex
+}
+
+func NewAuthService() *authService {
+	return &authService{
+		authDB: make(AclListType, 16),
+		mutex:  &sync.RWMutex{},
+	}
+}
+func (as *authService) SetAuth(db AclListType) *authService {
+	as.lock()
+	defer as.unlock()
+
+	as.authDB = db
+	return as
+}
+func (as *authService) lock() {
+	as.mutex.Lock()
+
+}
+func (as *authService) unlock() {
+	as.mutex.Unlock()
+}
+func (as *authService) lockRead() {
+	as.mutex.RLock()
+
+}
+func (as *authService) unlockRead() {
+	as.mutex.RUnlock()
+}
+
+func (as *authService) IsAllowed(user, method string) bool {
+	as.lockRead()
+	defer as.unlockRead()
+
+	methods, exist := as.authDB[user]
+	if !exist {
+		return false
+	}
+
+	return slices.ContainsFunc(methods, func(x string) bool {
+		if strings.HasSuffix(x, method) {
+			return true
+		}
+		return false
+	})
 }
 
 type subscribersDB struct {
@@ -195,7 +269,7 @@ func (db *subscribersDB) AddSubscriber() (newId uint64, events chan *Event) {
 	return db.lastId, db.channels[db.lastId]
 }
 
-func (db *subscribersDB) RemoveSubscriber(id uint64) {
+func (db *subscribersDB) RemoveSubscriber(id uint64) *subscribersDB {
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 
@@ -203,15 +277,38 @@ func (db *subscribersDB) RemoveSubscriber(id uint64) {
 		close(ch)
 		delete(db.channels, id)
 	}
+
+	return db
 }
 
-func (db *subscribersDB) Push(e *Event) {
+func (db *subscribersDB) Push(e *Event) *subscribersDB {
 	db.mutex.RLock()
 	defer db.mutex.RUnlock()
 
 	for _, ch := range db.channels {
 		ch <- e
 	}
+
+	return db
+}
+
+// GetContextMetaDataValue returns value under given key from context metadata.
+// If no data in context or value is empty, return `dflt` value
+func GetContextMetaDataValue(ctx context.Context, key, dflt string) string {
+	md, exist := metadata.FromIncomingContext(ctx)
+	if !exist {
+		show("GetContextMetaDataValue failed, context w/o metadata")
+		return dflt
+	}
+	x := strings.Join(md.Get("consumer"), "")
+	if x == "" {
+		return dflt
+	}
+	return x
+}
+
+func getConsumer(ctx context.Context) string {
+	return GetContextMetaDataValue(ctx, "consumer", "")
 }
 
 func panicOnError(msg string, err error) {
