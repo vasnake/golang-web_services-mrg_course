@@ -1,6 +1,7 @@
 #!/bin/bash
 # alias gr='bash -vxe /mnt/c/Users/valik/data/github/golang-web_services-mrg_course/run.sh'
 PRJ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# PATH=${PATH}:/mnt/c/bin/protoc-26.1-linux-x86_64/bin:${HOME}/go/bin
 
 APP_SELECTOR=${GO_APP_SELECTOR:-week08}
 
@@ -31,7 +32,10 @@ go_run() {
 
 go_run_module() {
     echo "####################################################################################################"
-    go run -ldflags="-X 'main.Version=$(git rev-parse HEAD)' -X 'main.Branch=$(git rev-parse --abbrev-ref HEAD)'" ${1} --comments=true --servers="127.0.0.1:8081,127.0.0.1:8082"
+    go run \
+        -ldflags="-X 'main.Version=$(git rev-parse HEAD)' -X 'main.Branch=$(git rev-parse --abbrev-ref HEAD)'" \
+        ${1} \
+        --comments=true --servers="127.0.0.1:8081,127.0.0.1:8082"
     exit_code=$?
     echo "####################################################################################################"
     return $exit_code
@@ -314,11 +318,14 @@ EOT
     gofmt -w $module || exit
     go vet $module
     # go vet -stringintconv=false $module
+    golangci-lint run $module
+
+    # go build -o /tmp/$module $module
 
     # go run -race $module
     # go run $module
     go_run_module $module
-    exit_code=$?
+    
 
     # https://pkg.go.dev/cmd/go#hdr-Testing_flags
     # go test -bench . $module
@@ -327,7 +334,9 @@ EOT
     # go test -bench '.*Xml.*' -benchmem $module
     # go test -v -cover $module
     # go test -v $module
+    # go test -bench . -gcflags '-l' $module # отключаем инлайнинг
 
+    exit_code=$?
     popd
     return $exit_code
 }

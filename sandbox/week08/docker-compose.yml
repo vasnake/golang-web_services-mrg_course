@@ -1,8 +1,21 @@
 version: "3"
 
 services:
-  consul:
+  consul: # http://localhost:8500/ui/dc1/services
     image: consul:1.15
     ports:
       - "8500:8500"
-# http://localhost:8500/ui/dc1/services
+  graphite:
+    image: graphiteapp/graphite-statsd
+    ports:
+      - "80:80"
+      - "2003-2004:2003-2004"
+      - "2023-2024:2023-2024"
+      - "8125:8125/udp"
+      - "8126:8126"
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+    ports:
+      - "9090:9090"
