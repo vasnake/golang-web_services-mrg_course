@@ -45,6 +45,22 @@ func i2s(data any, out any) error {
 			return fmt.Errorf("failed cast to float64 from %#v", data)
 		}
 
+	case reflect.Slice:
+		lst, ok := data.([]interface{})
+		if ok {
+			for _, lstValue := range lst {
+				item := reflect.New(target.Type().Elem())
+				err := i2s(lstValue, item.Interface())
+				if err == nil {
+					target.Set(reflect.Append(target, item.Elem()))
+				} else {
+					return err // fmt.Errorf("failed to process slice element %d: %s", i, err)
+				}
+			}
+		} else {
+			return fmt.Errorf("failed cast to []interface{} from %#v", data)
+		}
+
 	case reflect.Struct:
 		// struct decoded only from map
 		dict, ok := data.(map[string]interface{})
