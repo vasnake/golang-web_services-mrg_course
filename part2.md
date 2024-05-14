@@ -1133,4 +1133,40 @@ lint
 
 # I_AM_HERE
 
-https://stepik.org/lesson/1200646/step/1?unit=1213855
+Фолдер с задачей: `handouts/golang_web_services_2023-12-28.zip/8/99_hw/i2s/`
+
+Описание задачи: `readme.md`
+
+- `i2s.go`: здесь написать реализацию функции декодера.
+- `main_test.go`: тесты функции, `go test -v`
+
+> i2s - interface to struct. Функция, которая заполняет значения структуры из (map[string]interface{} и подобных -)
+того что получается, если распаковать json в interface{}
+
+Задача выполнена когда: проходят тесты `go test -v`
+
+[actual homework project](./sandbox/week08_homework/i2s/) `GO_APP_SELECTOR=week08_homework gr`
+```s
+pushd sandbox # workspace
+mkdir -p week08_homework/i2s
+pushd week08_homework/i2s
+
+go mod init i2s
+
+# makes go vet happy
+cat > main.go << EOT
+package main
+func main() { panic("not yet") }
+EOT
+
+go mod tidy
+
+popd # workspace
+# go work init
+# go work edit -dropuse=./week05_homework/code_gen
+go work use ./week08_homework/i2s
+```
+i2s prj.
+
+Своими словами: некий json ан-маршалится в `interface{}`, после чего этот интерфейс подается на вход `i2s`.
+Вторым аргументом `i2s` подается некая структура, которую надо заполнить данными из первого параметра.

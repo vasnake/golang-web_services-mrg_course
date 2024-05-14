@@ -3,7 +3,7 @@
 PRJ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # PATH=${PATH}:/mnt/c/bin/protoc-26.1-linux-x86_64/bin:${HOME}/go/bin
 
-APP_SELECTOR=${GO_APP_SELECTOR:-week08}
+APP_SELECTOR=${GO_APP_SELECTOR:-week08_homework}
 
 go_run() {
     local selector="${1}"
@@ -26,6 +26,7 @@ go_run() {
         week07)                     go_run_sandbox week07;;
         week07_homework)            go_run_sandbox_week07_async_logger_test;;
         week08)                     go_run_sandbox week08;;
+        week08_homework)            go_run_sandbox_week08_i2s_test;;
         *)                          errorExit "Unknown program: ${selector}";;
     esac
 }
@@ -49,6 +50,70 @@ go_test_module() {
     return $exit_code
 }
 
+go_run_sandbox_week08_i2s_test(){
+    create_project(){ # need this only once
+        pushd ${PRJ_DIR}/sandbox
+        mkdir -p week08_homework/i2s
+        pushd week08_homework/i2s
+
+        if [ -f ./main.go ]; then
+            echo "project created already"; exit 42
+        else
+            echo "creating project ..."
+        fi
+
+        go mod init i2s
+
+        # makes go vet happy
+cat > main.go << EOT
+        package main
+        func main() { panic("not yet") }
+EOT
+
+        go mod tidy
+
+        popd # workspace
+        # go work init
+        # go work edit -dropuse=./week05_homework/code_gen
+        go work use ./week08_homework/i2s
+    }
+    # create_project
+
+    local module="i2s"
+    local moduleDir=${PRJ_DIR}/sandbox/week08_homework/${module}
+    local exit_code=0
+    pushd ${PRJ_DIR}/sandbox/week08_homework
+
+    pushd ${moduleDir} && go mod tidy && popd
+    gofmt -w $module || exit
+    go vet $module
+    # go vet -stringintconv=false $module # go doc cmd/vet
+    golangci-lint run $module
+
+    echo "####################################################################################################"
+    go test -v --failfast $module # during development: failfast
+    # go test -v $module
+    # go test -v -race $module # final check
+
+    # go run -race $module
+    # go run $module
+    # go_run_module $module
+
+    # https://pkg.go.dev/cmd/go#hdr-Testing_flags
+    # go test -bench . $module
+    # go test -bench . -benchmem $module
+    # go test -bench '.*Mem.*' -benchmem $module
+    # go test -bench '.*Xml.*' -benchmem $module
+
+    # go test -v -cover $module
+    # go test -coverprofile=cover.out $module
+    # go tool cover -html=cover.out -o cover.html
+
+    exit_code=$?
+    echo "####################################################################################################"
+    popd    
+    return $exit_code  
+}
 go_run_sandbox_week07_async_logger_test(){
     local module="async_logger"
     local moduleDir=${PRJ_DIR}/sandbox/week07_homework/${module}

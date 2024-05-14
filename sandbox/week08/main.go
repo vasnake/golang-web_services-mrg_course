@@ -27,8 +27,9 @@ import (
 )
 
 /*
-// Всё что в комментари над import "C" является кодом на C code и будет скомпилирован при помощи GCC.
+// Всё что в комментари над `import "C"`` является кодом на C code и будет скомпилирован при помощи GCC.
 // У вас должен быть установлен GCC
+// see files *.c
 
 void Multiply(int a, int b);
 int MMultiply(int a, int b);
@@ -67,6 +68,7 @@ func main() {
 	// cgoMemLeakDemo()
 	cgoThreadsHog()
 }
+
 func lessonTemplate() {
 	show("lessonTemplate: program started ...")
 	show("Starting server at: ", host+portStr)

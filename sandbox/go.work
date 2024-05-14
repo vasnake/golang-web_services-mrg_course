@@ -29,4 +29,5 @@ use (
 	./week07
 	./week07_homework/async_logger
 	./week08
+	./week08_homework/i2s
 )
