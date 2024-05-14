@@ -2,16 +2,74 @@ package main
 
 import (
 	"fmt"
+	"reflect"
 	"time"
 )
 
-func i2s(data interface{}, out interface{}) error {
-	show("i2s params: ", data, out)
-	// i2s params:
-	// map[string]interface {}{"Active":true, "ID":42, "Username":"rvasily"};
-	// &main.Simple{ID:0, Username:"", Active:false};
-
+func i2s(data any, out any) error {
+	// show("i2s params: ", data, out)
 	// iterate over out's fields, set each field from map `data`
+
+	var target reflect.Value
+
+	ptr := reflect.ValueOf(out)
+	if ptr.Kind() != reflect.Ptr {
+		return fmt.Errorf("i2s, out must be a pointer to target container, got %#v", out)
+	} else {
+		target = ptr.Elem()
+	}
+
+	switch target.Kind() {
+
+	case reflect.Bool:
+		b, ok := data.(bool)
+		if ok {
+			target.SetBool(b)
+		} else {
+			return fmt.Errorf("failed cast to bool from %#v", data)
+		}
+
+	case reflect.String:
+		str, ok := data.(string)
+		if ok {
+			target.SetString(str)
+		} else {
+			return fmt.Errorf("failed cast to string from %#v", data)
+		}
+
+	case reflect.Int:
+		num, ok := data.(float64) // json bug/feature
+		if ok {
+			target.SetInt(int64(num))
+		} else {
+			return fmt.Errorf("failed cast to float64 from %#v", data)
+		}
+
+	case reflect.Struct:
+		// struct decoded only from map
+		dict, ok := data.(map[string]interface{})
+		if ok {
+			// for each target field
+			for i := 0; i < target.NumField(); i++ {
+				fieldName := target.Type().Field(i).Name
+				fieldValue, ok := dict[fieldName]
+				if ok {
+					// recursion
+					if err := i2s(fieldValue, target.Field(i).Addr().Interface()); err != nil {
+						return err // fmt.Errorf("i2s, failed to decode field `%s`: %e", fieldName, err)
+					}
+				} else {
+					// probably should just skip this field
+					return fmt.Errorf("i2s, field `%s` not found in given map %#v", fieldName, dict)
+				}
+			}
+		} else {
+			return fmt.Errorf("i2s, data must be a map string-to-any, got %#v", data)
+		}
+
+	default:
+		return fmt.Errorf("i2s, unsupportd type: %s", target.Kind())
+	}
 
 	return nil
 }

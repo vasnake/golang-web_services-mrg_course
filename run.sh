@@ -88,7 +88,7 @@ EOT
     gofmt -w $module || exit
     go vet $module
     # go vet -stringintconv=false $module # go doc cmd/vet
-    golangci-lint run $module
+    # golangci-lint run $module # slow
 
     echo "####################################################################################################"
     go test -v --failfast $module # during development: failfast
