@@ -3,125 +3,101 @@ package main
 import (
 	"fmt"
 	"reflect"
-	"time"
 )
 
+// i2s: written using 'happy path first' style
+// iterate over out's fields, set each field from map `data`
 func i2s(data any, out any) error {
-	// show("i2s params: ", data, out)
-	// iterate over out's fields, set each field from map `data`
-
-	var target reflect.Value
-
-	ptr := reflect.ValueOf(out)
-	if ptr.Kind() != reflect.Ptr {
-		return fmt.Errorf("i2s, out must be a pointer to target container, got %#v", out)
-	} else {
-		target = ptr.Elem()
-	}
-
-	switch target.Kind() {
-
-	case reflect.Bool:
-		b, ok := data.(bool)
+	var writeBool = func(data any, target reflect.Value) error {
+		x, ok := data.(bool)
 		if ok {
-			target.SetBool(b)
+			target.SetBool(x)
+			return nil
 		} else {
 			return fmt.Errorf("failed cast to bool from %#v", data)
 		}
-
-	case reflect.String:
-		str, ok := data.(string)
+	}
+	var writeString = func(data any, target reflect.Value) error {
+		x, ok := data.(string)
 		if ok {
-			target.SetString(str)
+			target.SetString(x)
+			return nil
 		} else {
 			return fmt.Errorf("failed cast to string from %#v", data)
 		}
-
-	case reflect.Int:
-		num, ok := data.(float64) // json bug/feature
+	}
+	var writeInt = func(data any, target reflect.Value) error {
+		x, ok := data.(float64) // json bug/feature
 		if ok {
-			target.SetInt(int64(num))
+			target.SetInt(int64(x))
+			return nil
 		} else {
 			return fmt.Errorf("failed cast to float64 from %#v", data)
 		}
-
-	case reflect.Slice:
-		lst, ok := data.([]interface{})
+	}
+	var writeSlice = func(data any, target reflect.Value) error {
+		x, ok := data.([]interface{})
 		if ok {
-			for _, lstValue := range lst {
+			for _, lstValue := range x {
 				item := reflect.New(target.Type().Elem())
 				err := i2s(lstValue, item.Interface())
 				if err == nil {
 					target.Set(reflect.Append(target, item.Elem()))
 				} else {
-					return err // fmt.Errorf("failed to process slice element %d: %s", i, err)
+					return err // i2s error
 				}
 			}
 		} else {
 			return fmt.Errorf("failed cast to []interface{} from %#v", data)
 		}
-
-	case reflect.Struct:
+		return nil
+	}
+	var writeStruct = func(data any, target reflect.Value) error {
 		// struct decoded only from map
-		dict, ok := data.(map[string]interface{})
+		x, ok := data.(map[string]interface{})
 		if ok {
 			// for each target field
 			for i := 0; i < target.NumField(); i++ {
 				fieldName := target.Type().Field(i).Name
-				fieldValue, ok := dict[fieldName]
+				fieldValue, ok := x[fieldName]
 				if ok {
 					// recursion
-					if err := i2s(fieldValue, target.Field(i).Addr().Interface()); err != nil {
-						return err // fmt.Errorf("i2s, failed to decode field `%s`: %e", fieldName, err)
+					err := i2s(fieldValue, target.Field(i).Addr().Interface())
+					if err != nil {
+						return err // i2s error
 					}
 				} else {
 					// probably should just skip this field
-					return fmt.Errorf("i2s, field `%s` not found in given map %#v", fieldName, dict)
+					return fmt.Errorf("field `%s` not found in given map %#v", fieldName, x)
 				}
 			}
 		} else {
 			return fmt.Errorf("i2s, data must be a map string-to-any, got %#v", data)
 		}
-
-	default:
-		return fmt.Errorf("i2s, unsupportd type: %s", target.Kind())
+		return nil
 	}
 
-	return nil
-}
-
-// func userInput(msg string) (res string, err error) {
-// 	show(msg)
-// 	if n, e := fmt.Scanln(&res); n != 1 || e != nil {
-// 		return "", e
-// 	}
-// 	return res, nil
-// }
-
-// func panicOnError(msg string, err error) {
-// 	if err != nil {
-// 		panic(msg + ": " + err.Error())
-// 	}
-// }
-
-// ts returns current timestamp in RFC3339 with milliseconds
-func ts() string {
-	/*
-		https://pkg.go.dev/time#pkg-constants
-		https://stackoverflow.com/questions/35479041/how-to-convert-iso-8601-time-in-golang
-	*/
-	const RFC3339Milli = "2006-01-02T15:04:05.000Z07:00"
-	return time.Now().UTC().Format(RFC3339Milli)
-}
-
-// show writes message to standard output. Message combined from prefix msg and slice of arbitrary arguments
-func show(msg string, xs ...any) {
-	var line = ts() + ": " + msg
-
-	for _, x := range xs {
-		// https://pkg.go.dev/fmt
-		// line += fmt.Sprintf("%T(%v); ", x, x) // type(value)
-		line += fmt.Sprintf("%#v; ", x) // repr
+	var writeDataToElem = func(data any, target reflect.Value) error {
+		switch target.Kind() {
+		case reflect.Bool:
+			return writeBool(data, target)
+		case reflect.String:
+			return writeString(data, target)
+		case reflect.Int:
+			return writeInt(data, target)
+		case reflect.Slice:
+			return writeSlice(data, target)
+		case reflect.Struct:
+			return writeStruct(data, target)
+		default:
+			return fmt.Errorf("i2s, unsupportd type: %s", target.Kind())
+		}
 	}
-	fmt.Println(line)
+
+	ptr := reflect.ValueOf(out)
+	if ptr.Kind() == reflect.Ptr {
+		return writeDataToElem(data, ptr.Elem())
+	} else {
+		return fmt.Errorf("out must be a pointer to target container, got %#v", out)
+	}
 }
