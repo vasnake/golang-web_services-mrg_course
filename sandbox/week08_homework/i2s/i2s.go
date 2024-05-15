@@ -95,7 +95,7 @@ func i2s(data any, out any) error {
 	}
 
 	ptr := reflect.ValueOf(out)
-	if ptr.Kind() == reflect.Ptr {
+	if ptr.Kind() == reflect.Ptr { // this check could be done only once for entire 'out' struct
 		return writeDataToElem(data, ptr.Elem())
 	} else {
 		return fmt.Errorf("out must be a pointer to target container, got %#v", out)

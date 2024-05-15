@@ -3,7 +3,7 @@
 PRJ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # PATH=${PATH}:/mnt/c/bin/protoc-26.1-linux-x86_64/bin:${HOME}/go/bin
 
-APP_SELECTOR=${GO_APP_SELECTOR:-week08_homework}
+APP_SELECTOR=${GO_APP_SELECTOR:-week09}
 
 go_run() {
     local selector="${1}"
@@ -27,6 +27,7 @@ go_run() {
         week07_homework)            go_run_sandbox_week07_async_logger_test;;
         week08)                     go_run_sandbox week08;;
         week08_homework)            go_run_sandbox_week08_i2s_test;;
+        week09)                     go_run_sandbox week09;;
         *)                          errorExit "Unknown program: ${selector}";;
     esac
 }
@@ -360,37 +361,44 @@ go_run_sandbox() {
     local exit_code=0
     pushd ${PRJ_DIR}/sandbox
 
-    create_module_script(){
+    create_module(){
         pushd ${PRJ_DIR}/sandbox
         mkdir -p ${module} && pushd ./${module}
+
+        if [ -f ./main.go ]; then
+            echo "project created already"; exit 42
+        else
+            echo "creating project ..."
+        fi
+
         go mod init ${module}
         cat > main.go << EOT
-        package main
-        func main() { panic("not yet") }
+package main
+func main() { panic("not yet") }
 EOT
         go mod tidy
-        popd
-        go work use ./${module}
-        go vet ${module}
+        popd # sandbox
+        go work use ./${module}        
         gofmt -w ${module}
+        # go vet ${module}
         go test -v ${module}
         go run ${module}
         exit 42
     }
+    # create_module
 
     # pushd ${module} && docker compose up&; popd
 
     gofmt -w $module || exit
     go vet $module
     # go vet -stringintconv=false $module
-    golangci-lint run $module
+    # golangci-lint run $module # slow
 
     # go build -o /tmp/$module $module
 
     # go run -race $module
     # go run $module
-    go_run_module $module
-    
+    go_run_module $module    
 
     # https://pkg.go.dev/cmd/go#hdr-Testing_flags
     # go test -bench . $module

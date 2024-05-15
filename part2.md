@@ -1131,8 +1131,6 @@ lint
 
 ### week8 homework
 
-# I_AM_HERE
-
 Фолдер с задачей: `handouts/golang_web_services_2023-12-28.zip/8/99_hw/i2s/`
 
 Описание задачи: `readme.md`
