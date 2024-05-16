@@ -8,6 +8,7 @@ import (
 	basic "week09/0_basic"
 	storage "week09/1_storage"
 	sql_storage "week09/2_sql_storage"
+	sess_auth "week09/3_auth"
 )
 
 const (
@@ -27,7 +28,22 @@ func lessonTemplate() {
 func main() {
 	// basicPrototypeDemo()
 	// storageLayerDemo()
-	sqlStorageDemo()
+	// sqlStorageDemo()
+	// sessionAuthDemo()
+	passSaltDemo()
+}
+
+func passSaltDemo() {
+	show("passSaltDemo: program started ...")
+	PassSaltMain1()
+	PassSaltMain2()
+	show("end of program. ")
+}
+
+func sessionAuthDemo() {
+	show("sessionAuthDemo: program started ...")
+	sess_auth.MainAuth()
+	show("end of program. ")
 }
 
 func sqlStorageDemo() {

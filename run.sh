@@ -398,7 +398,7 @@ EOT
 
     # go run -race $module
     # go run $module
-    go_run_module $module    
+    go_run_module $module
 
     # https://pkg.go.dev/cmd/go#hdr-Testing_flags
     # go test -bench . $module
