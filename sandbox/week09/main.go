@@ -10,6 +10,7 @@ import (
 	sql_storage "week09/2_sql_storage"
 	sess_auth "week09/3_auth"
 	csrf_token "week09/4_csrf_token"
+	jwt_session "week09/5_jwt_session"
 )
 
 const (
@@ -32,7 +33,14 @@ func main() {
 	// sqlStorageDemo()
 	// sessionAuthDemo()
 	// passSaltDemo()
-	csrfTokenDemo()
+	// csrfTokenDemo()
+	jwtSessionAndCsrfDemo()
+}
+
+func jwtSessionAndCsrfDemo() {
+	show("jwtSessionAndCsrfDemo: program started ...")
+	jwt_session.MainJwtSession()
+	show("end of program. ")
 }
 
 func csrfTokenDemo() {

@@ -11,7 +11,8 @@ services:
     volumes:
       # - './2_sql_storage/_mysql/:/docker-entrypoint-initdb.d/'
       # - './3_auth/_mysql/:/docker-entrypoint-initdb.d/'
-      - './4_csrf_token/_mysql/:/docker-entrypoint-initdb.d/'
+      # - './4_csrf_token/_mysql/:/docker-entrypoint-initdb.d/'
+      - './5_jwt_session/_mysql/:/docker-entrypoint-initdb.d/'
 
   # adminer:
   #   image: adminer
