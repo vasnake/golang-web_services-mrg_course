@@ -9,6 +9,7 @@ import (
 	storage "week09/1_storage"
 	sql_storage "week09/2_sql_storage"
 	sess_auth "week09/3_auth"
+	csrf_token "week09/4_csrf_token"
 )
 
 const (
@@ -30,7 +31,14 @@ func main() {
 	// storageLayerDemo()
 	// sqlStorageDemo()
 	// sessionAuthDemo()
-	passSaltDemo()
+	// passSaltDemo()
+	csrfTokenDemo()
+}
+
+func csrfTokenDemo() {
+	show("csrfTokenDemo: program started ...")
+	csrf_token.MainCsrf()
+	show("end of program. ")
 }
 
 func passSaltDemo() {
