@@ -34,11 +34,11 @@ func main() {
 	// sessionAuthDemo()
 	// passSaltDemo()
 	// csrfTokenDemo()
-	jwtSessionAndCsrfDemo()
+	jwtSessionVersusDbSessionDemo()
 }
 
-func jwtSessionAndCsrfDemo() {
-	show("jwtSessionAndCsrfDemo: program started ...")
+func jwtSessionVersusDbSessionDemo() {
+	show("jwtSessionVersusDbSessionDemo: program started ...")
 	jwt_session.MainJwtSession()
 	show("end of program. ")
 }

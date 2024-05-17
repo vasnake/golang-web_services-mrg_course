@@ -27,9 +27,25 @@ func MainJwtSession() {
 
 	tmpls := NewTemplates()
 
+	// stateless (almost) session
+	// works fast (no db) but w/o 'destroy session(s)' functionality
+	sessionManagerH := NewSessionsJWTVer("golangcourseSessionSecret", db) // session service, SessionManager using jwt cookie
+	// completely stateless session
+	// sessionManagerH := NewSessionsJWT("golangcourseSessionSecret") // w/o user version, even faster
+
+	// stateful session // good solution, but slow
+	// sessionManagerH := NewSessionsDB(db)
+
+	userH := &UserHandler{
+		DB:       db,
+		Tmpl:     tmpls,
+		Sessions: sessionManagerH, // session service
+	}
+
+	// CSRF tokens using JWT
 	// tokens, err := NewHMACHashToken("golangcourseCsrfSecret")
 	// tokens, err := NewAesCryptHashToken("qsRY2e4hcM5T7X984E9WQ5uZ8Nty7fxB")
-	tokens, err := NewJwtToken("qsRY2e4hcM5T7X984E9WQ5uZ8Nty7fxB") // db-less sesson, no persistence, can't drop sessions
+	tokens, err := NewJwtToken("qsRY2e4hcM5T7X984E9WQ5uZ8Nty7fxB")
 	if err != nil {
 		log.Fatalf("cant init tokens: %v\n", err)
 	}
@@ -38,19 +54,6 @@ func MainJwtSession() {
 		St:     NewDbStorage(db), // storage service
 		Tmpl:   tmpls,
 		Tokens: tokens, // token service, csrf
-	}
-
-	// works fast (no db) but w/o 'destroy session(s)' functionality
-	sessionManagerH := NewSessionsJWTVer("golangcourseSessionSecret", db) // session service, SessionManager using jwt cookie
-	// sessionManagerH := NewSessionsJWT("golangcourseSessionSecret") // w/o user version, even faster
-
-	// good solution, but slow
-	// sessionManagerH := NewSessionsDB(db)
-
-	userH := &UserHandler{
-		DB:       db,
-		Tmpl:     tmpls,
-		Sessions: sessionManagerH, // session service
 	}
 
 	// route handlers
