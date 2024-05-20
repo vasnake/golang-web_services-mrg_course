@@ -3,7 +3,7 @@
 PRJ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # PATH=${PATH}:/mnt/c/bin/protoc-26.1-linux-x86_64/bin:${HOME}/go/bin
 
-APP_SELECTOR=${GO_APP_SELECTOR:-week09}
+APP_SELECTOR=${GO_APP_SELECTOR:-week09_homework}
 
 go_run() {
     local selector="${1}"
@@ -28,6 +28,7 @@ go_run() {
         week08)                     go_run_sandbox week08;;
         week08_homework)            go_run_sandbox_week08_i2s_test;;
         week09)                     go_run_sandbox week09;;
+        week09_homework)            go_run_sandbox_week09_rwa_test;;
         *)                          errorExit "Unknown program: ${selector}";;
     esac
 }
@@ -48,6 +49,72 @@ go_test_module() {
     go test -v ${1}
     exit_code=$?
     echo "####################################################################################################"
+    return $exit_code
+}
+
+go_run_sandbox_week09_rwa_test(){
+    local module="rwa"
+    local moduleParentDir="week09_homework"
+    local modulePath=${PRJ_DIR}/sandbox/${moduleParentDir}/${module}
+    local exit_code=0
+
+    create_project(){ # need this only once
+        pushd ${PRJ_DIR}/sandbox
+        mkdir -p ${modulePath}; pushd ${modulePath} || exit42
+
+        if [ -f ./main.go ]; then
+            echo "project created already"; exit 42
+        else
+            echo "creating project ..."
+        fi
+
+        go mod init ${module}
+
+        # makes go vet happy
+cat > main.go << EOT
+        package main
+        func main() { panic("not yet") }
+EOT
+
+        go mod tidy
+
+        popd # workspace
+        # go work init
+        # go work edit -dropuse=./week05_homework/code_gen
+        go work use ./${moduleParentDir}/${module}
+    }
+    # create_project
+
+    pushd ${PRJ_DIR}/sandbox/${moduleParentDir}
+
+    pushd ${modulePath} && go mod tidy && popd
+    gofmt -w $module || exit
+    go vet $module
+    # go vet -stringintconv=false $module # go doc cmd/vet
+    # golangci-lint run $module # slow
+
+    echo "####################################################################################################"
+    go test -v --failfast $module # during development: failfast
+    # go test -v $module
+    # go test -v -race $module # final check
+
+    # go run -race $module
+    # go run $module
+    # go_run_module $module
+
+    # https://pkg.go.dev/cmd/go#hdr-Testing_flags
+    # go test -bench . $module
+    # go test -bench . -benchmem $module
+    # go test -bench '.*Mem.*' -benchmem $module
+    # go test -bench '.*Xml.*' -benchmem $module
+
+    # go test -v -cover $module
+    # go test -coverprofile=cover.out $module
+    # go tool cover -html=cover.out -o cover.html
+
+    exit_code=$?
+    echo "####################################################################################################"
+    popd    
     return $exit_code
 }
 
@@ -113,7 +180,7 @@ EOT
     exit_code=$?
     echo "####################################################################################################"
     popd    
-    return $exit_code  
+    return $exit_code
 }
 go_run_sandbox_week07_async_logger_test(){
     local module="async_logger"
