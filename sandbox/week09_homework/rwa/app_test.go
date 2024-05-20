@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"math/rand"
+	// "io/ioutil" deprecated
+	ioutil "io"
+	// "math/rand"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -28,7 +29,7 @@ func (ft *FakeTime) UnmarshalJSON(data []byte) error {
 	}
 	_, err := time.Parse(`"`+time.RFC3339+`"`, string(data))
 	// fmt.Println(string(data), tt)
-	ft.Valid = err == nil
+	ft.Valid = (err == nil)
 	return err
 }
 
@@ -57,6 +58,7 @@ type TestArticle struct {
 	UpdatedAt      FakeTime    `json:"updatedAt"`
 }
 
+// strP returns ref to given string
 func strP(in string) *string {
 	return &in
 }
@@ -84,7 +86,7 @@ func WeirdMagicClone(in interface{}) interface{} {
 }
 
 func TestApp(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
+	// rand.Seed(time.Now().UnixNano()) deprecated
 
 	var (
 		app = GetApp()
@@ -140,7 +142,7 @@ func TestApp(t *testing.T) {
 			},
 			Before: nil,
 			After:  nil,
-		},
+		}, // 0
 		&ApiTestCase{
 			Name:           "Auth - Login",
 			Method:         "POST",
@@ -168,7 +170,7 @@ func TestApp(t *testing.T) {
 				tplParams["token1"] = val.String()
 				return nil
 			},
-		},
+		}, // 1
 		&ApiTestCase{
 			Name:           "Auth - Current User",
 			Method:         "GET",
@@ -190,7 +192,7 @@ func TestApp(t *testing.T) {
 			},
 			Before: nil,
 			After:  nil,
-		},
+		}, // 2
 		&ApiTestCase{
 			Name:           "Auth - Update User",
 			Method:         "PUT",
@@ -222,7 +224,7 @@ func TestApp(t *testing.T) {
 				tplParams["token1"] = val.String()
 				return nil
 			},
-		},
+		}, // 3
 		&ApiTestCase{
 			Name:           "Auth - Current User after Update",
 			Method:         "GET",
@@ -242,7 +244,7 @@ func TestApp(t *testing.T) {
 					},
 				}
 			},
-		},
+		}, // 4
 		&ApiTestCase{
 			Name:           "Auth - Register second user",
 			Method:         "POST",
@@ -269,7 +271,7 @@ func TestApp(t *testing.T) {
 				tplParams["token2"] = val.String()
 				return nil
 			},
-		},
+		}, // 5
 
 		&ApiTestCase{
 			Name:           "Articles - Create Article - First user",
@@ -304,7 +306,7 @@ func TestApp(t *testing.T) {
 				tplParams["slug1"] = val.String()
 				return nil
 			},
-		},
+		}, // 6
 		&ApiTestCase{
 			Name:           "Articles - Create Article - Second user",
 			Method:         "POST",
@@ -337,7 +339,7 @@ func TestApp(t *testing.T) {
 				tplParams["slug2"] = val.String()
 				return nil
 			},
-		},
+		}, // 7
 
 		&ApiTestCase{
 			Name:           "Articles - All Articles",
@@ -381,7 +383,7 @@ func TestApp(t *testing.T) {
 			},
 			Before: nil,
 			After:  nil,
-		},
+		}, // 8
 
 		&ApiTestCase{
 			Name:           "Articles - by author",
@@ -413,7 +415,7 @@ func TestApp(t *testing.T) {
 			},
 			Before: nil,
 			After:  nil,
-		},
+		}, // 9
 		&ApiTestCase{
 			Name:           "Articles - by tag",
 			Method:         "GET",
@@ -444,7 +446,7 @@ func TestApp(t *testing.T) {
 			},
 			Before: nil,
 			After:  nil,
-		},
+		}, // 10
 
 		&ApiTestCase{
 			Name:           "No Auth - Current User - No Auth",
@@ -452,31 +454,31 @@ func TestApp(t *testing.T) {
 			URL:            "{{APIURL}}/user",
 			TokenName:      "", // none
 			ResponseStatus: 401,
-		},
+		}, // 11
 		&ApiTestCase{
 			Name:           "No Auth - Current User Logout - Require Auth",
 			Method:         "POST",
 			URL:            "{{APIURL}}/user/logout",
 			TokenName:      "", // none
 			ResponseStatus: 401,
-		},
+		}, // 12
 		&ApiTestCase{
 			Name:           "No Auth - Current User Logout",
 			Method:         "POST",
 			URL:            "{{APIURL}}/user/logout",
 			TokenName:      "token1",
 			ResponseStatus: 200,
-		},
+		}, // 13
 		&ApiTestCase{
 			Name:           "No Auth - Current User - No Auth after logout",
 			Method:         "GET",
 			URL:            "{{APIURL}}/user",
 			TokenName:      "token1",
 			ResponseStatus: 401,
-		},
+		}, // 14
 	}
 
-	for _, item := range testCases {
+	for caseIdx, item := range testCases {
 		ok := t.Run(item.Name, func(t *testing.T) {
 
 			if item.Before != nil {
@@ -505,7 +507,7 @@ func TestApp(t *testing.T) {
 
 			resp, err := client.Do(req)
 			if err != nil {
-				t.Fatalf("request error: %v", err)
+				t.Fatalf("[%d] request error: %v", caseIdx, err)
 			}
 			defer resp.Body.Close()
 			respBody, err := ioutil.ReadAll(resp.Body)
@@ -513,7 +515,7 @@ func TestApp(t *testing.T) {
 			// t.Logf("\nreq body: %s\nresp body: %s", body, respBody)
 
 			if item.ResponseStatus != resp.StatusCode {
-				t.Fatalf("bad status code, want: %v, have:%v", item.ResponseStatus, resp.StatusCode)
+				t.Fatalf("[%d] bad status code, want: %v, have:%v", caseIdx, item.ResponseStatus, resp.StatusCode)
 			}
 
 			// for cases with just status check
@@ -524,18 +526,18 @@ func TestApp(t *testing.T) {
 			got := WeirdMagicClone(item.Expected)
 			err = json.Unmarshal(respBody, got)
 			if err != nil {
-				t.Fatalf("cant unmarshal resp: %s, body: %s", err, respBody)
+				t.Fatalf("[%d] cant unmarshal resp: %s, body: %s", caseIdx, err, respBody)
 			}
 
 			diff, equal := messagediff.PrettyDiff(item.Expected, got)
 			if !equal {
-				t.Fatalf("\033[1;31mresults not match\033[0m\n \033[1;35mbody\033[0m: %s\n\033[1;32mwant\033[0m %#v\n\033[1;34mgot\033[0m %#v\n\033[1;33mdiff\033[0m:\n%s", respBody, item.Expected, got, diff)
+				t.Fatalf("[%d]\n\033[1;31mresults not match\033[0m\n \033[1;35mbody\033[0m: %s\n\033[1;32mwant\033[0m %#v\n\033[1;34mgot\033[0m %#v\n\033[1;33mdiff\033[0m:\n%s", caseIdx, respBody, item.Expected, got, diff)
 			}
 
 			if item.After != nil {
 				err = item.After(resp, respBody, got)
 				if err != nil {
-					t.Fatalf("after func failed %s", err)
+					t.Fatalf("[%d] after func failed %s", caseIdx, err)
 				}
 			}
 		})
