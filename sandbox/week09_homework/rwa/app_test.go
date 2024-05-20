@@ -523,19 +523,19 @@ func TestApp(t *testing.T) {
 				return
 			}
 
-			got := WeirdMagicClone(item.Expected)
-			err = json.Unmarshal(respBody, got)
+			actual := WeirdMagicClone(item.Expected)
+			err = json.Unmarshal(respBody, actual)
 			if err != nil {
 				t.Fatalf("[%d] cant unmarshal resp: %s, body: %s", caseIdx, err, respBody)
 			}
 
-			diff, equal := messagediff.PrettyDiff(item.Expected, got)
+			diff, equal := messagediff.PrettyDiff(item.Expected, actual)
 			if !equal {
-				t.Fatalf("[%d]\n\033[1;31mresults not match\033[0m\n \033[1;35mbody\033[0m: %s\n\033[1;32mwant\033[0m %#v\n\033[1;34mgot\033[0m %#v\n\033[1;33mdiff\033[0m:\n%s", caseIdx, respBody, item.Expected, got, diff)
+				t.Fatalf("[%d]\n\033[1;31mresults not match\033[0m\n \033[1;35mbody\033[0m: %s\n\033[1;32mwant\033[0m %#v\n\033[1;34mgot\033[0m %#v\n\033[1;33mdiff\033[0m:\n%s", caseIdx, respBody, item.Expected, actual, diff)
 			}
 
 			if item.After != nil {
-				err = item.After(resp, respBody, got)
+				err = item.After(resp, respBody, actual)
 				if err != nil {
 					t.Fatalf("[%d] after func failed %s", caseIdx, err)
 				}
