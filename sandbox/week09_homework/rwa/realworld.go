@@ -6,22 +6,31 @@ import (
 	"io"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 )
 
 // сюда писать код
 
 func GetApp() http.Handler {
-	return NewConduitAppHttpHandlers(NewRAMStorage())
+	return NewConduitAppHttpHandlers(
+		// DI
+		NewRAMStorage(),
+		NewSimpleSessionManager(),
+	)
 }
+
+var _ http.Handler = &ConduitAppHttpHandlers{} // type check
 
 type ConduitAppHttpHandlers struct {
-	storage Storage
+	storage  Storage
+	sessions SessionManager
 }
 
-func NewConduitAppHttpHandlers(stor Storage) *ConduitAppHttpHandlers {
+func NewConduitAppHttpHandlers(stor Storage, sm SessionManager) *ConduitAppHttpHandlers {
 	return &ConduitAppHttpHandlers{
-		storage: stor,
+		storage:  stor,
+		sessions: sm,
 	}
 }
 
@@ -77,30 +86,17 @@ func (srv *ConduitAppHttpHandlers) serveGet(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-func (srv *ConduitAppHttpHandlers) showCurrentUser(w http.ResponseWriter, r *http.Request) {
-	var x = &struct {
-		User UserProfile
-	}{
-		User: UserProfile{
-			Email:     "golang@example.com",
-			CreatedAt: now_RFC3339(),
-			UpdatedAt: now_RFC3339(),
-			Username:  "golang",
-		},
-	}
-	err := writeResponse(w, x)
-	panicOnError("writeResponse failed", err)
-}
-
 // updateCurrentUser: update current user profile, use storage to save data between requests
 func (srv *ConduitAppHttpHandlers) updateCurrentUser(w http.ResponseWriter, r *http.Request) {
-	var currentUser = UserProfile{
-		Email:     "golang@example.com",
-		CreatedAt: now_RFC3339(),
-		UpdatedAt: now_RFC3339(),
-		Username:  "golang",
-	}
-	var err error
+	// read: email, bio, token
+	sessionID, err := getSessionIDFromReq(r)
+	panicOnError("getSessionIDFromReq failed", err)
+	userID, err := srv.sessions.GetUserID(sessionID)
+	panicOnError("GetUserID failed", err)
+	user, err := getUserFromStorage(srv.storage, userID)
+	panicOnError("getUserFromStorage failed", err)
+
+	user.Token = sessionID
 
 	bodyMap, err := unmarshalBody(r)
 	panicOnError("unmarshalBody failed", err)
@@ -110,12 +106,9 @@ func (srv *ConduitAppHttpHandlers) updateCurrentUser(w http.ResponseWriter, r *h
 		userMap, err := giveMeStrings(userData.(map[string]any)) // recover from panic
 		panicOnError("giveMeStrings failed", err)
 
-		user, err := getUserByEmail(srv.storage, currentUser.Email)
-		panicOnError("getUserByEmail failed", err)
-
 		user.updateFromMap(userMap)
 
-		err = putUserByEmail(srv.storage, user)
+		err = putUser2Storage(srv.storage, user)
 		panicOnError("putUserByEmail failed", err)
 
 		err = writeUserResponse(w, user)
@@ -127,36 +120,59 @@ func (srv *ConduitAppHttpHandlers) updateCurrentUser(w http.ResponseWriter, r *h
 	}
 }
 
+func (srv *ConduitAppHttpHandlers) showCurrentUser(w http.ResponseWriter, r *http.Request) {
+	// get userID from token, load user data
+	sessionID, err := getSessionIDFromReq(r)
+	panicOnError("getSessionIDFromReq failed", err)
+	userID, err := srv.sessions.GetUserID(sessionID)
+	panicOnError("GetUserID failed", err)
+	user, err := getUserFromStorage(srv.storage, userID)
+	panicOnError("getUserFromStorage failed", err)
+
+	err = writeUserResponse(w, user)
+	panicOnError("writeUserResponse failed", err)
+}
+
 func (srv *ConduitAppHttpHandlers) loginUser(w http.ResponseWriter, r *http.Request) {
-	// show("loginUser, (email, password): ", r.FormValue("email"), r.FormValue("password"))
+	// TODO: read from request: email, password
+	sessionID, userID := "foobar", "42"
+
 	var user = UserProfile{
+		ID:        userID,
 		Email:     "golang@example.com",
 		CreatedAt: now_RFC3339(),
 		UpdatedAt: now_RFC3339(),
 		Username:  "golang",
+		Token:     sessionID, // for test machinery
 	}
 
-	// err := putUserByEmail(srv.storage, user)
-	// panicOnError("putUserByEmail failed", err)
+	err := srv.addNewSession(userID, sessionID)
+	panicOnError("addNewSession failed", err)
 
-	err := writeUserResponse(w, user)
+	err = writeUserResponse(w, user)
 	panicOnError("writeUserResponse failed", err)
 }
 
 func (srv *ConduitAppHttpHandlers) registerNewUser(w http.ResponseWriter, r *http.Request) {
+	// TODO: read from request: email, password, username
 	var user = UserProfile{
+		ID:        "42",
 		Email:     "golang@example.com",
 		CreatedAt: now_RFC3339(),
 		UpdatedAt: now_RFC3339(),
 		Username:  "golang",
 	}
 
-	err := putUserByEmail(srv.storage, user)
+	err := putUser2Storage(srv.storage, user)
 	panicOnError("putUserByEmail failed", err)
 
 	var u = &struct{ User UserProfile }{User: user}
 	err = writeResponseWithCode(w, u, http.StatusCreated)
 	panicOnError("writeResponseWithCode failed", err)
+}
+
+func (srv *ConduitAppHttpHandlers) addNewSession(userID, sessionID string) error {
+	return srv.sessions.AddSession(userID, sessionID)
 }
 
 func unmarshalBody(r *http.Request) (map[string]any, error) {
@@ -189,6 +205,39 @@ func writeResponseWithCode(w http.ResponseWriter, x any, code int) error {
 	return err
 }
 
+type SessionManager interface {
+	AddSession(userID, sessionID string) error
+	GetUserID(sessionID string) (string, error)
+}
+
+var _ SessionManager = &SimpleSessionManager{} // type check
+
+type SimpleSessionManager struct {
+	data map[string]string // not ready for async
+}
+
+func NewSimpleSessionManager() *SimpleSessionManager {
+	return &SimpleSessionManager{
+		data: make(map[string]string, 16),
+	}
+}
+
+// AddSession implements SessionManager.
+func (sm *SimpleSessionManager) AddSession(userID string, sessionID string) error {
+	sm.data[sessionID] = userID
+	return nil
+}
+
+// GetUserID implements SessionManager.
+func (sm *SimpleSessionManager) GetUserID(sessionID string) (string, error) {
+	// userID, err := srv.sessions.GetUserID(sessionID)
+	uid, exists := sm.data[sessionID]
+	if exists {
+		return uid, nil
+	}
+	return "", fmt.Errorf("GetUserID failed, session %#v not exist", sessionID)
+}
+
 type Storage interface {
 	// Set(key, value any) error
 	// Get(key string) (any, error)
@@ -196,11 +245,11 @@ type Storage interface {
 	SetAll([]any) error
 }
 
+var _ Storage = &RAMStorage{} // type check
+
 type RAMStorage struct {
 	data []any
 }
-
-var _ Storage = &RAMStorage{} // type check
 
 func NewRAMStorage() *RAMStorage {
 	return &RAMStorage{
@@ -210,43 +259,43 @@ func NewRAMStorage() *RAMStorage {
 
 // GetAll implements Storage.
 func (stor RAMStorage) GetAll() ([]any, error) {
-	return stor.data, nil
+	return stor.data, nil // not ready for async
 }
 
 // SetAll implements Storage.
 func (stor *RAMStorage) SetAll(items []any) error {
-	stor.data = items
+	stor.data = items // not ready for async
 	return nil
 }
 
-// getUserByEmail: use email as key to search in stored items
-func getUserByEmail(stor Storage, email string) (UserProfile, error) {
+// getUserFromStorage: use user.id as key to search in stored items
+func getUserFromStorage(stor Storage, userID string) (UserProfile, error) {
 	items, err := stor.GetAll()
 	if err == nil {
 		for _, x := range items {
 			user := x.(UserProfile) // panic if not only users in storage
-			if user.Email == email {
+			if user.ID == userID {
 				return user, nil
 			}
 		}
 	} else {
 		return UserProfile{}, err
 	}
-	return UserProfile{}, fmt.Errorf("getUserByEmail failed. email %#v not found in %d records", email, len(items))
+	return UserProfile{}, fmt.Errorf("getUserByEmail failed. ID %#v not found in %d records", userID, len(items))
 }
 
-// putUserByEmail: use email as key in stored items
-func putUserByEmail(stor Storage, user UserProfile) error {
+// putUser2Storage: use user.id as key in stored items
+func putUser2Storage(stor Storage, user UserProfile) error {
 	items, err := stor.GetAll()
 	if err == nil {
 		items = slices.DeleteFunc(items, func(x any) bool {
-			return (x.(UserProfile)).Email == user.Email // panic if not only users in storage
+			return (x.(UserProfile)).ID == user.ID // panic if not only users in storage
 		})
 		items = append(items, user)
 
 		return stor.SetAll(items)
 	}
-	return err // fmt.Errorf("putUserByEmail failed. email: %#v; user: %#v", email, user)
+	return err
 }
 
 type UserProfile struct {
@@ -286,6 +335,18 @@ func giveMeStrings(xs map[string]any) (map[string]string, error) {
 		ys[k] = v.(string) // panic
 	}
 	return ys, nil
+}
+
+func getSessionIDFromReq(r *http.Request) (string, error) {
+	// req.Header.Add("Authorization", "Token "+tplParams[item.TokenName])
+	token, found := strings.CutPrefix(
+		r.Header.Get("Authorization"),
+		"Token ",
+	)
+	if found {
+		return token, nil
+	}
+	return "", fmt.Errorf("getSessionIDFromReq failed, token not found")
 }
 
 // --- system-wide tools ---
