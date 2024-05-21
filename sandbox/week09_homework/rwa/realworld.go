@@ -6,7 +6,9 @@ import (
 	"io"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -88,7 +90,6 @@ func (srv *ConduitAppHttpHandlers) serveGet(w http.ResponseWriter, r *http.Reque
 
 // updateCurrentUser: update current user profile, use storage to save data between requests
 func (srv *ConduitAppHttpHandlers) updateCurrentUser(w http.ResponseWriter, r *http.Request) {
-	// read: email, bio, token
 	sessionID, err := getSessionIDFromReq(r)
 	panicOnError("getSessionIDFromReq failed", err)
 	userID, err := srv.sessions.GetUserID(sessionID)
@@ -96,36 +97,35 @@ func (srv *ConduitAppHttpHandlers) updateCurrentUser(w http.ResponseWriter, r *h
 	user, err := getUserFromStorage(srv.storage, userID)
 	panicOnError("getUserFromStorage failed", err)
 
-	user.Token = sessionID
-
 	bodyMap, err := unmarshalBody(r)
 	panicOnError("unmarshalBody failed", err)
 
 	userData, userExists := bodyMap["user"]
-	if userExists {
-		userMap, err := giveMeStrings(userData.(map[string]any)) // recover from panic
-		panicOnError("giveMeStrings failed", err)
-
-		user.updateFromMap(userMap)
-
-		err = putUser2Storage(srv.storage, user)
-		panicOnError("putUserByEmail failed", err)
-
-		err = writeUserResponse(w, user)
-		panicOnError("writeUserResponse failed", err)
-
-	} else {
+	if !userExists {
 		show("updateCurrentUser, no user in given data")
 		http.Error(w, "oops", http.StatusBadRequest)
 	}
+
+	userMap, err := giveMeStrings(userData.(map[string]any)) // recover from panic
+	panicOnError("giveMeStrings failed", err)
+
+	user.updateFromMap(userMap)
+
+	err = putUser2Storage(srv.storage, user)
+	panicOnError("putUserByEmail failed", err)
+
+	user.Token = sessionID
+	err = writeUserResponse(w, user)
+	panicOnError("writeUserResponse failed", err)
 }
 
 func (srv *ConduitAppHttpHandlers) showCurrentUser(w http.ResponseWriter, r *http.Request) {
-	// get userID from token, load user data
 	sessionID, err := getSessionIDFromReq(r)
 	panicOnError("getSessionIDFromReq failed", err)
+
 	userID, err := srv.sessions.GetUserID(sessionID)
 	panicOnError("GetUserID failed", err)
+
 	user, err := getUserFromStorage(srv.storage, userID)
 	panicOnError("getUserFromStorage failed", err)
 
@@ -134,38 +134,65 @@ func (srv *ConduitAppHttpHandlers) showCurrentUser(w http.ResponseWriter, r *htt
 }
 
 func (srv *ConduitAppHttpHandlers) loginUser(w http.ResponseWriter, r *http.Request) {
-	// TODO: read from request: email, password
-	sessionID, userID := "foobar", "42"
-
-	var user = UserProfile{
-		ID:        userID,
-		Email:     "golang@example.com",
-		CreatedAt: now_RFC3339(),
-		UpdatedAt: now_RFC3339(),
-		Username:  "golang",
-		Token:     sessionID, // for test machinery
+	bodyMap, err := unmarshalBody(r)
+	panicOnError("unmarshalBody failed", err)
+	userData, userExists := bodyMap["user"]
+	if !userExists {
+		show("loginUser, no user in given data")
+		http.Error(w, "oops", http.StatusBadRequest)
 	}
 
-	err := srv.addNewSession(userID, sessionID)
-	panicOnError("addNewSession failed", err)
+	userMap, err := giveMeStrings(userData.(map[string]any)) // recover from panic
+	panicOnError("giveMeStrings failed", err)
 
-	err = writeUserResponse(w, user)
+	var dubiousUser = UserProfile{}
+	dubiousUser.updateFromMap(userMap) // email, password
+	// end of reading parameters.
+
+	// load user from db and check
+
+	goodUser, err := getUserFromStorageByEmail(srv.storage, dubiousUser.Email)
+	panicOnError("getUserFromStorageByEmail failed", err)
+	// TODO: check password
+
+	sessionID := srv.newSessionID()
+	err = srv.addNewSession(goodUser.ID, sessionID)
+	panicOnError("addNewSession failed", err)
+	goodUser.Token = sessionID
+
+	err = writeUserResponse(w, goodUser)
 	panicOnError("writeUserResponse failed", err)
 }
 
 func (srv *ConduitAppHttpHandlers) registerNewUser(w http.ResponseWriter, r *http.Request) {
-	// TODO: read from request: email, password, username
-	var user = UserProfile{
-		ID:        "42",
-		Email:     "golang@example.com",
-		CreatedAt: now_RFC3339(),
-		UpdatedAt: now_RFC3339(),
-		Username:  "golang",
+	bodyMap, err := unmarshalBody(r)
+	panicOnError("unmarshalBody failed", err)
+	userData, userExists := bodyMap["user"]
+	if !userExists {
+		show("registerNewUser, no user in given data")
+		http.Error(w, "oops", http.StatusBadRequest)
 	}
+	userMap, err := giveMeStrings(userData.(map[string]any)) // recover from panic
+	panicOnError("giveMeStrings failed", err)
 
-	err := putUser2Storage(srv.storage, user)
-	panicOnError("putUserByEmail failed", err)
+	sessionID, userID := srv.newSessionID(), srv.newUserID()
+	var user = UserProfile{
+		ID:        userID,
+		CreatedAt: now_RFC3339(),
+	}
+	user.updateFromMap(userMap)
+	// end of loading given params.
 
+	// save
+	err = putUser2Storage(srv.storage, user)
+	panicOnError("putUser2Storage failed", err)
+
+	// auth
+	err = srv.addNewSession(userID, sessionID)
+	panicOnError("addNewSession failed", err)
+	user.Token = sessionID
+
+	// response
 	var u = &struct{ User UserProfile }{User: user}
 	err = writeResponseWithCode(w, u, http.StatusCreated)
 	panicOnError("writeResponseWithCode failed", err)
@@ -173,6 +200,14 @@ func (srv *ConduitAppHttpHandlers) registerNewUser(w http.ResponseWriter, r *htt
 
 func (srv *ConduitAppHttpHandlers) addNewSession(userID, sessionID string) error {
 	return srv.sessions.AddSession(userID, sessionID)
+}
+
+func (srv *ConduitAppHttpHandlers) newSessionID() string {
+	return nextID()
+}
+
+func (srv *ConduitAppHttpHandlers) newUserID() string {
+	return nextID()
 }
 
 func unmarshalBody(r *http.Request) (map[string]any, error) {
@@ -281,7 +316,23 @@ func getUserFromStorage(stor Storage, userID string) (UserProfile, error) {
 	} else {
 		return UserProfile{}, err
 	}
-	return UserProfile{}, fmt.Errorf("getUserByEmail failed. ID %#v not found in %d records", userID, len(items))
+	return UserProfile{}, fmt.Errorf("getUserFromStorage failed. ID %#v not found in %d records", userID, len(items))
+}
+
+// getUserFromStorageByEmail: use email as key to search in stored items
+func getUserFromStorageByEmail(stor Storage, email string) (UserProfile, error) {
+	items, err := stor.GetAll()
+	if err == nil {
+		for _, x := range items {
+			user := x.(UserProfile) // panic if not only users in storage
+			if user.Email == email {
+				return user, nil
+			}
+		}
+	} else {
+		return UserProfile{}, err
+	}
+	return UserProfile{}, fmt.Errorf("getUserFromStorageByEmail failed. email %#v not found in %d records", email, len(items))
 }
 
 // putUser2Storage: use user.id as key in stored items
@@ -308,33 +359,28 @@ type UserProfile struct {
 	Image     string `json:"image"`
 	Token     string `json:"token" testdiff:"ignore"`
 	Following bool
+	password  string
 }
 
 func (user *UserProfile) updateFromMap(data map[string]string) *UserProfile {
-	var x string
-	var exists bool
-
 	// TODO: add other user fields
-
-	x, exists = data["email"]
-	if exists {
-		user.Email = x
+	for k, v := range data {
+		switch k {
+		case "username":
+			user.Username = v
+		case "password":
+			user.password = v
+		case "email":
+			user.Email = v
+		case "bio":
+			user.Bio = v
+		default:
+			show("unknown user field: ", k, v)
+		}
 	}
-
-	x, exists = data["bio"]
-	if exists {
-		user.Bio = x
-	}
+	user.UpdatedAt = now_RFC3339() // TODO: if updated
 
 	return user
-}
-
-func giveMeStrings(xs map[string]any) (map[string]string, error) {
-	var ys = make(map[string]string, 16)
-	for k, v := range xs {
-		ys[k] = v.(string) // panic
-	}
-	return ys, nil
 }
 
 func getSessionIDFromReq(r *http.Request) (string, error) {
@@ -350,6 +396,20 @@ func getSessionIDFromReq(r *http.Request) (string, error) {
 }
 
 // --- system-wide tools ---
+
+var globalCounter = new(atomic.Uint64)
+
+func nextID() string {
+	return strconv.FormatInt(int64(globalCounter.Add(1)), 36)
+}
+
+func giveMeStrings(xs map[string]any) (map[string]string, error) {
+	var ys = make(map[string]string, 16)
+	for k, v := range xs {
+		ys[k] = v.(string) // panic
+	}
+	return ys, nil
+}
 
 func panicOnError(msg string, err error) {
 	if err != nil {
