@@ -36,6 +36,7 @@ func NewConduitAppHttpHandlers(stor Storage, sm SessionManager) *ConduitAppHttpH
 	}
 }
 
+// ServeHTTP: implements http.Handler; routing based on http method name
 func (srv *ConduitAppHttpHandlers) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	show("ConduitAppHttpHandlers.ServeHTTP, req: ", r.URL, r)
 	switch r.Method {
@@ -71,6 +72,8 @@ func (srv *ConduitAppHttpHandlers) servePost(w http.ResponseWriter, r *http.Requ
 		srv.registerNewUser(w, r)
 	case "/api/users/login":
 		srv.loginUser(w, r)
+	case "/api/articles":
+		srv.createNewArticle(w, r)
 
 	default:
 		show("unknown post endpoint: ", r.URL.Path)
@@ -178,7 +181,7 @@ func (srv *ConduitAppHttpHandlers) registerNewUser(w http.ResponseWriter, r *htt
 	sessionID, userID := srv.newSessionID(), srv.newUserID()
 	var user = UserProfile{
 		ID:        userID,
-		CreatedAt: now_RFC3339(),
+		CreatedAt: strRef(now_RFC3339()),
 	}
 	user.updateFromMap(userMap)
 	// end of loading given params.
@@ -198,6 +201,49 @@ func (srv *ConduitAppHttpHandlers) registerNewUser(w http.ResponseWriter, r *htt
 	panicOnError("writeResponseWithCode failed", err)
 }
 
+func (srv *ConduitAppHttpHandlers) createNewArticle(w http.ResponseWriter, r *http.Request) {
+	// load params
+	bodyMap, err := unmarshalBody(r)
+	panicOnError("unmarshalBody failed", err)
+	articleData, articleExists := bodyMap["article"]
+	if !articleExists {
+		show("createNewArticle, no article in given data")
+		http.Error(w, "oops", http.StatusBadRequest)
+	}
+
+	// decode article
+	var article = PostedArticle{
+		CreatedAt: now_RFC3339(),
+	}
+	err = article.updateFromMap(articleData.(map[string]any))
+	panicOnError("article.loadFromJson failed", err)
+
+	// load user
+	sessionID, err := getSessionIDFromReq(r)
+	panicOnError("getSessionIDFromReq failed", err)
+	userID, err := srv.sessions.GetUserID(sessionID)
+	panicOnError("GetUserID failed", err)
+	user, err := getUserFromStorage(srv.storage, userID)
+	panicOnError("getUserFromStorage failed", err)
+
+	// no idea why is that. I'm to lazy to search for contract specs
+	user.Email = ""
+	user.CreatedAt = nil
+	user.UpdatedAt = nil
+
+	article.Author = user // show("user: ", user.Email)
+	article.Slug = srv.newArticleID()
+
+	// save
+	err = putArticle2Storage(srv.storage, article)
+	panicOnError("putArticle2Storage failed", err)
+
+	// response
+	var a = &struct{ Article PostedArticle }{Article: article}
+	err = writeResponseWithCode(w, a, http.StatusCreated)
+	panicOnError("writeResponseWithCode failed", err)
+}
+
 func (srv *ConduitAppHttpHandlers) addNewSession(userID, sessionID string) error {
 	return srv.sessions.AddSession(userID, sessionID)
 }
@@ -207,6 +253,10 @@ func (srv *ConduitAppHttpHandlers) newSessionID() string {
 }
 
 func (srv *ConduitAppHttpHandlers) newUserID() string {
+	return nextID()
+}
+
+func (srv *ConduitAppHttpHandlers) newArticleID() string {
 	return nextID()
 }
 
@@ -274,38 +324,51 @@ func (sm *SimpleSessionManager) GetUserID(sessionID string) (string, error) {
 }
 
 type Storage interface {
-	// Set(key, value any) error
-	// Get(key string) (any, error)
-	GetAll() ([]any, error)
-	SetAll([]any) error
+	GetAllUsers() ([]any, error)
+	SetAllUsers([]any) error
+	GetAllArticles() ([]any, error)
+	SetAllArticles([]any) error
 }
 
 var _ Storage = &RAMStorage{} // type check
 
 type RAMStorage struct {
-	data []any
+	usersData    []any
+	articlesData []any
 }
 
 func NewRAMStorage() *RAMStorage {
 	return &RAMStorage{
-		data: make([]any, 0, 16),
+		usersData:    make([]any, 0, 16),
+		articlesData: make([]any, 0, 16),
 	}
 }
 
-// GetAll implements Storage.
-func (stor RAMStorage) GetAll() ([]any, error) {
-	return stor.data, nil // not ready for async
+// GetAllUsers implements Storage.
+func (stor RAMStorage) GetAllUsers() ([]any, error) {
+	return stor.usersData, nil // not ready for async
 }
 
-// SetAll implements Storage.
-func (stor *RAMStorage) SetAll(items []any) error {
-	stor.data = items // not ready for async
+// SetAllUsers implements Storage.
+func (stor *RAMStorage) SetAllUsers(items []any) error {
+	stor.usersData = items // not ready for async
+	return nil
+}
+
+// GetAllArticles implements Storage.
+func (stor *RAMStorage) GetAllArticles() ([]any, error) {
+	return stor.articlesData, nil // not async code
+}
+
+// SetAllArticles implements Storage.
+func (stor *RAMStorage) SetAllArticles(items []any) error {
+	stor.articlesData = items // not async code
 	return nil
 }
 
 // getUserFromStorage: use user.id as key to search in stored items
 func getUserFromStorage(stor Storage, userID string) (UserProfile, error) {
-	items, err := stor.GetAll()
+	items, err := stor.GetAllUsers()
 	if err == nil {
 		for _, x := range items {
 			user := x.(UserProfile) // panic if not only users in storage
@@ -321,7 +384,7 @@ func getUserFromStorage(stor Storage, userID string) (UserProfile, error) {
 
 // getUserFromStorageByEmail: use email as key to search in stored items
 func getUserFromStorageByEmail(stor Storage, email string) (UserProfile, error) {
-	items, err := stor.GetAll()
+	items, err := stor.GetAllUsers()
 	if err == nil {
 		for _, x := range items {
 			user := x.(UserProfile) // panic if not only users in storage
@@ -337,27 +400,58 @@ func getUserFromStorageByEmail(stor Storage, email string) (UserProfile, error) 
 
 // putUser2Storage: use user.id as key in stored items
 func putUser2Storage(stor Storage, user UserProfile) error {
-	items, err := stor.GetAll()
+	items, err := stor.GetAllUsers()
 	if err == nil {
 		items = slices.DeleteFunc(items, func(x any) bool {
-			return (x.(UserProfile)).ID == user.ID // panic if not only users in storage
+			return (x.(UserProfile)).ID == user.ID
 		})
 		items = append(items, user)
 
-		return stor.SetAll(items)
+		return stor.SetAllUsers(items)
 	}
 	return err
 }
 
+// putArticle2Storage: use article.slug as key
+func putArticle2Storage(stor Storage, article PostedArticle) error {
+	items, err := stor.GetAllArticles()
+	if err == nil {
+		items = slices.DeleteFunc(items, func(x any) bool {
+			return (x.(PostedArticle)).Slug == article.Slug
+		})
+		items = append(items, article)
+
+		return stor.SetAllArticles(items)
+	}
+	return err
+}
+
+// getArticleFromStorage: use article.slug as key
+func getArticleFromStorage(stor Storage, slug string) (PostedArticle, error) {
+	items, err := stor.GetAllArticles()
+	if err == nil {
+		for _, x := range items {
+			article := x.(PostedArticle)
+			if article.Slug == slug {
+				return article, nil
+			}
+		}
+	} else {
+		return PostedArticle{}, err
+	}
+	return PostedArticle{}, fmt.Errorf("getArticleFromStorage failed. slug %#v not found in %d records", slug, len(items))
+}
+
+// time as `RFC3339     = "2006-01-02T15:04:05Z07:00"`
 type UserProfile struct {
-	ID        string `json:"id" testdiff:"ignore"`
-	Email     string `json:"email"`
-	CreatedAt string `json:"createdAt"` // RFC3339     = "2006-01-02T15:04:05Z07:00"
-	UpdatedAt string `json:"updatedAt"` // RFC3339     = "2006-01-02T15:04:05Z07:00"
-	Username  string `json:"username"`
-	Bio       string `json:"bio"`
-	Image     string `json:"image"`
-	Token     string `json:"token" testdiff:"ignore"`
+	ID        string  `json:"id" testdiff:"ignore"`
+	Email     string  `json:"email"`
+	CreatedAt *string `json:"createdAt"`
+	UpdatedAt *string `json:"updatedAt"`
+	Username  string  `json:"username"`
+	Bio       string  `json:"bio"`
+	Image     string  `json:"image"`
+	Token     string  `json:"token" testdiff:"ignore"`
 	Following bool
 	password  string
 }
@@ -378,9 +472,56 @@ func (user *UserProfile) updateFromMap(data map[string]string) *UserProfile {
 			show("unknown user field: ", k, v)
 		}
 	}
-	user.UpdatedAt = now_RFC3339() // TODO: if updated
+	user.UpdatedAt = strRef(now_RFC3339()) // TODO: if updated
 
 	return user
+}
+
+type PostedArticle struct {
+	// simple decoding
+	Slug        string `json:"slug" testdiff:"ignore"` // id
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Body        string `json:"body"`
+	CreatedAt   string `json:"createdAt"`
+	UpdatedAt   string `json:"updatedAt"`
+	// complicated decoding
+	Author         UserProfile `json:"author"`
+	TagList        []string    `json:"tagList"`
+	FavoritesCount int         `json:"favoritesCount"`
+	Favorited      bool        `json:"favorited"`
+}
+
+func (a *PostedArticle) updateFromMap(data map[string]any) error {
+	var _str = func(x any) string {
+		return x.(string)
+	}
+	var _list = func(x any) []string {
+		var list = make([]string, 0, 4)
+		for _, x := range x.([]any) {
+			list = append(list, x.(string))
+		}
+		return list
+	}
+
+	for k, v := range data {
+		switch k {
+		// case "slug":
+		case "title":
+			a.Title = _str(v)
+		case "description":
+			a.Description = _str(v)
+		case "body":
+			a.Body = _str(v)
+		case "tagList":
+			a.TagList = _list(v)
+		default:
+			show("unknown article field: ", k, v)
+		}
+	}
+	a.UpdatedAt = now_RFC3339() // TODO: if updated
+
+	return nil // TODO: if no fields found: error
 }
 
 func getSessionIDFromReq(r *http.Request) (string, error) {
@@ -415,6 +556,10 @@ func panicOnError(msg string, err error) {
 	if err != nil {
 		panic(msg + ": " + err.Error())
 	}
+}
+
+func strRef(in string) *string {
+	return &in
 }
 
 // ts returns current timestamp in RFC3339 with milliseconds
