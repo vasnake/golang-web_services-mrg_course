@@ -38,7 +38,7 @@ func NewConduitAppHttpHandlers(stor Storage, sm SessionManager) *ConduitAppHttpH
 
 // ServeHTTP: implements http.Handler; routing based on http method name
 func (srv *ConduitAppHttpHandlers) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	show("ConduitAppHttpHandlers.ServeHTTP, req: ", r.URL, r)
+	// show("ConduitAppHttpHandlers.ServeHTTP, req: ", r.URL, r)
 	switch r.Method {
 
 	case "POST":
@@ -72,6 +72,8 @@ func (srv *ConduitAppHttpHandlers) servePost(w http.ResponseWriter, r *http.Requ
 		srv.registerNewUser(w, r)
 	case "/api/users/login":
 		srv.loginUser(w, r)
+	case "/api/user/logout":
+		srv.logoutUser(w, r)
 	case "/api/articles":
 		srv.createNewArticle(w, r)
 
@@ -85,6 +87,8 @@ func (srv *ConduitAppHttpHandlers) serveGet(w http.ResponseWriter, r *http.Reque
 
 	case "/api/user":
 		srv.showCurrentUser(w, r)
+	case "/api/articles":
+		srv.showAllArticles(w, r)
 
 	default:
 		show("unknown get endpoint: ", r.URL.Path)
@@ -94,9 +98,17 @@ func (srv *ConduitAppHttpHandlers) serveGet(w http.ResponseWriter, r *http.Reque
 // updateCurrentUser: update current user profile, use storage to save data between requests
 func (srv *ConduitAppHttpHandlers) updateCurrentUser(w http.ResponseWriter, r *http.Request) {
 	sessionID, err := getSessionIDFromReq(r)
-	panicOnError("getSessionIDFromReq failed", err)
+	if err != nil {
+		http.Error(w, "login or register required", http.StatusUnauthorized)
+		return
+	}
+
 	userID, err := srv.sessions.GetUserID(sessionID)
-	panicOnError("GetUserID failed", err)
+	if err != nil {
+		http.Error(w, "given session not exists", http.StatusUnauthorized)
+		return
+	}
+
 	user, err := getUserFromStorage(srv.storage, userID)
 	panicOnError("getUserFromStorage failed", err)
 
@@ -124,16 +136,32 @@ func (srv *ConduitAppHttpHandlers) updateCurrentUser(w http.ResponseWriter, r *h
 
 func (srv *ConduitAppHttpHandlers) showCurrentUser(w http.ResponseWriter, r *http.Request) {
 	sessionID, err := getSessionIDFromReq(r)
-	panicOnError("getSessionIDFromReq failed", err)
+	if err != nil {
+		http.Error(w, "login or register required", http.StatusUnauthorized)
+		return
+	}
 
 	userID, err := srv.sessions.GetUserID(sessionID)
-	panicOnError("GetUserID failed", err)
+	if err != nil {
+		http.Error(w, "given session not exists", http.StatusUnauthorized)
+		return
+	}
 
 	user, err := getUserFromStorage(srv.storage, userID)
 	panicOnError("getUserFromStorage failed", err)
 
 	err = writeUserResponse(w, user)
 	panicOnError("writeUserResponse failed", err)
+}
+
+func (srv *ConduitAppHttpHandlers) logoutUser(w http.ResponseWriter, r *http.Request) {
+	sessionID, err := getSessionIDFromReq(r)
+	if err != nil {
+		http.Error(w, "login or register required", http.StatusUnauthorized)
+		return
+	}
+
+	srv.sessions.DropSession(sessionID)
 }
 
 func (srv *ConduitAppHttpHandlers) loginUser(w http.ResponseWriter, r *http.Request) {
@@ -201,6 +229,41 @@ func (srv *ConduitAppHttpHandlers) registerNewUser(w http.ResponseWriter, r *htt
 	panicOnError("writeResponseWithCode failed", err)
 }
 
+func (srv *ConduitAppHttpHandlers) showAllArticles(w http.ResponseWriter, r *http.Request) {
+	// get params
+	var authorName string = r.FormValue("author")
+	var tag string = r.FormValue("tag")
+
+	// get articles
+	var articles []PostedArticle
+	var err error
+	if authorName != "" {
+		articles, err = getArticlesFromStorageByAuthor(srv.storage, authorName)
+	} else {
+		articles, err = getArticlesFromStorage(srv.storage)
+	}
+	panicOnError("getArticlesFromStorage failed", err)
+
+	// filter
+	if tag != "" {
+		selected := slices.DeleteFunc(articles, func(x PostedArticle) bool {
+			tagExists := slices.Contains(x.TagList, tag)
+			return !tagExists
+		})
+		articles = selected
+	}
+
+	var x = &struct {
+		Articles      []PostedArticle `json:"articles"`
+		ArticlesCount int             `json:"articlesCount"`
+	}{
+		Articles:      articles,
+		ArticlesCount: len(articles),
+	}
+	err = writeResponse(w, x)
+	panicOnError("writeResponse failed", err)
+}
+
 func (srv *ConduitAppHttpHandlers) createNewArticle(w http.ResponseWriter, r *http.Request) {
 	// load params
 	bodyMap, err := unmarshalBody(r)
@@ -217,22 +280,31 @@ func (srv *ConduitAppHttpHandlers) createNewArticle(w http.ResponseWriter, r *ht
 	}
 	err = article.updateFromMap(articleData.(map[string]any))
 	panicOnError("article.loadFromJson failed", err)
+	article.Slug = srv.newArticleID()
 
 	// load user
 	sessionID, err := getSessionIDFromReq(r)
-	panicOnError("getSessionIDFromReq failed", err)
+	if err != nil {
+		http.Error(w, "login or register required", http.StatusUnauthorized)
+		return
+	}
+
 	userID, err := srv.sessions.GetUserID(sessionID)
-	panicOnError("GetUserID failed", err)
+	if err != nil {
+		http.Error(w, "given session not exists", http.StatusUnauthorized)
+		return
+	}
+
 	user, err := getUserFromStorage(srv.storage, userID)
 	panicOnError("getUserFromStorage failed", err)
 
-	// no idea why is that. I'm to lazy to search for contract specs
-	user.Email = ""
-	user.CreatedAt = nil
-	user.UpdatedAt = nil
+	// link user-article
+	article.Author = user
 
-	article.Author = user // show("user: ", user.Email)
-	article.Slug = srv.newArticleID()
+	// no idea why is that but test happy only if I do this. I'm to lazy to search for API contract specs
+	article.Author.Email = ""
+	article.Author.CreatedAt = nil
+	article.Author.UpdatedAt = nil
 
 	// save
 	err = putArticle2Storage(srv.storage, article)
@@ -292,6 +364,7 @@ func writeResponseWithCode(w http.ResponseWriter, x any, code int) error {
 
 type SessionManager interface {
 	AddSession(userID, sessionID string) error
+	DropSession(sessionID string) error
 	GetUserID(sessionID string) (string, error)
 }
 
@@ -313,9 +386,14 @@ func (sm *SimpleSessionManager) AddSession(userID string, sessionID string) erro
 	return nil
 }
 
+// DropSession implements SessionManager.
+func (sm *SimpleSessionManager) DropSession(sessionID string) error {
+	delete(sm.data, sessionID)
+	return nil
+}
+
 // GetUserID implements SessionManager.
 func (sm *SimpleSessionManager) GetUserID(sessionID string) (string, error) {
-	// userID, err := srv.sessions.GetUserID(sessionID)
 	uid, exists := sm.data[sessionID]
 	if exists {
 		return uid, nil
@@ -364,6 +442,33 @@ func (stor *RAMStorage) GetAllArticles() ([]any, error) {
 func (stor *RAMStorage) SetAllArticles(items []any) error {
 	stor.articlesData = items // not async code
 	return nil
+}
+
+// getArticlesFromStorage: all articles for given author
+func getArticlesFromStorageByAuthor(stor Storage, authorName string) ([]PostedArticle, error) {
+	items, err := getArticlesFromStorage(stor)
+	if err != nil {
+		return nil, err
+	}
+
+	selected := slices.DeleteFunc(items, func(x PostedArticle) bool {
+		return (x.Author.Username != authorName)
+	})
+
+	return selected, nil
+}
+
+// getArticlesFromStorage: all articles
+func getArticlesFromStorage(stor Storage) ([]PostedArticle, error) {
+	items, err := stor.GetAllArticles()
+	if err != nil {
+		return nil, err
+	}
+	var as = make([]PostedArticle, 0, len(items))
+	for _, a := range items {
+		as = append(as, a.(PostedArticle))
+	}
+	return as, nil
 }
 
 // getUserFromStorage: use user.id as key to search in stored items

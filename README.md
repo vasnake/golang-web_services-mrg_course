@@ -167,6 +167,11 @@ Consequently, there are no constants denoting the IEEE-754 negative zero, infini
 Сделан только необходимый минимум. Надо бы навести красоту, отрефакторить, поработать над эффективностью, валидацией.
 Добавить поддержку большего количества кейсов (типов данных, комбинаций параметров колонок).
 
+### week 9, rwa
+
+[week 9, homework](./part3.md#week9-homework)
+Сделан только необходимый минимум. Надо бы сделать "правильно" и с прицелом на масштабируемость.
+
 ## Info, links
 
 - `Communicating Sequential Processes` by Tony Hoare
