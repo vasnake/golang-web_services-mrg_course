@@ -492,12 +492,34 @@ Done. Тесты зелёные, три дня на кодинг потраче�
 
 ## part 3, week 2 (10)
 
-# I_AM_HERE
+Проектирование API, oauth и рефакториг приложения
+[Код, домашки, литература](week_10/materials.zip)
 
-Проектирование API
-[Код, домашки, литература](week_10/materials.zip) https://cloud.mail.ru/public/PME6/Mqp8mFsPK
+UPD:
+- `handouts/golang_web_services_2023-12-28.zip/10/`
+- `handouts/golang_web_services_2024-04-26.zip/10/`
+
+```s
+local module=week10
+pushd ${PRJ_DIR}/sandbox
+mkdir -p ${module} && pushd ./${module}
+go mod init ${module}
+cat > main.go << EOT
+package main
+func main() { panic("not yet") }
+EOT
+go mod tidy
+popd # sandbox
+go work use ./${module}        
+gofmt -w ${module}
+go test -v ${module}
+go run ${module}
+```
+[week 10 playground](./sandbox/week10/main.go) `GO_APP_SELECTOR=week10 gr`
 
 ### Oauth - 1 (демонстрация получения данных от провайдера oauth)
+
+# I_AM_HERE
 
 - [main](week_10/oauth_main.go)
 

@@ -32,4 +32,5 @@ use (
 	./week08_homework/i2s
 	./week09
 	./week09_homework/rwa
+	./week10
 )

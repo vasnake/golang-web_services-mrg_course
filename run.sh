@@ -3,7 +3,7 @@
 PRJ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # PATH=${PATH}:/mnt/c/bin/protoc-26.1-linux-x86_64/bin:${HOME}/go/bin
 
-APP_SELECTOR=${GO_APP_SELECTOR:-week09_homework}
+APP_SELECTOR=${GO_APP_SELECTOR:-week10}
 
 go_run() {
     local selector="${1}"
@@ -29,6 +29,7 @@ go_run() {
         week08_homework)            go_run_sandbox_week08_i2s_test;;
         week09)                     go_run_sandbox week09;;
         week09_homework)            go_run_sandbox_week09_rwa_test;;
+        week10)                     go_run_sandbox week10;;
         *)                          errorExit "Unknown program: ${selector}";;
     esac
 }
@@ -450,7 +451,6 @@ EOT
         # go vet ${module}
         go test -v ${module}
         go run ${module}
-        exit 42
     }
     # create_module
 
