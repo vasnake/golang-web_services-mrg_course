@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 	oauth_demo "week10/0_oauth"
+	v_oauth "week10/1_photolist_oauth"
 )
 
 const (
@@ -24,7 +25,14 @@ func lessonTemplate() {
 }
 
 func main() {
-	oauthDemo()
+	// oauthDemo()
+	oauthPhotolist()
+}
+
+func oauthPhotolist() {
+	show("oauthPhotolist: program started ...")
+	v_oauth.MainDemo()
+	show("end of program. ")
 }
 
 func oauthDemo() {

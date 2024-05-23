@@ -148,7 +148,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	uidAny, uidExists := userData["id"]
 	if uidExists {
-		userID = strconv.FormatUint(uint64(uidAny.(float64)), 36)
+		userID = strconv.FormatUint(uint64(uidAny.(float64)), 36) // float64: json package to blame
 		// userID = strconv.FormatUint(uint64(uidAny.(float64)), 10)
 	}
 	nameAny, _ := userData["name"] // nah, error handling: go fuck yourself
