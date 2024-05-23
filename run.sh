@@ -39,7 +39,8 @@ go_run_module() {
     go run \
         -ldflags="-X 'main.Version=$(git rev-parse HEAD)' -X 'main.Branch=$(git rev-parse --abbrev-ref HEAD)'" \
         ${1} \
-        --comments=true --servers="127.0.0.1:8081,127.0.0.1:8082"
+        -appid ${OAUTH_APP_ID:-foo} -appsecret ${OAUTH_APP_SECRET:-bar} \
+        # --comments=true --servers="127.0.0.1:8081,127.0.0.1:8082" \
     exit_code=$?
     echo "####################################################################################################"
     return $exit_code

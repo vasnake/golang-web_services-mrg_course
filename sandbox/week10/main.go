@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"sync/atomic"
 	"time"
+	oauth_demo "week10/0_oauth"
 )
 
 const (
@@ -23,7 +24,13 @@ func lessonTemplate() {
 }
 
 func main() {
-	panic("not yet")
+	oauthDemo()
+}
+
+func oauthDemo() {
+	show("oauthDemo: program started ...")
+	oauth_demo.MainDemo()
+	show("end of program. ")
 }
 
 // --- useful little functions ---
