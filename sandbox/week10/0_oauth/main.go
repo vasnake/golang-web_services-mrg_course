@@ -89,7 +89,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	show("got oauth token: ", oauthToken)
 	// got token (just token), no email or user_id
-	// &oauth2.Token{AccessToken:"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", TokenType:"bearer", RefreshToken:"", Expiry:time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC), raw:url.Values{"access_token":[]string{"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"}, "scope":[]string{"user:email"}, "token_type":[]string{"bearer"}}, expiryDelta:0}
+	// &oauth2.Token{Acc***ken:"gho***piI", TokenType:"bearer", Re***ken:"", Expiry:time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC), raw:url.Values{"acc***ken":[]string{"gho***piI"}, "scope":[]string{"user:email"}, "token_type":[]string{"bearer"}}, expiryDelta:0}
 
 	// nah, nothing here:
 	email := oauthToken.Extra("email").(string)
