@@ -10,7 +10,7 @@ import (
 
 func NewTemplates(assets http.FileSystem) *template.Template {
 	tmpl := template.New("")
-	tmpl, err := vfstemplate.ParseGlob(assets, tmpl, "/templates/*.html")
+	tmpl, err := vfstemplate.ParseGlob(assets, tmpl, "/templates/*.html") // filename will be used as ref.
 	if err != nil {
 		log.Fatal(err)
 	}

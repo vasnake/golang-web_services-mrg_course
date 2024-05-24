@@ -26,7 +26,7 @@ func MainDemo() {
 	flag.StringVar(&APP_ID, "appid", "foo?", "oauth app id (client id) from github registered app")
 	flag.StringVar(&APP_SECRET, "appsecret", "bar?", "oauth app secret (client key) from github registered app")
 	flag.Parse()
-	show("you mustn't show this! appid, appsecret: ", APP_ID, APP_SECRET)
+	show("you must not show this! appid, appsecret: ", APP_ID, APP_SECRET)
 
 	// rand.Seed(time.Now().UnixNano())
 
@@ -83,7 +83,7 @@ func MainDemo() {
 
 	// http handlers w/o auth
 
-	http.Handle("/static/", http.FileServer(VFS_Assets))
+	http.Handle("/static/", http.FileServer(VFS_Assets)) // no preload
 
 	http.Handle("/images/", http.StripPrefix(
 		"/images/",
@@ -92,7 +92,7 @@ func MainDemo() {
 
 	f, _ := VFS_Assets.Open("/static/favicon.ico")
 	// defer f.Close()
-	favicon, _ := ioutil.ReadAll(f)
+	favicon, _ := ioutil.ReadAll(f) // preload
 	f.Close()
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		w.Write(favicon)
