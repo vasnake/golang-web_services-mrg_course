@@ -9,4 +9,5 @@ services:
       - MYSQL_ALLOW_EMPTY_PASSWORD=yes
       - MYSQL_DATABASE:=photolist
     volumes:
-      - './1_photolist_oauth/_mysql/:/docker-entrypoint-initdb.d/'
+      # - './1_photolist_oauth/_mysql/:/docker-entrypoint-initdb.d/'
+      - './2_frontend/_mysql/:/docker-entrypoint-initdb.d/'

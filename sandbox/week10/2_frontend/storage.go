@@ -68,22 +68,26 @@ func (st *StDb) GetPhotos(userID uint32) ([]*Photo, error) {
 	return photos, nil
 }
 
+// Rate: update pic status, given rate: {-1, 1}
 func (st *StDb) Rate(photoID uint32, userID uint32, rate int) error {
 	var res sql.Result
 	var err error
-	if rate >= 0 {
+	if rate >= 0 { // like
 		res, err = st.db.Exec(`INSERT IGNORE INTO user_photos_likes(photo_id, user_id) VALUES(?, ?)`, photoID, userID)
-	} else {
+	} else { // dislike
 		res, err = st.db.Exec(`DELETE FROM user_photos_likes WHERE photo_id = ? AND user_id = ?`, photoID, userID)
 	}
 	if err != nil {
 		return err
 	}
+
 	aff, _ := res.RowsAffected()
 	// dont update rating twice
 	if aff <= 0 {
 		return nil
 	}
+
+	// update num of likes
 	_, err = st.db.Exec("UPDATE photos SET rating = rating + ? WHERE id = ?", rate, photoID)
 	return err
 }

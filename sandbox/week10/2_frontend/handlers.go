@@ -120,12 +120,12 @@ func (h *PhotolistHandler) Rate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := strconv.Atoi(r.FormValue("id"))
+	id, err := strconv.Atoi(r.FormValue("id")) // pic id
 	if err != nil {
 		http.Error(w, `{"err": "bad id"}`, http.StatusBadRequest)
 		return
 	}
-	vote := r.FormValue("vote")
+	vote := r.FormValue("vote") // up or down
 	rate := 0
 	switch vote {
 	case "up":

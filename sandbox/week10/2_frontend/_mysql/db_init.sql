@@ -1,9 +1,10 @@
--- Adminer 4.7.0 MySQL dump
-
-SET NAMES utf8;
+SET NAMES utf8mb4;
 SET time_zone = '+00:00';
 SET foreign_key_checks = 0;
 SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
+
+CREATE DATABASE IF NOT EXISTS `photolist`;
+USE `photolist`;
 
 DROP TABLE IF EXISTS `photos`;
 CREATE TABLE `photos` (
@@ -14,10 +15,7 @@ CREATE TABLE `photos` (
   `comment` varchar(512) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8;
-
-
-SET NAMES utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4;
 
 DROP TABLE IF EXISTS `sessions`;
 CREATE TABLE `sessions` (
@@ -38,9 +36,6 @@ CREATE TABLE `users` (
   UNIQUE KEY `login` (`login`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `users` (`id`, `login`, `password`) VALUES
-(1,	'golangcourse',	UNHEX('7362415A62716D7072AC09EAE839A4A1C95E73EC5FA3FC6EACE4D2C78BF4BF1C6906789B557F8C55'));
-
 DROP TABLE IF EXISTS `user_photos_likes`;
 CREATE TABLE `user_photos_likes` (
   `photo_id` int(11) NOT NULL,
@@ -49,6 +44,4 @@ CREATE TABLE `user_photos_likes` (
   KEY `user_id_photo_id` (`user_id`,`photo_id`),
   CONSTRAINT `user_photos_likes_ibfk_1` FOREIGN KEY (`photo_id`) REFERENCES `photos` (`id`),
   CONSTRAINT `user_photos_likes_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
--- 2019-07-14 15:02:20
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
