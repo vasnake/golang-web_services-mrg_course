@@ -36,11 +36,10 @@ go_run() {
 
 go_run_module() {
     echo "####################################################################################################"
+    # go run -ldflags="-X 'main.Version=$(git rev-parse HEAD)' -X 'main.Branch=$(git rev-parse --abbrev-ref HEAD)'" ${1} -appid ${OAUTH_APP_ID:-foo} -appsecret ${OAUTH_APP_SECRET:-bar} --comments=true --servers="127.0.0.1:8081,127.0.0.1:8082"
     go run \
-        -ldflags="-X 'main.Version=$(git rev-parse HEAD)' -X 'main.Branch=$(git rev-parse --abbrev-ref HEAD)'" \
         ${1} \
-        -appid ${OAUTH_APP_ID:-foo} -appsecret ${OAUTH_APP_SECRET:-bar} \
-        # --comments=true --servers="127.0.0.1:8081,127.0.0.1:8082" \
+        -appid ${OAUTH_APP_ID:-foo} -appsecret ${OAUTH_APP_SECRET:-bar}
     exit_code=$?
     echo "####################################################################################################"
     return $exit_code

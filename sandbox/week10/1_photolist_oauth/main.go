@@ -16,10 +16,10 @@ import (
 
 func MainDemo() {
 	// rand.Seed(time.Now().UnixNano())
-	flag.StringVar(&APP_ID, "appid", "foo?", "app id (client id) from github registered app")
-	flag.StringVar(&APP_SECRET, "appsecret", "bar?", "app secret (client key) from github registered app")
+	flag.StringVar(&APP_ID, "appid", "foo?", "oauth app id (client id) from github registered app")
+	flag.StringVar(&APP_SECRET, "appsecret", "bar?", "oauth app secret (client key) from github registered app")
 	flag.Parse()
-	show("you mustn't but: appid, appsecret: ", APP_ID, APP_SECRET)
+	show("you mustn't show this! appid, appsecret: ", APP_ID, APP_SECRET)
 
 	// основные настройки к базе
 	// dsn := "root:love@tcp(127.0.0.1:3306)/photolist?charset=utf8&interpolateParams=true"
@@ -31,7 +31,7 @@ func MainDemo() {
 	}
 	defer db.Close()
 
-	tmpls := NewTemplates()
+	appTemplates := NewTemplates()
 	if err != nil {
 		log.Fatalf("cant init tokens: %v\n", err)
 	}
@@ -40,37 +40,41 @@ func MainDemo() {
 	// csrfTokens, err := NewAesCryptHashToken("qsRY2e4hcM5T7X984E9WQ5uZ8Nty7fxB")
 	csrfTokens, err := NewJwtToken("qsRY2e4hcM5T7X984E9WQ5uZ8Nty7fxB")
 
-	h := &PhotolistHandler{
+	// http handlers, business part
+	bh := &PhotolistHandler{
 		St:     NewDbStorage(db),
-		Tmpl:   tmpls,
+		Tmpl:   appTemplates,
 		Tokens: csrfTokens,
 	}
 
-	// sm := NewSessionsDB(db)
-	// sm := NewSessionsJWT("golangcourseSessionSecret")
-	sm := NewSessionsJWTVer("golangcourseSessionSecret", db)
+	// userSessions := NewSessionsDB(db)
+	// userSessions := NewSessionsJWT("golangcourseSessionSecret")
+	userSessions := NewSessionsJWTVer("golangcourseSessionSecret", db)
 
-	u := &UserHandler{
+	// http handlers, auth part
+	uh := &UserHandler{
 		DB:       db,
-		Tmpl:     tmpls,
-		Sessions: sm,
+		Tmpl:     appTemplates,
+		Sessions: userSessions,
 	}
 
+	// routes
 	mux := http.NewServeMux()
-	mux.HandleFunc("/photos/", h.List)
-	mux.HandleFunc("/photos/upload", h.Upload)
-	mux.HandleFunc("/photos/rate", h.Rate)
-	mux.HandleFunc("/user/login", u.Login)
-	mux.HandleFunc("/user/login_oauth", u.LoginOauth)
-	mux.HandleFunc("/user/logout", u.Logout)
-	mux.HandleFunc("/user/reg", u.Reg)
-	mux.HandleFunc("/user/change_pass", u.ChangePassword)
+	mux.HandleFunc("/photos/", bh.List)
+	mux.HandleFunc("/photos/upload", bh.Upload)
+	mux.HandleFunc("/photos/rate", bh.Rate)
+	mux.HandleFunc("/user/login", uh.Login)
+	mux.HandleFunc("/user/login_oauth", uh.LoginOauth)
+	mux.HandleFunc("/user/logout", uh.Logout)
+	mux.HandleFunc("/user/reg", uh.Reg)
+	mux.HandleFunc("/user/change_pass", uh.ChangePassword)
 	mux.HandleFunc("/", Index)
 
 	// http handlers with auth
-	http.Handle("/", AuthMiddleware(sm, mux))
+	http.Handle("/", AuthMiddleware(userSessions, mux))
 
 	// http handlers w/o auth
+
 	staticHandler := http.StripPrefix(
 		"/images/",
 		http.FileServer(http.Dir("./images")),
@@ -81,6 +85,7 @@ func MainDemo() {
 		http.ServeFile(w, r, "./favicon.ico")
 	})
 
+	// rock'n'roll
 	fmt.Println("starting server at :8080")
 	http.ListenAndServe(":8080", nil)
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 	oauth_demo "week10/0_oauth"
 	v_oauth "week10/1_photolist_oauth"
+	fronte "week10/2_frontend"
 )
 
 const (
@@ -26,7 +27,14 @@ func lessonTemplate() {
 
 func main() {
 	// oauthDemo()
-	oauthPhotolist()
+	// oauthPhotolist()
+	refactoredFrontPhotolist()
+}
+
+func refactoredFrontPhotolist() {
+	show("refactoredFrontPhotolist: program started ...")
+	fronte.MainDemo()
+	show("end of program. ")
 }
 
 func oauthPhotolist() {

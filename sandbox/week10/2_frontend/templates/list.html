@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+		<meta name="csrf-token" content="{{.CSRFToken}}">
+
+        <link rel="stylesheet" href="/static/css/bootstrap/bootstrap.min.css">
+        <script type="text/javascript" src="/static/js/site/list.js"></script>
+		<style>
+			.hi {cursor:pointer; font-size: 28px; font-family: "Times", "Times New Roman", "serif", "sans-serif", "EmojiSymbols";}
+			.hi-red { color:red; }
+		</style>
+    </head>
+<body>
+	
+	<div class="d-flex flex-column flex-md-row align-items-center p-3 px-md-4 mb-3 bg-white border-bottom shadow-sm">
+		<h5 class="my-0 mr-md-auto font-weight-normal"><img style="width:24px; height:24px;" src="/static/logo.png" /> GolangCourse</h5>
+		<nav class="my-2 my-md-0 mr-md-3">
+			<a class="p-2 text-dark" href="/user/change_pass">Change password</a>
+			<a class="p-2 text-dark" href="/user/logout">Logout</a>
+		</nav>
+	</div>
+	
+	<div class="container">
+		<div>
+			<form action="/photos/upload" method="post" enctype="multipart/form-data">
+			<input type="hidden" value="{{.CSRFToken}}" name="csrf-token" />
+				<div class="form-group">
+					<label for="my_file">Image</label>
+					<input class="form-control-file" type="file" id="my_file" name="my_file" />
+				</div>
+				<div class="form-group">
+					<label for="comment">Comment</label>
+					<textarea class="form-control" name="comment" id="comment" rows="3"></textarea>
+				</div>
+				<button type="submit" class="btn btn-primary">Upload</button>
+			</form>
+		</div>
+		<br />
+		{{range .Items}}
+			<div style="border: 1px solid black; margin: 5px; width:602px;">
+				<img src="/images/{{.Path}}_600.jpg" />
+				<div style="margin:5px;">
+					<span onclick="rateCommentToggle(this)" data-id="{{.ID}}" class="hi {{if .Liked}}hi-red{{end}}">❤</span>
+					<span style="font-size: 24px;" id="rating-{{.ID}}">{{.Rating}}</span>
+					<br/>
+	
+					<!-- text/template по-умолчанию ничего не экранируется --> 
+					<!-- html/template по-умолчанию будет экранировать --> 
+					{{.Comment}}
+				</div>
+			</div>
+		{{end}}
+	</div>
+</body>
+</html>
