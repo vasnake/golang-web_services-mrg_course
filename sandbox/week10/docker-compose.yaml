@@ -10,4 +10,5 @@ services:
       - MYSQL_DATABASE:=photolist
     volumes:
       # - './1_photolist_oauth/_mysql/:/docker-entrypoint-initdb.d/'
-      - './2_frontend/_mysql/:/docker-entrypoint-initdb.d/'
+      # - './2_frontend/_mysql/:/docker-entrypoint-initdb.d/'
+      - './3_ajax/_mysql/:/docker-entrypoint-initdb.d/'

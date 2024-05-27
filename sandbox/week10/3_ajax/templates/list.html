@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+		<meta name="csrf-token" content="{{.CSRFToken}}">
+
+		<link rel="stylesheet" href="/static/css/bootstrap/bootstrap.min.css">
+        <script type="text/javascript" src="/static/js/site/list.js"></script>
+		<style>
+			.hi {cursor:pointer; font-size: 28px; font-family: "Times", "Times New Roman", "serif", "sans-serif", "EmojiSymbols";}
+			.hi-red { color:red; }
+
+			.photoElem {border: 1px solid black; margin: 5px; width:602px;}
+			.photoElem .details {margin:5px;}
+			.photoElem .rating {font-size: 24px}
+
+			.photoElem .commentForm { border-top:1px solid silver; }
+			.photoElem .commentForm input[type="text"] { padding:3 7px; border: none; width:490px; }
+			.photoElem .commentForm input[type="submit"]{ width:100px; border:none; background:white; color:rgb(56, 151, 240); }
+
+			.userName {color:black; text-decoration:none; font-weight:bold;}
+		</style>
+    </head>
+<body>
+	
+	<div class="d-flex flex-column flex-md-row align-items-center p-3 px-md-4 mb-3 bg-white border-bottom shadow-sm">
+		<h5 class="my-0 mr-md-auto font-weight-normal"><a href="/photos" style="color:black; text-decoration: none;"><img style="width:24px; height:24px;" src="/static/logo.png" /> GolangCourse</a></h5>
+		<nav class="my-2 my-md-0 mr-md-3">
+			<a href="/photos/{{.CurrentUser.Login}}" class="p-2" style="font-weight:bold; color:black;">{{.CurrentUser.Login}}</a>					  
+			<a class="p-2 text-dark" href="/user/change_pass">Change password</a>
+			<a class="p-2 text-dark" href="/user/logout">Logout</a>
+		</nav>
+	</div>
+	
+	<div class="container">
+
+	<div class="row">
+		<div class="col-md">
+				{{if eq .CurrentUser.ID .TargetUser.ID}}
+				<div>
+					<form onsubmit="uploadPhoto('{{.CurrentUser.ID}}'); return false" id="uploadPhoto" action="/photos/upload" method="post" enctype="multipart/form-data">
+						<input type="hidden" value="{{.CSRFToken}}" name="csrf-token" />
+						<div class="form-group">
+							<label for="my_file">Image</label>
+							<input class="form-control-file" type="file" id="my_file" name="my_file" />
+						</div>
+						<div class="form-group">
+							<label for="comment">Comment</label>
+							<textarea class="form-control" name="comment" id="comment" rows="3"></textarea>
+						</div>
+						<button type="submit"class="btn btn-primary">Upload</button>
+					</form>
+				</div>
+				{{else}}
+					
+				{{end}}
+		
+				<br />
+		
+				<div id="photolist"></div>
+				<script>
+					var current_uid = '{{.CurrentUser.ID}}';
+					var target_uid = '{{.TargetUser.ID}}';
+					renderPhotos(target_uid);
+				</script>
+		</div>
+		<div class="col">
+			You following
+			<div id="following"></div>
+			<script>renderUserList("following");</script>
+			<br>
+			Recomended users
+			<div id="recomends"></div>
+			<script>renderUserList("recomends");</script>
+		</div>
+	</div>
+							  
+
+
+	</div>
+</body>
+</html>
