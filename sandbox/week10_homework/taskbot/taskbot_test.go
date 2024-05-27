@@ -28,9 +28,6 @@ func init() {
 	BotToken = "_golangcourse_test"
 }
 
-var WebhookURL = "http://127.0.0.1:8081"
-var BotToken = "_golangcourse_test"
-
 var (
 	client = &http.Client{Timeout: time.Second}
 )
@@ -195,7 +192,7 @@ func TestTasks(t *testing.T) {
 			map[int]string{
 				Ivanov: "Нет задач",
 			},
-		},
+		}, // 0
 		{
 			// команда /new - создаёт новую задачу, всё что после /new - идёт в название задачи
 			Ivanov,
@@ -203,7 +200,7 @@ func TestTasks(t *testing.T) {
 			map[int]string{
 				Ivanov: `Задача "написать бота" создана, id=1`,
 			},
-		},
+		}, // 1
 		{
 			Ivanov,
 			"/tasks",
@@ -211,7 +208,7 @@ func TestTasks(t *testing.T) {
 				Ivanov: `1. написать бота by @ivanov
 /assign_1`,
 			},
-		},
+		}, // 2
 		{
 			// /assign_* - назначает задачу на себя
 			Alexandrov,
@@ -220,7 +217,7 @@ func TestTasks(t *testing.T) {
 				Alexandrov: `Задача "написать бота" назначена на вас`,
 				Ivanov:     `Задача "написать бота" назначена на @aalexandrov`,
 			},
-		},
+		}, // 3
 		{
 			// в случае если задача была назначена на кого-то - он получает уведомление об этом
 			// в данном случае она была назначена на Alexandrov, поэтому ему отправляется уведомление
@@ -230,7 +227,7 @@ func TestTasks(t *testing.T) {
 				Petrov:     `Задача "написать бота" назначена на вас`,
 				Alexandrov: `Задача "написать бота" назначена на @ppetrov`,
 			},
-		},
+		}, // 4
 		{
 			// если задача назначена и на мне - показывается "на меня"
 			Petrov,
@@ -240,7 +237,7 @@ func TestTasks(t *testing.T) {
 assignee: я
 /unassign_1 /resolve_1`,
 			},
-		},
+		}, // 5
 		{
 			// если задача назначена и не на мне - показывается логин исполнителя
 			// при
@@ -250,7 +247,7 @@ assignee: я
 				Ivanov: `1. написать бота by @ivanov
 assignee: @ppetrov`,
 			},
-		},
+		}, // 6
 
 		{
 			// /unassign_ - снимает задачу с себя
@@ -260,7 +257,7 @@ assignee: @ppetrov`,
 			map[int]string{
 				Alexandrov: `Задача не на вас`,
 			},
-		},
+		}, // 7
 
 		{
 			// /unassign_ - снимает задачу с себя
@@ -271,7 +268,7 @@ assignee: @ppetrov`,
 				Petrov: `Принято`,
 				Ivanov: `Задача "написать бота" осталась без исполнителя`,
 			},
-		},
+		}, // 8
 
 		{
 			// повтор
@@ -282,7 +279,7 @@ assignee: @ppetrov`,
 				Petrov: `Задача "написать бота" назначена на вас`,
 				Ivanov: `Задача "написать бота" назначена на @ppetrov`,
 			},
-		},
+		}, // 9
 		{
 			// /resolve_* завершает задачу, удаляет её из хранилища
 			// автору отправляется уведомление об этом
@@ -292,7 +289,7 @@ assignee: @ppetrov`,
 				Petrov: `Задача "написать бота" выполнена`,
 				Ivanov: `Задача "написать бота" выполнена @ppetrov`,
 			},
-		},
+		}, // 10
 
 		{
 			Petrov,
@@ -300,7 +297,7 @@ assignee: @ppetrov`,
 			map[int]string{
 				Petrov: `Нет задач`,
 			},
-		},
+		}, // 11
 
 		{
 			// обратите внимание, id=2 - автоинкремент
@@ -309,7 +306,7 @@ assignee: @ppetrov`,
 			map[int]string{
 				Petrov: `Задача "сделать ДЗ по курсу" создана, id=2`,
 			},
-		},
+		}, // 12
 		{
 			// обратите внимание, id=3 - автоинкремент
 			Ivanov,
@@ -317,7 +314,7 @@ assignee: @ppetrov`,
 			map[int]string{
 				Ivanov: `Задача "прийти на хакатон" создана, id=3`,
 			},
-		},
+		}, // 13
 		{
 			Petrov,
 			"/tasks",
@@ -328,7 +325,7 @@ assignee: @ppetrov`,
 3. прийти на хакатон by @ivanov
 /assign_3`,
 			},
-		},
+		}, // 14
 		{
 			// повтор
 			// в случае если задача была назначена на кого-то - автор получает уведомление об этом
@@ -338,7 +335,7 @@ assignee: @ppetrov`,
 			map[int]string{
 				Petrov: `Задача "сделать ДЗ по курсу" назначена на вас`,
 			},
-		},
+		}, // 15
 		{
 			Petrov,
 			"/tasks",
@@ -350,7 +347,7 @@ assignee: я
 3. прийти на хакатон by @ivanov
 /assign_3`,
 			},
-		},
+		}, // 16
 		{
 			// /my показывает задачи которые назначены на меня
 			// при этому тут нет метки assegnee
@@ -360,7 +357,7 @@ assignee: я
 				Petrov: `2. сделать ДЗ по курсу by @ppetrov
 /unassign_2 /resolve_2`,
 			},
-		},
+		}, // 17
 		{
 			// /owner - показывает задачи, которы я создал
 			// при этому тут нет метки assegnee
@@ -370,7 +367,7 @@ assignee: я
 				Ivanov: `3. прийти на хакатон by @ivanov
 /assign_3`,
 			},
-		},
+		}, // 18
 	}
 
 	for idx, item := range cases {
