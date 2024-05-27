@@ -33,4 +33,5 @@ use (
 	./week09
 	./week09_homework/rwa
 	./week10
+	./week10_homework/taskbot
 )
