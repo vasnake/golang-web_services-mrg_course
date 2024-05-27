@@ -6,6 +6,6 @@ import (
 )
 
 var Assets http.FileSystem = union.New(map[string]http.FileSystem{
-	"/templates": http.Dir("./templates/"),
-	"/static":    http.Dir("./static/"),
+	"/templates": http.Dir("./week10/3_ajax/templates/"),
+	"/static":    http.Dir("./week10/3_ajax/static/"),
 })

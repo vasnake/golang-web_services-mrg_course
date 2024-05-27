@@ -9,6 +9,7 @@ import (
 	oauth_demo "week10/0_oauth"
 	v_oauth "week10/1_photolist_oauth"
 	fronte "week10/2_frontend"
+	ajax_api "week10/3_ajax"
 )
 
 const (
@@ -28,7 +29,14 @@ func lessonTemplate() {
 func main() {
 	// oauthDemo()
 	// oauthPhotolist()
-	refactoredFrontPhotolist()
+	// refactoredFrontPhotolist()
+	ajaxApiPhotolist()
+}
+
+func ajaxApiPhotolist() {
+	show("ajaxApiPhotolist: program started ...")
+	ajax_api.MainDemo()
+	show("end of program. ")
 }
 
 func refactoredFrontPhotolist() {

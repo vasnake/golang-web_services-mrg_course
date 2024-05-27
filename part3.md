@@ -911,6 +911,8 @@ PUT - need id in url; POST - need resource in url.
 
 Логин и почта это теперь два разных атрибута пользователя.
 
+Таблица `users` пока не содержит поддержку фоллоуверов.
+
 ### Проектирование API - 5 (ajax, пояснения)
 
 - [storage](week_10/ajax_storage.go)

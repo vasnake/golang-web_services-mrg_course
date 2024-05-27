@@ -14,10 +14,10 @@ type TokenManager interface {
 
 var (
 	noCSRFUrls = map[string]struct{}{
-		"/user/login_oauth": struct{}{},
-		"/user/login":       struct{}{},
-		"/user/reg":         struct{}{},
-		"/api/v1/token":     struct{}{},
+		"/user/login_oauth": {},
+		"/user/login":       {},
+		"/user/reg":         {},
+		"/api/v1/token":     {},
 	}
 
 	errorTokenExpired = errors.New("token expired")
@@ -28,7 +28,7 @@ func CsrfTokenMiddleware(tm TokenManager, next http.Handler) http.Handler {
 		_, skip := noCSRFUrls[r.URL.Path]
 		isAPI := strings.HasPrefix(r.URL.Path, "/api")
 		skip = skip || (!isAPI && r.Method == http.MethodGet) // check all api and regular forms
-
+		// skip csrf if: url in white list, or (it is not api and GET) // API means ajax req. from app scripts
 		if skip {
 			next.ServeHTTP(w, r)
 			return
