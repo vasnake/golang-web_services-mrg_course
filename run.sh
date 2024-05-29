@@ -96,8 +96,8 @@ EOT
     # golangci-lint run $module # slow
 
     echo "####################################################################################################"
-    go test -v --failfast $module # during development: failfast
-    # go test -v -race $module # final check
+    # go test -v --failfast $module # during development: failfast
+    go test -v -race $module # final check
     # go test -v $module
 
     # go run -race $module

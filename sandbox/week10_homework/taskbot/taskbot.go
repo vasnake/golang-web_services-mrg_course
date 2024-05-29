@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"slices"
 	"strconv"
@@ -107,7 +106,7 @@ func (bh *TGBotHandlers) execCommand(chatID int64, userName, cmd string) []ChatM
 	var result = make([]ChatMessage, 0, 2)
 	var r ChatMessage
 	switch {
-	//resolve_1
+
 	case strings.HasPrefix(cmd, "/resolve_"):
 		t, err := bh.resolveTask(cutPrefix(cmd, "/resolve_"), chatID)
 		if err != nil {
@@ -149,7 +148,7 @@ func (bh *TGBotHandlers) execCommand(chatID int64, userName, cmd string) []ChatM
 	case cmd == "/owner":
 		tasks := bh.getTasksByAuthor(chatID)
 		tasks = slices.DeleteFunc(tasks, func(x *UserTask) bool {
-			show("filter: ", x)
+			// show("filter: ", x)
 			return x.executorID != chatID
 		})
 		if len(tasks) == 0 {
@@ -157,7 +156,7 @@ func (bh *TGBotHandlers) execCommand(chatID int64, userName, cmd string) []ChatM
 		} else {
 			var msgtxt = ""
 			for _, t := range tasks {
-				show("task: ", t)
+				// show("task: ", t)
 				if len(msgtxt) > 0 {
 					msgtxt += "\n\n"
 				}
@@ -171,7 +170,7 @@ func (bh *TGBotHandlers) execCommand(chatID int64, userName, cmd string) []ChatM
 	case cmd == "/my":
 		tasks := bh.getTasksByExecutor(chatID)
 		tasks = slices.DeleteFunc(tasks, func(x *UserTask) bool {
-			show("filter: ", x)
+			// show("filter: ", x)
 			return x.authorID != chatID
 		})
 		if len(tasks) == 0 {
@@ -179,7 +178,7 @@ func (bh *TGBotHandlers) execCommand(chatID int64, userName, cmd string) []ChatM
 		} else {
 			var msgtxt = ""
 			for _, t := range tasks {
-				show("task: ", t)
+				// show("task: ", t)
 				if len(msgtxt) > 0 {
 					msgtxt += "\n\n"
 				}
@@ -202,7 +201,7 @@ func (bh *TGBotHandlers) execCommand(chatID int64, userName, cmd string) []ChatM
 		} else {
 			var msgtxt = ""
 			for _, t := range tasks {
-				show("task: ", t)
+				// show("task: ", t)
 				if len(msgtxt) > 0 {
 					msgtxt += "\n\n"
 				}
@@ -233,7 +232,7 @@ func (bh *TGBotHandlers) execCommand(chatID int64, userName, cmd string) []ChatM
 		result = append(result, ChatMessage{chatID: chatID, msgText: "unknown command: " + cmd})
 	}
 
-	show("execCommand result: ", result)
+	// show("execCommand result: ", result)
 	return result
 }
 
@@ -287,12 +286,12 @@ func (bh *TGBotHandlers) getTasksByAuthor(chatID int64) []*UserTask {
 }
 
 func (bh *TGBotHandlers) resolveTask(taskID string, userID int64) (*UserTask, error) {
-	idx, task, err := bh.getTaskByTaskID(taskID)
+	_, task, err := bh.getTaskByTaskID(taskID)
 	if err != nil {
 		return nil, fmt.Errorf("Can't resolve task that I can't find: %w", err)
 	}
-	log.Printf("task by id %s, found under index %d", taskID, idx)
-	show("resolveTask: ", task)
+	// log.Printf("task by id %s, found under index %d", taskID, idx)
+	// show("resolveTask: ", task)
 
 	if task.executorID != userID {
 		return task, fmt.Errorf("resolveTask, executor != user")
@@ -303,12 +302,12 @@ func (bh *TGBotHandlers) resolveTask(taskID string, userID int64) (*UserTask, er
 }
 
 func (bh *TGBotHandlers) unassignTask(taskID string, userID int64) (*UserTask, error) {
-	idx, task, err := bh.getTaskByTaskID(taskID)
+	_, task, err := bh.getTaskByTaskID(taskID)
 	if err != nil {
 		return nil, fmt.Errorf("Can't unassign task that I can't find: %w", err)
 	}
-	log.Printf("task by id %s, found under index %d", taskID, idx)
-	show("unassignTask: ", task)
+	// log.Printf("task by id %s, found under index %d", taskID, idx)
+	// show("unassignTask: ", task)
 
 	if task.executorID != userID {
 		return task, fmt.Errorf("unassignTask, executor != user")
@@ -321,12 +320,12 @@ func (bh *TGBotHandlers) unassignTask(taskID string, userID int64) (*UserTask, e
 }
 
 func (bh *TGBotHandlers) assignTask(taskID string, newExecutorID int64, newExecutorName string) (int64, *UserTask, error) {
-	idx, task, err := bh.getTaskByTaskID(taskID)
+	_, task, err := bh.getTaskByTaskID(taskID)
 	if err != nil {
 		return 0, nil, fmt.Errorf("Can't assign task that I can't find: %w", err)
 	}
-	log.Printf("task by id %s, found under index %d", taskID, idx)
-	show("assignTask: ", task)
+	// log.Printf("task by id %s, found under index %d", taskID, idx)
+	// show("assignTask: ", task)
 
 	prevExecutorID := task.executorID
 	task.executorID = newExecutorID
@@ -372,7 +371,7 @@ func __dummy(a any) error {
 	if tgbotapi.APIEndpoint == a {
 		return nil
 	}
-	return fmt.Errorf("xz")
+	return fmt.Errorf("foo")
 }
 
 // --- useful little functions ---
