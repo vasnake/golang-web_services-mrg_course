@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -52,6 +53,7 @@ type TGBotHandlers struct {
 	ctx     context.Context
 	bot     *tgbotapi.BotAPI
 	updates tgbotapi.UpdatesChannel
+	data    []*UserTask
 }
 
 func NewTGBotHandlers(ctx context.Context, bot *tgbotapi.BotAPI, updates tgbotapi.UpdatesChannel) *TGBotHandlers {
@@ -59,6 +61,7 @@ func NewTGBotHandlers(ctx context.Context, bot *tgbotapi.BotAPI, updates tgbotap
 		ctx:     ctx,
 		bot:     bot,
 		updates: updates,
+		data:    make([]*UserTask, 0, 16),
 	}
 }
 
@@ -77,65 +80,132 @@ func (bh *TGBotHandlers) ProcessMessages() error {
 				continue
 			}
 
-			id := update.Message.Chat.ID
-			req := update.Message.Text
-			show("bot got a new message, (chatID, text, user, messageID): ", id, req, update.Message.From.UserName, update.Message.MessageID)
+			chatID := update.Message.Chat.ID
+			cmd := update.Message.Text
+			userName := update.Message.From.UserName
+			show("bot got a new message, (chatID, text, user, messageID): ", chatID, cmd, userName, update.Message.MessageID)
 
-			var msg = tgbotapi.NewMessage(id, "")
-			msg.Text = bh.execCommand(id, req)
-			// msg.ReplyToMessageID = update.Message.MessageID
-			bh.bot.Send(msg)
-			// _, err := bh.bot.Send(msg)
-			// panicOnError("bot.Send failed", err)
+			var results = bh.execCommand(chatID, userName, cmd)
+			for _, r := range results {
+				var msg = tgbotapi.NewMessage(r.chatID, "")
+				msg.Text = r.msgText
+				// msg.ReplyToMessageID = update.Message.MessageID
+				bh.bot.Send(msg)
+				// _, err := bh.bot.Send(msg)
+				// panicOnError("bot.Send failed", err)
+			}
 
 			// [case#, user: command]
 			debugNotes := `
-2024-05-29T08:02:53.720Z: bot got a new message, (chatID, text, user, messageID): 256; "/tasks"; "ivanov"; 3; 
-2024-05-29T08:02:53.720Z: execCommand result: "Нет задач";
-	taskbot_test.go:390: [case2, 256: /tasks] bad results:
-				Want: map[256:1. написать бота by @ivanov
+2024-05-29T09:49:14.539Z: bot got a new message, (chatID, text, user, messageID): 512; "/tasks"; "ppetrov"; 6;
+2024-05-29T09:49:14.539Z: execCommand result: []main.ChatMessage{main.ChatMessage{chatID:512, msgText:"1. написать бота by @ivanov\n/assign_1"}};
+	taskbot_test.go:390: [case5, 512: /tasks] bad results:
+
+				Want: map[512:1. написать бота by @ivanov
+		assignee: я
+		/unassign_1 /resolve_1]
+
+				Have: map[512:1. написать бота by @ivanov
+		/assign_1]
 `
 			__dummy(debugNotes)
 		} // end select
 	}
 }
 
-func (bh *TGBotHandlers) execCommand(id int64, cmd string) string {
-	// (id, text): 256; "/tasks";
-	// "Нет задач"
-	result := "unknown command: " + cmd
+func (bh *TGBotHandlers) execCommand(chatID int64, userName, cmd string) []ChatMessage {
+	var result = make([]ChatMessage, 0, 2)
+	var r ChatMessage
 	switch {
 
 	case cmd == "/tasks":
-		result = "Нет задач"
+		tasks := bh.getTasksByExecutor(chatID)
+		if len(tasks) == 0 {
+			r = ChatMessage{chatID: chatID, msgText: "Нет задач"}
+		} else {
+			t := tasks[0]
+			r = ChatMessage{chatID: chatID, msgText: fmt.Sprintf("%s. написать бота by @%s\n/assign_%s", t.taskID, t.authorName, t.taskID)}
+		}
+		result = append(result, r)
 
 	case strings.HasPrefix(cmd, "/new "):
-		result = bh.addTask(id, cutPrefix(cmd, "/new "))
+		ut := bh.addTask(chatID, userName, cutPrefix(cmd, "/new "))
+		r = ChatMessage{chatID: chatID, msgText: fmt.Sprintf(`Задача "%s" создана, id=%s`, ut.task, ut.taskID)}
+		result = append(result, r)
+
+	case strings.HasPrefix(cmd, "/assign_"):
+		prevExecutorID, taskText, err := bh.assignTask(cutPrefix(cmd, "/assign_"), chatID)
+		panicOnError("assign failed", err)
+		r = ChatMessage{chatID: chatID, msgText: fmt.Sprintf(`Задача "%s" назначена на вас`, taskText)}
+		result = append(result, r)
+		r = ChatMessage{chatID: prevExecutorID, msgText: fmt.Sprintf(`Задача "%s" назначена на @%s`, taskText, userName)}
+		result = append(result, r)
 
 	default:
-		result = "unknown command: " + cmd
-
+		result = append(result, ChatMessage{chatID: chatID, msgText: "unknown command: " + cmd})
 	}
 
 	show("execCommand result: ", result)
 	return result
 }
 
-func (bh *TGBotHandlers) addTask(id int64, task string) string {
-	ut := UserTask{
-		userID: id,
-		taskID: nextID_10(),
-		task:   task,
+func (bh *TGBotHandlers) assignTask(taskID string, targetChatID int64) (prevExecutorID int64, taskText string, err error) {
+	// find taks #1
+	// assign new owher to task
+	idx, task, err := bh.getTaskByTaskID(taskID)
+	if err != nil {
+		return 0, "", fmt.Errorf("Can't assign task that I can't find: %w", err)
 	}
-	res := fmt.Sprintf(`Задача "%s" создана, id=%s`, ut.task, ut.taskID)
-	// show("addTask result: ", res)
+	log.Printf("task by id %s, found under index %d", taskID, idx)
+
+	prevExecutor := task.executorID
+	task.executorID = targetChatID
+
+	return prevExecutor, task.task, nil
+}
+
+func (bh *TGBotHandlers) getTaskByTaskID(taskID string) (idx int, task *UserTask, err error) {
+	for idx, ut := range bh.data {
+		if ut.taskID == taskID {
+			return idx, ut, nil
+		}
+	}
+	return 0, nil, fmt.Errorf("getTaskByTaskID, task %s not found", taskID)
+}
+
+func (bh *TGBotHandlers) getTasksByExecutor(chatID int64) []*UserTask {
+	res := make([]*UserTask, 0, 16)
+	for _, ut := range bh.data {
+		if ut.executorID == chatID {
+			res = append(res, ut)
+		}
+	}
 	return res
 }
 
+func (bh *TGBotHandlers) addTask(authorID int64, authorName, task string) UserTask {
+	ut := UserTask{
+		executorID: authorID,
+		authorID:   authorID,
+		taskID:     nextID_10(),
+		authorName: authorName,
+		task:       task,
+	}
+	bh.data = append(bh.data, &ut)
+	return ut
+}
+
 type UserTask struct {
-	userID int64
-	taskID string
-	task   string
+	executorID int64
+	authorID   int64
+	taskID     string
+	authorName string
+	task       string
+}
+
+type ChatMessage struct {
+	chatID  int64
+	msgText string
 }
 
 // это заглушка чтобы импорт сохранился
