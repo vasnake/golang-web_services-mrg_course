@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -96,18 +97,7 @@ func (bh *TGBotHandlers) ProcessMessages() error {
 			}
 
 			// [case#, user: command]
-			debugNotes := `
-2024-05-29T09:49:14.539Z: bot got a new message, (chatID, text, user, messageID): 512; "/tasks"; "ppetrov"; 6;
-2024-05-29T09:49:14.539Z: execCommand result: []main.ChatMessage{main.ChatMessage{chatID:512, msgText:"1. написать бота by @ivanov\n/assign_1"}};
-	taskbot_test.go:390: [case5, 512: /tasks] bad results:
-
-				Want: map[512:1. написать бота by @ivanov
-		assignee: я
-		/unassign_1 /resolve_1]
-
-				Have: map[512:1. написать бота by @ivanov
-		/assign_1]
-`
+			debugNotes := ``
 			__dummy(debugNotes)
 		} // end select
 	}
@@ -117,28 +107,126 @@ func (bh *TGBotHandlers) execCommand(chatID int64, userName, cmd string) []ChatM
 	var result = make([]ChatMessage, 0, 2)
 	var r ChatMessage
 	switch {
+	//resolve_1
+	case strings.HasPrefix(cmd, "/resolve_"):
+		t, err := bh.resolveTask(cutPrefix(cmd, "/resolve_"), chatID)
+		if err != nil {
+			r = ChatMessage{chatID: chatID, msgText: fmt.Sprintf("Задача не на вас")}
+			result = append(result, r)
+		} else {
+			r = ChatMessage{chatID: chatID, msgText: fmt.Sprintf(`Задача "%s" выполнена`, t.task)}
+			result = append(result, r)
+			r = ChatMessage{chatID: t.authorID, msgText: fmt.Sprintf(`Задача "%s" выполнена @%s`, t.task, userName)}
+			result = append(result, r)
+		}
 
-	case cmd == "/tasks":
-		tasks := bh.getTasksByExecutor(chatID)
+	case strings.HasPrefix(cmd, "/unassign_"):
+		t, err := bh.unassignTask(cutPrefix(cmd, "/unassign_"), chatID)
+		if err != nil {
+			r = ChatMessage{chatID: chatID, msgText: fmt.Sprintf("Задача не на вас")}
+			result = append(result, r)
+		} else {
+			r = ChatMessage{chatID: t.authorID, msgText: fmt.Sprintf(`Задача "%s" осталась без исполнителя`, t.task)}
+			result = append(result, r)
+			r = ChatMessage{chatID: chatID, msgText: "Принято"}
+			result = append(result, r)
+		}
+
+	case strings.HasPrefix(cmd, "/assign_"):
+		// prevExecutorID, taskText, err := bh.assignTask(cutPrefix(cmd, "/assign_"), chatID, userName)
+		prevExecutor, t, err := bh.assignTask(cutPrefix(cmd, "/assign_"), chatID, userName)
+		panicOnError("assign failed", err)
+		if prevExecutor == 0 {
+			prevExecutor = t.authorID
+		}
+		r = ChatMessage{chatID: chatID, msgText: fmt.Sprintf(`Задача "%s" назначена на вас`, t.task)}
+		result = append(result, r)
+		if t.authorID != chatID {
+			r = ChatMessage{chatID: prevExecutor, msgText: fmt.Sprintf(`Задача "%s" назначена на @%s`, t.task, userName)}
+			result = append(result, r)
+		}
+
+	case cmd == "/owner":
+		tasks := bh.getTasksByAuthor(chatID)
+		tasks = slices.DeleteFunc(tasks, func(x *UserTask) bool {
+			show("filter: ", x)
+			return x.executorID != chatID
+		})
 		if len(tasks) == 0 {
 			r = ChatMessage{chatID: chatID, msgText: "Нет задач"}
 		} else {
-			t := tasks[0]
-			r = ChatMessage{chatID: chatID, msgText: fmt.Sprintf("%s. написать бота by @%s\n/assign_%s", t.taskID, t.authorName, t.taskID)}
+			var msgtxt = ""
+			for _, t := range tasks {
+				show("task: ", t)
+				if len(msgtxt) > 0 {
+					msgtxt += "\n\n"
+				}
+				s := "%s. %s by @%s\n/assign_%s"
+				msgtxt += fmt.Sprintf(s, t.taskID, t.task, t.authorName, t.taskID)
+			}
+			r = ChatMessage{chatID: chatID, msgText: msgtxt}
+		}
+		result = append(result, r)
+
+	case cmd == "/my":
+		tasks := bh.getTasksByExecutor(chatID)
+		tasks = slices.DeleteFunc(tasks, func(x *UserTask) bool {
+			show("filter: ", x)
+			return x.authorID != chatID
+		})
+		if len(tasks) == 0 {
+			r = ChatMessage{chatID: chatID, msgText: "Нет задач"}
+		} else {
+			var msgtxt = ""
+			for _, t := range tasks {
+				show("task: ", t)
+				if len(msgtxt) > 0 {
+					msgtxt += "\n\n"
+				}
+				s := "%s. %s by @%s\n/unassign_%s /resolve_%s"
+				msgtxt += fmt.Sprintf(s, t.taskID, t.task, t.authorName, t.taskID, t.taskID)
+			}
+			r = ChatMessage{chatID: chatID, msgText: msgtxt}
+		}
+		result = append(result, r)
+
+	case cmd == "/tasks":
+		// tasks := bh.getTasksByExecutorOrAuthor(chatID)
+		// tasks = slices.DeleteFunc(tasks, func(x *UserTask) bool {
+		// 	show("filter, task: ", x)
+		// 	return x.resolved
+		// })
+		tasks := bh.getActiveTasks()
+		if len(tasks) == 0 {
+			r = ChatMessage{chatID: chatID, msgText: "Нет задач"}
+		} else {
+			var msgtxt = ""
+			for _, t := range tasks {
+				show("task: ", t)
+				if len(msgtxt) > 0 {
+					msgtxt += "\n\n"
+				}
+				if chatID != t.executorID && chatID == t.authorID {
+					s := "%s. %s by @%s\nassignee: @%s"
+					msgtxt += fmt.Sprintf(s, t.taskID, t.task, t.authorName, t.executorName)
+				} else if chatID == t.executorID && chatID != t.authorID {
+					s := "%s. %s by @%s\nassignee: я\n/unassign_%s /resolve_%s"
+					msgtxt += fmt.Sprintf(s, t.taskID, t.task, t.authorName, t.taskID, t.taskID)
+				} else if chatID == t.executorID && chatID == t.authorID && t.assigned {
+					s := "%s. %s by @%s\nassignee: я\n/unassign_%s /resolve_%s"
+					msgtxt += fmt.Sprintf(s, t.taskID, t.task, t.authorName, t.taskID, t.taskID)
+				} else {
+					s := "%s. %s by @%s\n/assign_%s"
+					msgtxt += fmt.Sprintf(s, t.taskID, t.task, t.authorName, t.taskID)
+				}
+			} // end tasks loop
+			r = ChatMessage{chatID: chatID, msgText: msgtxt}
 		}
 		result = append(result, r)
 
 	case strings.HasPrefix(cmd, "/new "):
 		ut := bh.addTask(chatID, userName, cutPrefix(cmd, "/new "))
 		r = ChatMessage{chatID: chatID, msgText: fmt.Sprintf(`Задача "%s" создана, id=%s`, ut.task, ut.taskID)}
-		result = append(result, r)
-
-	case strings.HasPrefix(cmd, "/assign_"):
-		prevExecutorID, taskText, err := bh.assignTask(cutPrefix(cmd, "/assign_"), chatID)
-		panicOnError("assign failed", err)
-		r = ChatMessage{chatID: chatID, msgText: fmt.Sprintf(`Задача "%s" назначена на вас`, taskText)}
-		result = append(result, r)
-		r = ChatMessage{chatID: prevExecutorID, msgText: fmt.Sprintf(`Задача "%s" назначена на @%s`, taskText, userName)}
 		result = append(result, r)
 
 	default:
@@ -149,21 +237,6 @@ func (bh *TGBotHandlers) execCommand(chatID int64, userName, cmd string) []ChatM
 	return result
 }
 
-func (bh *TGBotHandlers) assignTask(taskID string, targetChatID int64) (prevExecutorID int64, taskText string, err error) {
-	// find taks #1
-	// assign new owher to task
-	idx, task, err := bh.getTaskByTaskID(taskID)
-	if err != nil {
-		return 0, "", fmt.Errorf("Can't assign task that I can't find: %w", err)
-	}
-	log.Printf("task by id %s, found under index %d", taskID, idx)
-
-	prevExecutor := task.executorID
-	task.executorID = targetChatID
-
-	return prevExecutor, task.task, nil
-}
-
 func (bh *TGBotHandlers) getTaskByTaskID(taskID string) (idx int, task *UserTask, err error) {
 	for idx, ut := range bh.data {
 		if ut.taskID == taskID {
@@ -171,6 +244,26 @@ func (bh *TGBotHandlers) getTaskByTaskID(taskID string) (idx int, task *UserTask
 		}
 	}
 	return 0, nil, fmt.Errorf("getTaskByTaskID, task %s not found", taskID)
+}
+
+func (bh *TGBotHandlers) getActiveTasks() []*UserTask {
+	res := make([]*UserTask, 0, 16)
+	for _, ut := range bh.data {
+		if !ut.resolved {
+			res = append(res, ut)
+		}
+	}
+	return res
+}
+
+func (bh *TGBotHandlers) getTasksByExecutorOrAuthor(chatID int64) []*UserTask {
+	res := make([]*UserTask, 0, 16)
+	for _, ut := range bh.data {
+		if ut.executorID == chatID || ut.authorID == chatID {
+			res = append(res, ut)
+		}
+	}
+	return res
 }
 
 func (bh *TGBotHandlers) getTasksByExecutor(chatID int64) []*UserTask {
@@ -183,24 +276,90 @@ func (bh *TGBotHandlers) getTasksByExecutor(chatID int64) []*UserTask {
 	return res
 }
 
+func (bh *TGBotHandlers) getTasksByAuthor(chatID int64) []*UserTask {
+	res := make([]*UserTask, 0, 16)
+	for _, ut := range bh.data {
+		if ut.authorID == chatID {
+			res = append(res, ut)
+		}
+	}
+	return res
+}
+
+func (bh *TGBotHandlers) resolveTask(taskID string, userID int64) (*UserTask, error) {
+	idx, task, err := bh.getTaskByTaskID(taskID)
+	if err != nil {
+		return nil, fmt.Errorf("Can't resolve task that I can't find: %w", err)
+	}
+	log.Printf("task by id %s, found under index %d", taskID, idx)
+	show("resolveTask: ", task)
+
+	if task.executorID != userID {
+		return task, fmt.Errorf("resolveTask, executor != user")
+	} else {
+		task.resolved = true
+	}
+	return task, nil
+}
+
+func (bh *TGBotHandlers) unassignTask(taskID string, userID int64) (*UserTask, error) {
+	idx, task, err := bh.getTaskByTaskID(taskID)
+	if err != nil {
+		return nil, fmt.Errorf("Can't unassign task that I can't find: %w", err)
+	}
+	log.Printf("task by id %s, found under index %d", taskID, idx)
+	show("unassignTask: ", task)
+
+	if task.executorID != userID {
+		return task, fmt.Errorf("unassignTask, executor != user")
+	} else {
+		task.executorID = 0
+		task.executorName = ""
+		task.assigned = false
+	}
+	return task, nil
+}
+
+func (bh *TGBotHandlers) assignTask(taskID string, newExecutorID int64, newExecutorName string) (int64, *UserTask, error) {
+	idx, task, err := bh.getTaskByTaskID(taskID)
+	if err != nil {
+		return 0, nil, fmt.Errorf("Can't assign task that I can't find: %w", err)
+	}
+	log.Printf("task by id %s, found under index %d", taskID, idx)
+	show("assignTask: ", task)
+
+	prevExecutorID := task.executorID
+	task.executorID = newExecutorID
+	task.executorName = newExecutorName
+	task.assigned = true
+
+	return prevExecutorID, task, nil
+}
+
 func (bh *TGBotHandlers) addTask(authorID int64, authorName, task string) UserTask {
 	ut := UserTask{
-		executorID: authorID,
-		authorID:   authorID,
-		taskID:     nextID_10(),
-		authorName: authorName,
-		task:       task,
+		taskID:       nextID_10(),
+		task:         task,
+		authorID:     authorID,
+		authorName:   authorName,
+		assigned:     false,
+		executorID:   authorID,
+		executorName: authorName,
+		resolved:     false,
 	}
 	bh.data = append(bh.data, &ut)
 	return ut
 }
 
 type UserTask struct {
-	executorID int64
-	authorID   int64
-	taskID     string
-	authorName string
-	task       string
+	taskID       string
+	task         string
+	authorID     int64
+	authorName   string
+	assigned     bool
+	executorID   int64
+	executorName string
+	resolved     bool
 }
 
 type ChatMessage struct {
