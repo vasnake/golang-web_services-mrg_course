@@ -118,6 +118,7 @@ func (bot *BotAPI) decodeAPIResponse(responseBody io.Reader, resp *APIResponse) 
 func (bot *BotAPI) makeMessageRequest(endpoint string, params url.Values) (Message, error) {
 	resp, err := bot.MakeRequest(endpoint, params)
 	if err != nil {
+		bot.debugLog(endpoint, params, err)
 		return Message{}, err
 	}
 

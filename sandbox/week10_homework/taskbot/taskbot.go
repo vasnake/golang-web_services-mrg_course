@@ -19,17 +19,33 @@ var BotToken = "_golangcourse_test"
 func startTaskBot(ctx context.Context, portStr string) error {
 	bot, err := tgbotapi.NewBotAPI(BotToken)
 	panicOnError("NewBotAPI failed", err)
+	bot.Debug = false
+	show("bot, authorized on account: ", bot.Self.UserName)
+
+	// u := tgbotapi.NewUpdate(0)
+	// u.Timeout = 60
+	// updates, err := bot.GetUpdatesChan(u)
+
 	_, err = bot.SetWebhook(tgbotapi.NewWebhook(WebhookURL))
 	panicOnError("SetWebhook failed", err)
+
+	// info, err := bot.GetWebhookInfo()
+	// panicOnError("bot.GetWebhookInfo failed", err)
+	// if info.LastErrorDate != 0 {
+	// 	show("Telegram callback failed: ", info.LastErrorMessage)
+	// }
+
+	// updates := bot.ListenForWebhook("/" + bot.Token)
 	updates := bot.ListenForWebhook("/")
+	// defer bot.StopReceivingUpdates()
 
 	bh := NewTGBotHandlers(ctx, bot, updates)
 
 	show("startTaskBot: program started ...")
 	show("Starting server at: ", WebhookURL)
+	go http.ListenAndServe(portStr, nil)
 
-	go bh.ProcessMessages()
-	return http.ListenAndServe(portStr, nil)
+	return bh.ProcessMessages()
 }
 
 type TGBotHandlers struct {
@@ -46,29 +62,38 @@ func NewTGBotHandlers(ctx context.Context, bot *tgbotapi.BotAPI, updates tgbotap
 	}
 }
 
-func (bh *TGBotHandlers) ProcessMessages() {
+func (bh *TGBotHandlers) ProcessMessages() error {
 	for {
 		select {
 
 		case <-bh.ctx.Done():
 			show("ctx.Done")
-			return
+			return nil
 
 		case update := <-bh.updates:
+			// show(fmt.Sprintf("update: %+v\n", update))
+			if update.Message == nil { // ignore any non-Message Updates
+				show("skip nil message: ", update)
+				continue
+			}
+
 			id := update.Message.Chat.ID
-			cmd := update.Message.Text
-			show("bot got a new message, (id, text): ", id, cmd)
-			resp := bh.execCommand(id, cmd)
-			show("bot sending response: ", resp)
-			bh.bot.Send(tgbotapi.NewMessage(id, resp))
+			req := update.Message.Text
+			show("bot got a new message, (chatID, text, user, messageID): ", id, req, update.Message.From.UserName, update.Message.MessageID)
+
+			var msg = tgbotapi.NewMessage(id, "")
+			msg.Text = bh.execCommand(id, req)
+			// msg.ReplyToMessageID = update.Message.MessageID
+			bh.bot.Send(msg)
+			// _, err := bh.bot.Send(msg)
+			// panicOnError("bot.Send failed", err)
 
 			// [case#, user: command]
 			debugNotes := `
-2024-05-28T14:39:01.582Z: bot got a new message, (id, text): 256; "/new написать бота";
-2024-05-28T14:39:01.582Z: bot sending response: "Задача \"написать бота\" создана, id=1";
-	taskbot_test.go:390: [case1, 256: /new написать бота] bad results:
-				Want: map[256:Задача "написать бота" создана, id=1]
-				Have: map[]
+2024-05-29T08:02:53.720Z: bot got a new message, (chatID, text, user, messageID): 256; "/tasks"; "ivanov"; 3; 
+2024-05-29T08:02:53.720Z: execCommand result: "Нет задач";
+	taskbot_test.go:390: [case2, 256: /tasks] bad results:
+				Want: map[256:1. написать бота by @ivanov
 `
 			__dummy(debugNotes)
 		} // end select
@@ -78,18 +103,22 @@ func (bh *TGBotHandlers) ProcessMessages() {
 func (bh *TGBotHandlers) execCommand(id int64, cmd string) string {
 	// (id, text): 256; "/tasks";
 	// "Нет задач"
+	result := "unknown command: " + cmd
 	switch {
 
 	case cmd == "/tasks":
-		return "Нет задач"
+		result = "Нет задач"
 
 	case strings.HasPrefix(cmd, "/new "):
-		return bh.addTask(id, cutPrefix(cmd, "/new "))
+		result = bh.addTask(id, cutPrefix(cmd, "/new "))
 
 	default:
-		show("unknown command: ", cmd)
-		return "xz"
+		result = "unknown command: " + cmd
+
 	}
+
+	show("execCommand result: ", result)
+	return result
 }
 
 func (bh *TGBotHandlers) addTask(id int64, task string) string {
@@ -110,8 +139,11 @@ type UserTask struct {
 }
 
 // это заглушка чтобы импорт сохранился
-func __dummy(a any) {
-	tgbotapi.APIEndpoint = "_dummy"
+func __dummy(a any) error {
+	if tgbotapi.APIEndpoint == a {
+		return nil
+	}
+	return fmt.Errorf("xz")
 }
 
 // --- useful little functions ---
