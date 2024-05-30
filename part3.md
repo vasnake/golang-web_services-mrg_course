@@ -1657,9 +1657,37 @@ function uploadPhoto(uid) {
 
 next: как разобрать получившуюся кашу из файлов кода в проекте?
 
-### Организация пакетов в приложении - 1 (photolist 101_structure)
+### положить в песочницу: базовый проект GQL, фотолист на GQL
 
-# I_AM_HERE (положить в песочницу: базовый проект гкл, фотолист на гкл)
+# I_AM_HERE
+
+```s
+# начать с создания файлов:
+week11\gqlgen6\schema.graphql
+week11\gqlgen6\gqlgen.yml
+week11\gqlgen6\photo.go
+
+# дать команды
+pushd sandbox/week11/gqlgen6/
+go get github.com/99designs/gqlgen
+go run github.com/99designs/gqlgen init
+go run github.com/99designs/gqlgen generate --verbose
+
+# добавить файл (костыль для n+1)
+week11\gqlgen6\userloader_gen.go
+
+# внести правки в
+week11\gqlgen6\generated.go
+week11\gqlgen6\models_gen.go
+week11\gqlgen6\resolver.go
+
+# добавить
+week11\gqlgen6\server\server.go
+
+```
+snippets
+
+### Организация пакетов в приложении - 1 (photolist 101_structure)
 
 - [struct_all_files.txt](week_11/101_structure_struct_all_files.txt)
 
