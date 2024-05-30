@@ -1661,6 +1661,7 @@ next: как разобрать получившуюся кашу из файл�
 
 # I_AM_HERE
 
+Базовый проект, демо GraphQL на двух связанных сущностях: Photo, User
 ```s
 # начать с создания файлов:
 week11\gqlgen6\schema.graphql
@@ -1674,15 +1675,20 @@ go run github.com/99designs/gqlgen init
 go run github.com/99designs/gqlgen generate --verbose
 
 # добавить файл (костыль для n+1)
+# go run github.com/vektah/dataloaden UserLoader uint *gqlgen6.User
 week11\gqlgen6\userloader_gen.go
 
 # внести правки в
-week11\gqlgen6\generated.go
-week11\gqlgen6\models_gen.go
-week11\gqlgen6\resolver.go
+week11\gqlgen6\generated.go # без изменений
+week11\gqlgen6\models_gen.go # без изменений
+week11\gqlgen6\resolver.go # много кастомного кода
 
-# добавить
+# добавить playground
 week11\gqlgen6\server\server.go
+
+# запустить сервер
+# поиграть с запросами
+week11\gqlgen6\queries.txt
 
 ```
 snippets

@@ -1,13 +1,13 @@
 package gqlgen6
 
 import (
-	// "log"
+	"log"
 	"strconv"
 )
 
 type Photo struct {
 	ID     uint `json:"id"`
-	UserID uint `json:"-"`
+	UserID uint `json:"-"` // для демонстрации превращения модель.айди в графкл.юзер
 	// User     *User  `json:"user"`
 	URL     string `json:"url"`
 	Comment string `json:"comment"`
@@ -16,6 +16,6 @@ type Photo struct {
 }
 
 func (ph *Photo) Id() string {
-	// log.Println("call Photo.Id method", ph.ID)
+	log.Println("Photo.Id(): ", ph.ID)
 	return strconv.Itoa(int(ph.ID))
 }

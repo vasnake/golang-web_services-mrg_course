@@ -1,20 +1,23 @@
-package main
+package gqlgen_playground
 
 import (
 	"context"
 	"fmt"
-	gqlgen "gqlgen6"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+	gqlgen "week11/gqlgen6"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/99designs/gqlgen/handler"
 )
 
 /*
+playground
+
 # ok
 curl localhost:8080/query \
   -F operations='{ "query": "mutation($comment: String!, $file: Upload!) { uploadPhoto(comment: $comment, file: $file) { id } }", "variables": { "comment": "cool photo", "file": null } }' \
@@ -46,10 +49,38 @@ query($userID: ID!){
   }
 }
 
-
-
-
 */
+
+func MainDemo() {
+	// http.Handle("/", handler.Playground("GraphQL playground", "/query")) deprecated
+	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
+
+	resolver := &gqlgen.Resolver{
+		Users:      users,
+		PhotosData: photos,
+	}
+	cfg := gqlgen.Config{
+		Resolvers: resolver,
+	}
+	cfg.Complexity.User.Photos = func(childComplexity, count int) int {
+		return count * childComplexity
+	}
+
+	cfg.Directives.IsSubscribed = CheckIsSubscribed
+	cfg.Directives.Validation = CheckValidation
+
+	gqlHandler := handler.GraphQL(
+		gqlgen.NewExecutableSchema(cfg),
+		handler.ComplexityLimit(500),
+	)
+	handler := UserLoaderMiddleware(resolver, gqlHandler)
+	handler = AuthMiddleware(handler)
+	http.Handle("/query", handler)
+
+	port := "8080"
+	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
 
 var users = map[uint]*gqlgen.User{
 	1: {
@@ -106,6 +137,7 @@ var photos = map[string]*gqlgen.Photo{
 
 // go run github.com/vektah/dataloaden UserLoader uint *gqlgen3.User
 
+// n+1 problem resolution: batch queries in time window
 func UserLoaderMiddleware(resolver *gqlgen.Resolver, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cfg := gqlgen.UserLoaderConfig{
@@ -215,34 +247,4 @@ func CheckValidation(ctx context.Context, obj interface{}, next graphql.Resolver
 	}
 
 	return next(ctx)
-}
-
-func main() {
-	http.Handle("/", handler.Playground("GraphQL playground", "/query"))
-
-	resolver := &gqlgen.Resolver{
-		Users:      users,
-		PhotosData: photos,
-	}
-	cfg := gqlgen.Config{
-		Resolvers: resolver,
-	}
-	cfg.Complexity.User.Photos = func(childComplexity, count int) int {
-		return count * childComplexity
-	}
-
-	cfg.Directives.IsSubscribed = CheckIsSubscribed
-	cfg.Directives.Validation = CheckValidation
-
-	gqlHandler := handler.GraphQL(
-		gqlgen.NewExecutableSchema(cfg),
-		handler.ComplexityLimit(500),
-	)
-	handler := UserLoaderMiddleware(resolver, gqlHandler)
-	handler = AuthMiddleware(handler)
-	http.Handle("/query", handler)
-
-	port := "8080"
-	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
