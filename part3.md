@@ -1857,6 +1857,12 @@ go run \
 
 Дополнительная работа (если есть время и желание): `hw11_advanced.md`
 
+```s
+pushd week11_homework/shop_gql/
+go run github.com/99designs/gqlgen generate --verbose --config ./gqlgen.yml
+```
+snippets
+
 Done ?
 
 ## part 3, week 4 (12)

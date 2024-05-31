@@ -87,465 +87,465 @@ func TestApp(t *testing.T) {
 		&ApiTestCase{
 			Name: "Catalogs list",
 			GQL: `
-			{
-				Catalog(ID: "1") {
-				  id
-				  name
-				  childs {
-					id
-					name
-				  }
-				}
-			}
-			`,
+            {
+                Catalog(ID: "1") {
+                  id
+                  name
+                  childs {
+                    id
+                    name
+                  }
+                }
+            }
+            `,
 			URL: gqlURL,
 			ExpectedRaw: `
-			{
-				"data": {
-				  "Catalog": {
-					"id": 1,
-					"name": "ShopQL",
-					"childs": [
-					  {
-						"id": 2,
-						"name": "Книги"
-					  },
-					  {
-						"id": 5,
-						"name": "Чай"
-					  }
-					]
-				  }
-				}
-			  }
-			`,
+            {
+                "data": {
+                  "Catalog": {
+                    "id": 1,
+                    "name": "ShopQL",
+                    "childs": [
+                      {
+                        "id": 2,
+                        "name": "Книги"
+                      },
+                      {
+                        "id": 5,
+                        "name": "Чай"
+                      }
+                    ]
+                  }
+                }
+              }
+            `,
 		}, // 0
 		// ----------------------------------------------------------------------------------------
 		&ApiTestCase{
 			Name: "Catalog page with param and items list - Tea - with default limit",
 			GQL: `
-			{
-				Catalog(ID: "5") {
-				  id
-				  name
-				  items {
-					id
-					name
-				  }
-				}
-			}
-			`,
+            {
+                Catalog(ID: "5") {
+                  id
+                  name
+                  items {
+                    id
+                    name
+                  }
+                }
+            }
+            `,
 			URL: gqlURL,
 			ExpectedRaw: `
-			{
-				"data": {
-				  "Catalog": {
-					"id": 5,
-					"name": "Чай",
-					"items": [
-					  {
-						"id": 9,
-						"name": "Си Пу Юань, Шен Пуэр"
-					  },
-					  {
-						"id": 10,
-						"name": "Мэнхай 7542, Шен Пуэр"
-					  },
-					  {
-						"id": 11,
-						"name": "Дянь Хун"
-					  }
-					]
-				  }
-				}
-			  }
-			`,
+            {
+                "data": {
+                  "Catalog": {
+                    "id": 5,
+                    "name": "Чай",
+                    "items": [
+                      {
+                        "id": 9,
+                        "name": "Си Пу Юань, Шен Пуэр"
+                      },
+                      {
+                        "id": 10,
+                        "name": "Мэнхай 7542, Шен Пуэр"
+                      },
+                      {
+                        "id": 11,
+                        "name": "Дянь Хун"
+                      }
+                    ]
+                  }
+                }
+              }
+            `,
 		}, // 1
 		// ----------------------------------------------------------------------------------------
 		&ApiTestCase{
 			Name: "Catalog page with param and items list - Books - items in subcatalog",
 			GQL: `
-			{
-				Catalog(ID: "2") {
-				  id
-				  name
-				  childs {
-					id
-					name
-					items {
-					  id
-					  name
-					}
-				  }
-				}
-			}
-			`,
+            {
+                Catalog(ID: "2") {
+                  id
+                  name
+                  childs {
+                    id
+                    name
+                    items {
+                      id
+                      name
+                    }
+                  }
+                }
+            }
+            `,
 			URL: gqlURL,
 			ExpectedRaw: `
-			{
-				"data": {
-				  "Catalog": {
-					"id": 2,
-					"name": "Книги",
-					"childs": [
-					  {
-						"id": 3,
-						"name": "Алгоритмы",
-						"items": [
-						  {
-							"id": 1,
-							"name": "Грокаем алгоритмы | Бхаргава Адитья"
-						  },
-						  {
-							"id": 2,
-							"name": "Теоретический минимум по Computer Science | Фило Владстон Феррейра"
-						  },
-						  {
-							"id": 3,
-							"name": "Совершенный алгоритм. Основы | Рафгарден Тим"
-						  }
-						]
-					  },
-					  {
-						"id": 4,
-						"name": "Golang",
-						"items": [
-						  {
-							"id": 5,
-							"name": "Язык программирования Go | Донован Алан А. А., Керниган Брайан У."
-						  },
-						  {
-							"id": 6,
-							"name": "Go на практике | Butcher Matt, Фарина Мэтт Мэтт"
-						  },
-						  {
-							"id": 7,
-							"name": "Программирование на Go. Разработка приложений XXI века | Саммерфильд Марк"
-						  }
-						]
-					  }
-					]
-				  }
-				}
-			  }
-			`,
+            {
+                "data": {
+                  "Catalog": {
+                    "id": 2,
+                    "name": "Книги",
+                    "childs": [
+                      {
+                        "id": 3,
+                        "name": "Алгоритмы",
+                        "items": [
+                          {
+                            "id": 1,
+                            "name": "Грокаем алгоритмы | Бхаргава Адитья"
+                          },
+                          {
+                            "id": 2,
+                            "name": "Теоретический минимум по Computer Science | Фило Владстон Феррейра"
+                          },
+                          {
+                            "id": 3,
+                            "name": "Совершенный алгоритм. Основы | Рафгарден Тим"
+                          }
+                        ]
+                      },
+                      {
+                        "id": 4,
+                        "name": "Golang",
+                        "items": [
+                          {
+                            "id": 5,
+                            "name": "Язык программирования Go | Донован Алан А. А., Керниган Брайан У."
+                          },
+                          {
+                            "id": 6,
+                            "name": "Go на практике | Butcher Matt, Фарина Мэтт Мэтт"
+                          },
+                          {
+                            "id": 7,
+                            "name": "Программирование на Go. Разработка приложений XXI века | Саммерфильд Марк"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            `,
 		}, // 2
 		// ----------------------------------------------------------------------------------------
 		&ApiTestCase{
 			Name: "Catalog page with param and items list and pagination",
 			GQL: `
-			{
-				Catalog(ID: "5") {
-					id
-					name
-					items(limit: 1, offset: 1) {
-					id
-					name
-					}
-				}
-			}
-			`,
+            {
+                Catalog(ID: "5") {
+                    id
+                    name
+                    items(limit: 1, offset: 1) {
+                    id
+                    name
+                    }
+                }
+            }
+            `,
 			URL: gqlURL,
 			ExpectedRaw: `
-			{
-				"data": {
-					"Catalog": {
-					"id": 5,
-					"name": "Чай",
-					"items": [
-						{
-						"id": 10,
-						"name": "Мэнхай 7542, Шен Пуэр"
-						}
-					]
-					}
-				}
-				}
-			`,
+            {
+                "data": {
+                    "Catalog": {
+                    "id": 5,
+                    "name": "Чай",
+                    "items": [
+                        {
+                        "id": 10,
+                        "name": "Мэнхай 7542, Шен Пуэр"
+                        }
+                    ]
+                    }
+                }
+                }
+            `,
 		}, // 3
 		// ----------------------------------------------------------------------------------------
 		&ApiTestCase{
 			Name: "Catalog with seller name",
 			GQL: `
-			{
-				Catalog(ID: "5") {
-				  id
-				  name
-				  items(limit: 1, offset: 1) {
-					id
-					name
-					seller {
-					  name
-					}
-				  }
-				}
-			}
-			`,
+            {
+                Catalog(ID: "5") {
+                  id
+                  name
+                  items(limit: 1, offset: 1) {
+                    id
+                    name
+                    seller {
+                      name
+                    }
+                  }
+                }
+            }
+            `,
 			URL: gqlURL,
 			ExpectedRaw: `
-			{
-				"data": {
-				  "Catalog": {
-					"id": 5,
-					"name": "Чай",
-					"items": [
-					  {
-						"id": 10,
-						"name": "Мэнхай 7542, Шен Пуэр",
-						"seller": {
-						  "name": "Дядюшка Ляо"
-						}
-					  }
-					]
-				  }
-				}
-			  }
-			`,
+            {
+                "data": {
+                  "Catalog": {
+                    "id": 5,
+                    "name": "Чай",
+                    "items": [
+                      {
+                        "id": 10,
+                        "name": "Мэнхай 7542, Шен Пуэр",
+                        "seller": {
+                          "name": "Дядюшка Ляо"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            `,
 		}, // 4
 		// ----------------------------------------------------------------------------------------
 		&ApiTestCase{
 			Name: "Catalog with other seller",
 			GQL: `
-			{
-				Catalog(ID: "3") {
-				  id
-				  name
-				  items(limit: 5) {
-					id
-					name
-					seller {
-					  name
-					}
-				  }
-				}
-			}
-			`,
+            {
+                Catalog(ID: "3") {
+                  id
+                  name
+                  items(limit: 5) {
+                    id
+                    name
+                    seller {
+                      name
+                    }
+                  }
+                }
+            }
+            `,
 			URL: gqlURL,
 			ExpectedRaw: `
-			{
-				"data": {
-				  "Catalog": {
-					"id": 3,
-					"name": "Алгоритмы",
-					"items": [
-					  {
-						"id": 1,
-						"name": "Грокаем алгоритмы | Бхаргава Адитья",
-						"seller": {
-						  "name": "Издательство Питер"
-						}
-					  },
-					  {
-						"id": 2,
-						"name": "Теоретический минимум по Computer Science | Фило Владстон Феррейра",
-						"seller": {
-						  "name": "Издательство Питер"
-						}
-					  },
-					  {
-						"id": 3,
-						"name": "Совершенный алгоритм. Основы | Рафгарден Тим",
-						"seller": {
-						  "name": "Издательство Питер"
-						}
-					  },
-					  {
-						"id": 4,
-						"name": "Алгоритмы на Java | Джитер Кевин Уэйн, Седжвик Роберт",
-						"seller": {
-						  "name": "Издательство Вильямс"
-						}
-					  }
-					]
-				  }
-				}
-			}
-			`,
+            {
+                "data": {
+                  "Catalog": {
+                    "id": 3,
+                    "name": "Алгоритмы",
+                    "items": [
+                      {
+                        "id": 1,
+                        "name": "Грокаем алгоритмы | Бхаргава Адитья",
+                        "seller": {
+                          "name": "Издательство Питер"
+                        }
+                      },
+                      {
+                        "id": 2,
+                        "name": "Теоретический минимум по Computer Science | Фило Владстон Феррейра",
+                        "seller": {
+                          "name": "Издательство Питер"
+                        }
+                      },
+                      {
+                        "id": 3,
+                        "name": "Совершенный алгоритм. Основы | Рафгарден Тим",
+                        "seller": {
+                          "name": "Издательство Питер"
+                        }
+                      },
+                      {
+                        "id": 4,
+                        "name": "Алгоритмы на Java | Джитер Кевин Уэйн, Седжвик Роберт",
+                        "seller": {
+                          "name": "Издательство Вильямс"
+                        }
+                      }
+                    ]
+                  }
+                }
+            }
+            `,
 		}, // 5
 		// ----------------------------------------------------------------------------------------
 		&ApiTestCase{
 			Name: "Catalog - inStockText",
 			GQL: `
-			{
-				Catalog(ID: "5") {
-				  id
-				  name
-				  items(limit: 5) {
-					id
-					name
-					inStockText
-				  }
-				}
-			}			  
-			`,
+            {
+                Catalog(ID: "5") {
+                  id
+                  name
+                  items(limit: 5) {
+                    id
+                    name
+                    inStockText
+                  }
+                }
+            }			  
+            `,
 			URL: gqlURL,
 			ExpectedRaw: `
-			{
-				"data": {
-				  "Catalog": {
-					"id": 5,
-					"name": "Чай",
-					"items": [
-					  {
-						"id": 9,
-						"name": "Си Пу Юань, Шен Пуэр",
-						"inStockText": "мало"
-					  },
-					  {
-						"id": 10,
-						"name": "Мэнхай 7542, Шен Пуэр",
-						"inStockText": "хватает"
-					  },
-					  {
-						"id": 11,
-						"name": "Дянь Хун",
-						"inStockText": "хватает"
-					  },
-					  {
-						"id": 12,
-						"name": "Да Хун Пао",
-						"inStockText": "много"
-					  },
-					  {
-						"id": 13,
-						"name": "Габа Улун",
-						"inStockText": "много"
-					  }
-					]
-				  }
-				}
-			  }
-			`,
+            {
+                "data": {
+                  "Catalog": {
+                    "id": 5,
+                    "name": "Чай",
+                    "items": [
+                      {
+                        "id": 9,
+                        "name": "Си Пу Юань, Шен Пуэр",
+                        "inStockText": "мало"
+                      },
+                      {
+                        "id": 10,
+                        "name": "Мэнхай 7542, Шен Пуэр",
+                        "inStockText": "хватает"
+                      },
+                      {
+                        "id": 11,
+                        "name": "Дянь Хун",
+                        "inStockText": "хватает"
+                      },
+                      {
+                        "id": 12,
+                        "name": "Да Хун Пао",
+                        "inStockText": "много"
+                      },
+                      {
+                        "id": 13,
+                        "name": "Габа Улун",
+                        "inStockText": "много"
+                      }
+                    ]
+                  }
+                }
+              }
+            `,
 		}, // 6
 		// ----------------------------------------------------------------------------------------
 		&ApiTestCase{
 			Name: "Seller with items and item catalog",
 			GQL: `
-			{
-				Seller(ID: "3") {
-				  id
-				  name
-				  items(limit: 5) {
-					id
-					name
-					parent {
-					  id
-					  name
-					}
-				  }
-				}
-			}
-			`,
+            {
+                Seller(ID: "3") {
+                  id
+                  name
+                  items(limit: 5) {
+                    id
+                    name
+                    parent {
+                      id
+                      name
+                    }
+                  }
+                }
+            }
+            `,
 			URL: gqlURL,
 			ExpectedRaw: `
-			{
-				"data": {
-				  "Seller": {
-					"id": 3,
-					"name": "Издательство Питер",
-					"items": [
-					  {
-						"id": 1,
-						"name": "Грокаем алгоритмы | Бхаргава Адитья",
-						"parent": {
-						  "id": 3,
-						  "name": "Алгоритмы"
-						}
-					  },
-					  {
-						"id": 2,
-						"name": "Теоретический минимум по Computer Science | Фило Владстон Феррейра",
-						"parent": {
-						  "id": 3,
-						  "name": "Алгоритмы"
-						}
-					  },
-					  {
-						"id": 3,
-						"name": "Совершенный алгоритм. Основы | Рафгарден Тим",
-						"parent": {
-						  "id": 3,
-						  "name": "Алгоритмы"
-						}
-					  },
-					  {
-						"id": 8,
-						"name": "Head First. Изучаем Go | Макгаврен Джей",
-						"parent": {
-						  "id": 4,
-						  "name": "Golang"
-						}
-					  }
-					]
-				  }
-				}
-			  }
-			`,
+            {
+                "data": {
+                  "Seller": {
+                    "id": 3,
+                    "name": "Издательство Питер",
+                    "items": [
+                      {
+                        "id": 1,
+                        "name": "Грокаем алгоритмы | Бхаргава Адитья",
+                        "parent": {
+                          "id": 3,
+                          "name": "Алгоритмы"
+                        }
+                      },
+                      {
+                        "id": 2,
+                        "name": "Теоретический минимум по Computer Science | Фило Владстон Феррейра",
+                        "parent": {
+                          "id": 3,
+                          "name": "Алгоритмы"
+                        }
+                      },
+                      {
+                        "id": 3,
+                        "name": "Совершенный алгоритм. Основы | Рафгарден Тим",
+                        "parent": {
+                          "id": 3,
+                          "name": "Алгоритмы"
+                        }
+                      },
+                      {
+                        "id": 8,
+                        "name": "Head First. Изучаем Go | Макгаврен Джей",
+                        "parent": {
+                          "id": 4,
+                          "name": "Golang"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            `,
 		}, // 7
 		// ----------------------------------------------------------------------------------------
 		&ApiTestCase{
 			Name: "Catalog - how many in cart - ERROR(no access) - directive @authorized",
 			GQL: `
-			{
-				Catalog(ID: "5") {
-				  id
-				  name
-				  items(limit: 1) {
-					id
-					name
-					inCart
-				  }
-				}
-			}
-			`,
+            {
+                Catalog(ID: "5") {
+                  id
+                  name
+                  items(limit: 1) {
+                    id
+                    name
+                    inCart
+                  }
+                }
+            }
+            `,
 			URL: gqlURL,
 			ExpectedRaw: `
-			{
-				"errors": [
-				  {
-					"message": "User not authorized",
-					"path": [
-					  "Catalog",
-					  "items",
-					  0,
-					  "inCart"
-					]
-				  }
-				],
-				"data": {
-				  "Catalog": null
-				}
-			}
-			`,
+            {
+                "errors": [
+                  {
+                    "message": "User not authorized",
+                    "path": [
+                      "Catalog",
+                      "items",
+                      0,
+                      "inCart"
+                    ]
+                  }
+                ],
+                "data": {
+                  "Catalog": null
+                }
+            }
+            `,
 		}, // 8
 		// ----------------------------------------------------------------------------------------
 		&ApiTestCase{
 			Name: "Add to cart - ERROR(no access) - directive @authorized",
 			GQL: `
-			mutation {
-				AddToCart(in: {itemID: 1, quantity: 2}) {
-				  item {
-					id
-					name
-				  }
-				  quantity
-				}
-			}
-			`,
+            mutation {
+                AddToCart(in: {itemID: 1, quantity: 2}) {
+                  item {
+                    id
+                    name
+                  }
+                  quantity
+                }
+            }
+            `,
 			URL: gqlURL,
 			ExpectedRaw: `
-			{
-				"errors": [
-				  {
-					"message": "User not authorized",
-					"path": [
-					  "AddToCart"
-					]
-				  }
-				],
-				"data": null
-			}
-			`,
+            {
+                "errors": [
+                  {
+                    "message": "User not authorized",
+                    "path": [
+                      "AddToCart"
+                    ]
+                  }
+                ],
+                "data": null
+            }
+            `,
 		}, // 9
 		// ----------------------------------------------------------------------------------------
 		&ApiTestCase{
@@ -568,264 +568,264 @@ func TestApp(t *testing.T) {
 		&ApiTestCase{
 			Name: "Add to cart - first item - success",
 			GQL: `
-			mutation {
-				AddToCart(in: {itemID: 12, quantity: 2}) {
-				  item {
-					id
-					name
-					inStockText
-				  }
-				  quantity
-				}
-			}
-			`,
+            mutation {
+                AddToCart(in: {itemID: 12, quantity: 2}) {
+                  item {
+                    id
+                    name
+                    inStockText
+                  }
+                  quantity
+                }
+            }
+            `,
 			URL:       gqlURL,
 			TokenName: "token1",
 			ExpectedRaw: `
-			{
-				"data": {
-				  "AddToCart": [
-					{
-					  "item": {
-						"id": 12,
-						"name": "Да Хун Пао",
-						"inStockText": "хватает"
-					  },
-					  "quantity": 2
-					}
-				  ]
-				}
-			  }			`,
+            {
+                "data": {
+                  "AddToCart": [
+                    {
+                      "item": {
+                        "id": 12,
+                        "name": "Да Хун Пао",
+                        "inStockText": "хватает"
+                      },
+                      "quantity": 2
+                    }
+                  ]
+                }
+              }			`,
 		}, // 11
 		// ----------------------------------------------------------------------------------------
 		&ApiTestCase{
 			Name: "Add to cart - first item - check correct increment in cart",
 			GQL: `
-			mutation {
-				AddToCart(in: {itemID: 12, quantity: 2}) {
-				  item {
-					id
-					name
-					inStockText
-				  }
-				  quantity
-				}
-			}
-			`,
+            mutation {
+                AddToCart(in: {itemID: 12, quantity: 2}) {
+                  item {
+                    id
+                    name
+                    inStockText
+                  }
+                  quantity
+                }
+            }
+            `,
 			URL:       gqlURL,
 			TokenName: "token1",
 			ExpectedRaw: `
-			{
-				"data": {
-				  "AddToCart": [
-					{
-					  "item": {
-						"id": 12,
-						"name": "Да Хун Пао",
-						"inStockText": "мало"
-					  },
-					  "quantity": 4
-					}
-				  ]
-				}
-			}
-			`,
+            {
+                "data": {
+                  "AddToCart": [
+                    {
+                      "item": {
+                        "id": 12,
+                        "name": "Да Хун Пао",
+                        "inStockText": "мало"
+                      },
+                      "quantity": 4
+                    }
+                  ]
+                }
+            }
+            `,
 		}, // 12
 		// ----------------------------------------------------------------------------------------
 		&ApiTestCase{
 			Name: "Add to cart - first item - check quantity availability",
 			GQL: `
-			mutation {
-				AddToCart(in: {itemID: 12, quantity: 2}) {
-				  item {
-					id
-					name
-					inStockText
-				  }
-				  quantity
-				}
-			}
-			`,
+            mutation {
+                AddToCart(in: {itemID: 12, quantity: 2}) {
+                  item {
+                    id
+                    name
+                    inStockText
+                  }
+                  quantity
+                }
+            }
+            `,
 			URL:       gqlURL,
 			TokenName: "token1",
 			ExpectedRaw: `
-			{
-				"errors": [
-				  {
-					"message": "not enough quantity",
-					"path": [
-					  "AddToCart"
-					]
-				  }
-				],
-				"data": null
-			}
-			`,
+            {
+                "errors": [
+                  {
+                    "message": "not enough quantity",
+                    "path": [
+                      "AddToCart"
+                    ]
+                  }
+                ],
+                "data": null
+            }
+            `,
 		}, // 13
 		// ----------------------------------------------------------------------------------------
 		&ApiTestCase{
 			Name: "Add to cart - second item - before delete check",
 			GQL: `
-			mutation {
-				AddToCart(in: {itemID: 1, quantity: 1}) {
-				  item {
-					id
-					name
-					inStockText
-				  }
-				  quantity
-				}
-			}
-			`,
+            mutation {
+                AddToCart(in: {itemID: 1, quantity: 1}) {
+                  item {
+                    id
+                    name
+                    inStockText
+                  }
+                  quantity
+                }
+            }
+            `,
 			URL:       gqlURL,
 			TokenName: "token1",
 			ExpectedRaw: `
-			{
-				"data": {
-				  "AddToCart": [
-					{
-					  "item": {
-						"id": 12,
-						"name": "Да Хун Пао",
-						"inStockText": "мало"
-					  },
-					  "quantity": 4
-					},
-					{
-						"item": {
-						  "id": 1,
-						  "name": "Грокаем алгоритмы | Бхаргава Адитья",
-						  "inStockText": "мало"
-						},
-						"quantity": 1
-					}
-				  ]
-				}
-			}
-			`,
+            {
+                "data": {
+                  "AddToCart": [
+                    {
+                      "item": {
+                        "id": 12,
+                        "name": "Да Хун Пао",
+                        "inStockText": "мало"
+                      },
+                      "quantity": 4
+                    },
+                    {
+                        "item": {
+                          "id": 1,
+                          "name": "Грокаем алгоритмы | Бхаргава Адитья",
+                          "inStockText": "мало"
+                        },
+                        "quantity": 1
+                    }
+                  ]
+                }
+            }
+            `,
 		}, // 14
 		// ----------------------------------------------------------------------------------------
 		&ApiTestCase{
 			Name: "Remove from cart",
 			GQL: `
-			mutation {
-				RemoveFromCart(in: {itemID: 1, quantity: 1}) {
-				  item {
-					id
-					name
-				  }
-				  quantity
-				}
-			}
-			`,
+            mutation {
+                RemoveFromCart(in: {itemID: 1, quantity: 1}) {
+                  item {
+                    id
+                    name
+                  }
+                  quantity
+                }
+            }
+            `,
 			URL:       gqlURL,
 			TokenName: "token1",
 			ExpectedRaw: `
-			{
-				"data": {
-				  "RemoveFromCart": [
-					{
-					  "item": {
-						"id": 12,
-						"name": "Да Хун Пао"
-					  },
-					  "quantity": 4
-					}
-				  ]
-				}
-			}
-			`,
+            {
+                "data": {
+                  "RemoveFromCart": [
+                    {
+                      "item": {
+                        "id": 12,
+                        "name": "Да Хун Пао"
+                      },
+                      "quantity": 4
+                    }
+                  ]
+                }
+            }
+            `,
 		}, // 15
 
 		// ----------------------------------------------------------------------------------------
 		&ApiTestCase{
 			Name: "My Cart",
 			GQL: `
-			{
-				MyCart {
-				  item {
-					id
-					name
-					inStockText
-				  }
-				  quantity
-				}
-			}
-			`,
+            {
+                MyCart {
+                  item {
+                    id
+                    name
+                    inStockText
+                  }
+                  quantity
+                }
+            }
+            `,
 			URL:       gqlURL,
 			TokenName: "token1",
 			ExpectedRaw: `
-			{
-				"data": {
-				  "MyCart": [
-					{
-					  "item": {
-						"id": 12,
-						"name": "Да Хун Пао",
-						"inStockText": "мало"
-					  },
-					  "quantity": 4
-					}
-				  ]
-				}
-			}
-			`,
+            {
+                "data": {
+                  "MyCart": [
+                    {
+                      "item": {
+                        "id": 12,
+                        "name": "Да Хун Пао",
+                        "inStockText": "мало"
+                      },
+                      "quantity": 4
+                    }
+                  ]
+                }
+            }
+            `,
 		}, // 16
 		// ----------------------------------------------------------------------------------------
 		&ApiTestCase{
 			Name: "Catalog page with inCart param",
 			GQL: `
-			query{
-				Catalog(ID: "5") {
-				  id
-				  name
-				  items(limit:8) {
-					id
-					name
-					inCart
-				  }
-				}
-			}
-			`,
+            query{
+                Catalog(ID: "5") {
+                  id
+                  name
+                  items(limit:8) {
+                    id
+                    name
+                    inCart
+                  }
+                }
+            }
+            `,
 			URL:       gqlURL,
 			TokenName: "token1",
 			ExpectedRaw: `
-			{
-				"data": {
-				  "Catalog": {
-					"id": 5,
-					"name": "Чай",
-					"items": [
-					  {
-						"id": 9,
-						"name": "Си Пу Юань, Шен Пуэр",
-						"inCart": 0
-					  },
-					  {
-						"id": 10,
-						"name": "Мэнхай 7542, Шен Пуэр",
-						"inCart": 0
-					  },
-					  {
-						"id": 11,
-						"name": "Дянь Хун",
-						"inCart": 0
-					  },
-					  {
-						"id": 12,
-						"name": "Да Хун Пао",
-						"inCart": 4
-					  },
-					  {
-						"id": 13,
-						"name": "Габа Улун",
-						"inCart": 0
-					  }
-					]
-				  }
-				}
-			  }
-			`,
+            {
+                "data": {
+                  "Catalog": {
+                    "id": 5,
+                    "name": "Чай",
+                    "items": [
+                      {
+                        "id": 9,
+                        "name": "Си Пу Юань, Шен Пуэр",
+                        "inCart": 0
+                      },
+                      {
+                        "id": 10,
+                        "name": "Мэнхай 7542, Шен Пуэр",
+                        "inCart": 0
+                      },
+                      {
+                        "id": 11,
+                        "name": "Дянь Хун",
+                        "inCart": 0
+                      },
+                      {
+                        "id": 12,
+                        "name": "Да Хун Пао",
+                        "inCart": 4
+                      },
+                      {
+                        "id": 13,
+                        "name": "Габа Улун",
+                        "inCart": 0
+                      }
+                    ]
+                  }
+                }
+              }
+            `,
 		}, // 17
 	}
 
