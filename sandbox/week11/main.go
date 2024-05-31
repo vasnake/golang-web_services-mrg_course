@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 	gql_playground "week11/gqlgen6/server"
+	gql_photolist "week11/photolist_gql"
 )
 
 const (
@@ -25,7 +26,14 @@ func lessonTemplate() {
 }
 
 func main() {
-	gqlPlaygroundDemo()
+	// gqlPlaygroundDemo()
+	gqlPhotolistDemo()
+}
+
+func gqlPhotolistDemo() {
+	show("gqlPhotolistDemo: program started ...")
+	gql_photolist.MainDemo()
+	show("end of program. ")
 }
 
 func gqlPlaygroundDemo() {

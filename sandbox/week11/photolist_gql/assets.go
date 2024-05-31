@@ -6,8 +6,8 @@ import (
 )
 
 var Assets http.FileSystem = union.New(map[string]http.FileSystem{
-	"/templates": http.Dir("./templates/"),
-	"/static":    http.Dir("./static/"),
+	"/templates": http.Dir("./week11/photolist_gql/templates/"),
+	"/static":    http.Dir("./week11/photolist_gql/static/"),
 })
 
 /*

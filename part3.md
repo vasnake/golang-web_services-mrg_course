@@ -1692,16 +1692,26 @@ week11\gqlgen6\queries.txt
 ```
 gql playground
 
-# I_AM_HERE
-
 добавлена поддержка GraphQL в аппу photolist
-```hs
+```s
+cp from handouts\golang_web_services_2023-12-28.zip\11\photolist\100_gqlgen\
+to sandbox\week11\photolist_gql\
 
+# оформить скопированное как пакет и зацепить в
+week11\main.go
+
+# пофиксить код (OAuth, ...)
+# run
+gr
+# поиграть с аппой, с playground
+week11\photolist_gql\queries.txt
 ```
 gql version of photolist
 
 
 ### Организация пакетов в приложении - 1 (photolist 101_structure)
+
+# I_AM_HERE
 
 - [struct_all_files.txt](week_11/101_structure_struct_all_files.txt)
 

@@ -1,39 +1,37 @@
-
-
-go run github.com/99designs/gqlgen init
-
-go run github.com/99designs/gqlgen -v
-
-go generate ./...
-
-
-query {
-  user(userID: "6") {
+{
+  user(userID: "2") {
     id
     name
     avatar
   }
 }
+->
+{
+  "data": {
+    "user": {
+      "id": "2",
+      "name": "ghid_2dv0h",
+      "avatar": "https://via.placeholder.com/80"
+    }
+  }
+}
+
+
+
 
 curl localhost:8080/graphql \
   -H 'Cookie: session=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOjYsImV4cCI6MTU3OTM1MzQ0OCwianRpIjoieVNOempIRGFYWWFHQVJCS2ljaENiQWFpS2RFT3JuY2MiLCJpYXQiOjE1NzE1Nzc0NDh9.iDp_yr9Qhd5LXnOM1Ocvhkhp6u27X7jLtPTmrFGZOqk' \
   -F operations='{ "query": "mutation($comment: String!, $file: Upload!) { uploadPhoto(comment: $comment, file: $file) { id } }", "variables": { "comment": "uploaded by graphql", "file": null } }' \
   -F map='{ "0": ["variables.file"] }' \
-  -F 0=@./photo_samples/building_1.jpg
-
-  
+  -F 0=@./photo_samples/building_1.jpg \
   --trace-ascii -
 
-    request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-
-    var body = 'name=' + encodeURIComponent(name) +
-        '&surname=' + encodeURIComponent(surname);
 
 
 
 
-query {
-  user(userID: "6") {
+{
+  user(userID: "2") {
     id
     name
     avatar
@@ -47,22 +45,52 @@ query {
     }
   }
 }
+->
+{
+  "data": {
+    "user": {
+      "id": "2",
+      "name": "ghid_2dv0h",
+      "avatar": "https://via.placeholder.com/80",
+      "photos": [
+        {
+          "id": "4",
+          "url": "2f80b3b25fa231b2585b314ffb8390bf",
+          "user": {
+            "id": "2",
+            "name": "ghid_2dv0h"
+          }
+        },
+        {
+          "id": "3",
+          "url": "ecdc4a6cb342616bd16fb33eb5f00523",
+          "user": {
+            "id": "2",
+            "name": "ghid_2dv0h"
+          }
+        }
+      ]
+    }
+  }
+}
 
 
-# -----
 
-query {
+
+
+
+{
   user(userID: "1") {
     id
     name
     avatar
-    photos(count:20) {
+    photos(count: 20) {
       id
       url
       user {
         id
         name
-        photos(count:100) {
+        photos(count: 100) {
           id
           url
         }
@@ -70,8 +98,64 @@ query {
     }
   }
 }
+->
+{
+  "data": {
+    "user": {
+      "id": "1",
+      "name": "foo",
+      "avatar": "https://via.placeholder.com/80",
+      "photos": [
+        {
+          "id": "2",
+          "url": "4cac37942c1397c59c374e2c86a2033b",
+          "user": {
+            "id": "1",
+            "name": "foo",
+            "photos": [
+              {
+                "id": "2",
+                "url": "4cac37942c1397c59c374e2c86a2033b"
+              },
+              {
+                "id": "1",
+                "url": "d4a39e34130a47b7d35e63882215009c"
+              }
+            ]
+          }
+        },
+        {
+          "id": "1",
+          "url": "d4a39e34130a47b7d35e63882215009c",
+          "user": {
+            "id": "1",
+            "name": "foo",
+            "photos": [
+              {
+                "id": "2",
+                "url": "4cac37942c1397c59c374e2c86a2033b"
+              },
+              {
+                "id": "1",
+                "url": "d4a39e34130a47b7d35e63882215009c"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
 
-# ----
+
+
+
+
+
+
+
+
+
 
 query($userID: ID!, $cnt1:Int!, $cnt2:Int! ) {
   user(userID: $userID) {
@@ -93,8 +177,6 @@ query($userID: ID!, $cnt1:Int!, $cnt2:Int! ) {
   }
   photos(userID:$userID) {id, url}
 }
-
-
 {
   "userID":"1",
   "cnt1":10,
@@ -111,7 +193,10 @@ curl localhost:8080/query \
   --trace-ascii -
 
 
-curl 'http://localhost:8080/graphql' -H 'Pragma: no-cache' -H 'Sec-Fetch-Site: same-origin' -H 'Origin: http://localhost:8080' -H 'Accept-Encoding: gzip, deflate, br' -H 'Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7' -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36' -H 'Sec-Fetch-Mode: cors' -H 'content-type: application/json' -H 'accept: */*' -H 'Cache-Control: no-cache' -H 'Referer: http://localhost:8080/playground' 
-
-
--H 'Connection: keep-alive' --data-binary '{"operationName":"_","variables":{},"query":"mutation _ {\n  followUser(userID: \"7\", direction: \"up\") {\n    id\n    name\n    avatar\n  }\n}\n"}' --compressed
+curl 'http://localhost:8080/graphql' -H 'Pragma: no-cache' -H 'Sec-Fetch-Site: same-origin' -H 'Origin: http://localhost:8080' \
+-H 'Accept-Encoding: gzip, deflate, br' -H 'Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7' \
+-H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36' \
+-H 'Sec-Fetch-Mode: cors' -H 'content-type: application/json' -H 'accept: */*' -H 'Cache-Control: no-cache' \
+-H 'Referer: http://localhost:8080/playground' \
+-H 'Connection: keep-alive' --data-binary '{"operationName":"_","variables":{},"query":"mutation _ {\n  followUser(userID: \"7\", direction: \"up\") {\n    id\n    name\n    avatar\n  }\n}\n"}' \
+--compressed

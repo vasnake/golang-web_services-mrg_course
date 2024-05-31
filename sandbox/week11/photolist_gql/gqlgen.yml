@@ -10,12 +10,12 @@ resolver:
 
 models:
   Photo:
-    model: photolist.Photo
+    model: week11/photolist.Photo
     fields:
       user:
         resolver: true
   User:
-    model: photolist.User
+    model: week11/photolist.User
     fields:
       photos:
         resolver: true
