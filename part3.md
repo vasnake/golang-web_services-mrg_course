@@ -1711,7 +1711,8 @@ gql version of photolist
 
 ### Организация пакетов в приложении - 1 (photolist 101_structure)
 
-# I_AM_HERE
+Раскладывание кода по пакетам (модуль один: photolist)
+`handouts\golang_web_services_2023-12-28.zip\11\photolist\101_structure\docs\struct_all_files.txt`
 
 - [struct_all_files.txt](week_11/101_structure_struct_all_files.txt)
 
@@ -1719,9 +1720,9 @@ gql version of photolist
 
 Можно было бы разбить на MVC пакеты, но это не слишком удобно и хорошо. В Go не фанатеют по MVC.
 
-По одному модулю в пакете вообще не надо.
+По одному файлу в пакете вообще не надо.
 
-Пакет утилз это свалка, не делайте его. Делайте говорящее имя пакету, разбейте его на специфические пакеты.
+Пакет утилз это свалка, не делайте его. Делайте говорящее имя пакету, разбейте модуль на специфические пакеты.
 
 See https://github.com/golang-standards/project-layout
 
@@ -1731,7 +1732,7 @@ See https://github.com/golang-standards/project-layout
 - Пакет `vendor` для складывания зависимостей, которые не хочется качать при каждой сборке.
 - `cmd` для файлов `main.go`, в отличие от `pkg`
 
-Как выглядит photolist в таком раскладе
+Как выглядит photolist в приличном раскладе
 - Makefile
 - Readme.md
 - api/schema.graphql
@@ -1760,47 +1761,52 @@ DDD, Domain Driven Design. Часто применяется в Go.
 
 ### Организация пакетов в приложении - 2 (cycle deps)
 
+Цикличные зависимости недопустимы.
+`handouts\golang_web_services_2023-12-28.zip\11\photolist\101_structure\docs\import_cycle.txt`
+
 - [import_cycle.txt](week_11/101_structure_import_cycle.txt)
 - [layers_1.txt](week_11/101_structure_layers_1.txt)
 - [layers_2.txt](week_11/101_structure_layers_2.txt)
-
-Цикличные зависимости недопустимы.
 
 Автор получил цикл через photos-session-user-session.
 
 Было
 
-`type Session struct` in session_common.go
+`type Session struct` in `session_common.go`,
 `type SessionManager interface` держит ссылку на `User`.
-Ибо данные сессии это UserID из БД.
+Ибо данные сессии это `UserID` из БД.
 
-`UserHandler` in user.go держит ссылку на `SessionManager`.
+`UserHandler` in `user.go` держит ссылку на `SessionManager`.
 
 Стало
 
 Расшить это можно используя абстрактный интерфейс, от которого зависеть будет нижний слой а верхний будет давать его реализацию.
 
-In session_common.go declare `type UserInterface interface` with methods `GetID(), GetVer()`.
+In `session_common.go` declare `type UserInterface interface` with methods `GetID(), GetVer()`.
 Так сессия уже не зависит от реализации юзера и не импортирует пакет `user`.
 
-Альтернативный подход: отдельный пакет с http_handler, в котором и users и session и photos и index;
-модуль юзерс держит реализацию и сесии и юзера.
+Альтернативный подход: отдельный пакет с `http_handler`, в котором используются users, session, photos, index, ...
+Тогда сессия и юзер могут быть взаимно независимы.
 
 ### Организация пакетов в приложении - 3 (Makefile)
 
+Рассказал в общих чертах о складыании команд сборки, тестирования, etc в мейкфайл.
+`handouts\golang_web_services_2023-12-28.zip\11\photolist\101_structure\Makefile`
+
 - [Makefile](week_11/101_structure_Makefile)
 
-Рассказал в общих чертах о складыании команд сборки, тестирования, etc в мейкфайл.
-
 `make build`
-
 ```s
 # виртуальное дерево зависимостей, не реальные файлы а "поддельные" (реальные файлы сломают make или make сломает реальные файлы).
-# фони дает билд, билд дает ассеты, ...
-.PHONY: buld
-build: assets
-    go build ...
+.PHONY: buld # говорит о том, что не надо искать папку (или файл) `build`
+build: assets # зависимость build от assets
+    go build ... # команда построения build
 ```
+
+### положить в песочницу: рефакторинг пакетов photolist
+
+# I_AM_HERE
+`handouts\golang_web_services_2023-12-28.zip\11\photolist\101_structure\` -> `sandbox\week11\photolist_pkglayout\`
 
 ### week11 homework
 ???

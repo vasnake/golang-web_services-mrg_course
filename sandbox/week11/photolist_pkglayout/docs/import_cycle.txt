@@ -1,0 +1,8 @@
+import cycle not allowed
+package photolist/cmd/photolist
+        imports photolist/pkg/graphql
+        imports photolist/pkg/photos
+        imports photolist/pkg/session
+        imports photolist/pkg/user
+        imports photolist/pkg/session
+        

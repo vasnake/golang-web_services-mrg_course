@@ -1,0 +1,67 @@
+? tree
+.
+├── Makefile
+├── Readme.md
+├── api
+│   └── schema.graphql
+├── bin
+├── cmd
+│   └── photolist
+│       └── main.go
+├── configs
+│   ├── air.conf
+│   └── gqlgen.yml
+├── deployments
+├── dev
+│   ├── adminer.dc.yaml
+│   └── db_init.sql
+├── docs
+├── images
+├── pkg
+│   ├── assets
+│   │   ├── assets.go
+│   │   ├── assets_gen.go
+│   │   ├── assets_note.txt
+│   │   └── assets_vfsdata.go
+│   ├── graphql
+│   │   ├── graphql_generated.go
+│   │   ├── graphql_middleware.go
+│   │   └── graphql_resolver.go
+│   ├── httphandlers
+│   │   ├── index.go
+│   │   ├── photos.go
+│   │   └── users.go        !!!!!! session + user
+│   ├── photos
+│   │   ├── repo.go
+│   │   └── utils.go
+│   ├── session
+│   │   ├── session_common.go
+│   │   ├── session_db.go
+│   │   ├── session_jwt.go
+│   │   └── session_jwt_ver.go
+│   ├── templates
+│   │   └── templates.go
+│   ├── token
+│   │   ├── token_crypt.go
+│   │   ├── token_hash.go
+│   │   ├── token_jwt.go
+│   │   └── token_middleware.go
+│   ├── user
+│   │   ├── user.go
+│   │   ├── user_repo.go
+│   │   └── userloader_gen.go
+│   └── utils
+│       ├── httputils
+│       │   └── httputils.go
+│       └── randutils
+│           └── randutils.go
+├── static
+├── templates
+│   ├── change_pass.html
+│   ├── list.html
+│   ├── list_gql.html
+│   ├── login.html
+│   └── reg.html
+└── tmp
+    ├── air_errors.log
+    └── build-errors.log
