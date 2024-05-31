@@ -1,0 +1,13 @@
+<html>
+<body>
+<div>
+	<form action="/user/change_pass" method="post" autocomplete="off">
+		<input type="hidden" value="{{.CSRFToken}}" name="csrf-token" />
+		<input type="password" name="old_password" placeholder="Current password"><br />
+		<input type="password" name="pass1" placeholder="New Password"><br />
+		<input type="password" name="pass2" placeholder="Repeat new Password"><br />
+		<input type="submit" value="Change password">
+	</form>
+</div>
+</body>
+</html>
