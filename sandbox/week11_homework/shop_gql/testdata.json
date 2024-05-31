@@ -1,0 +1,72 @@
+{
+    "catalog": {
+		"id": 1,
+		"name": "ShopQL",
+		"childs": [
+			{
+				"id": 2,
+				"name": "Книги",
+				"childs": [
+					{
+						"id": 3,
+						"name": "Алгоритмы",
+						"items": [
+							{"id": 1, "name": "Грокаем алгоритмы | Бхаргава Адитья", "in_stock":1, "seller_id": 3},
+							{"id": 2, "name": "Теоретический минимум по Computer Science | Фило Владстон Феррейра", "in_stock":2, "seller_id": 3},
+							{"id": 3, "name": "Совершенный алгоритм. Основы | Рафгарден Тим", "in_stock":3, "seller_id": 3},
+							{"id": 4, "name": "Алгоритмы на Java | Джитер Кевин Уэйн, Седжвик Роберт", "in_stock":4, "seller_id": 4}
+						]
+					},
+					{
+						"id": 4,
+						"name": "Golang",
+						"items": [
+							{"id": 5, "name": "Язык программирования Go | Донован Алан А. А., Керниган Брайан У.", "in_stock":1, "seller_id": 4},
+							{"id": 6, "name": "Go на практике | Butcher Matt, Фарина Мэтт Мэтт", "in_stock":2, "seller_id": 5},
+							{"id": 7, "name": "Программирование на Go. Разработка приложений XXI века | Саммерфильд Марк", "in_stock":3, "seller_id": 5},
+							{"id": 8, "name": "Head First. Изучаем Go | Макгаврен Джей", "in_stock":4, "seller_id": 3}
+						]
+					}
+				]
+			},
+			{
+				"id": 5,
+				"name": "Чай",
+				"items": [
+					{"id": 9, "name": "Си Пу Юань, Шен Пуэр", "in_stock":1, "seller_id": 2},
+					{"id": 10, "name": "Мэнхай 7542, Шен Пуэр", "in_stock":2, "seller_id": 2},
+					{"id": 11, "name": "Дянь Хун", "in_stock":3, "seller_id": 2},
+					{"id": 12, "name": "Да Хун Пао", "in_stock":5, "seller_id": 2},
+					{"id": 13, "name": "Габа Улун", "in_stock":4, "seller_id": 1}
+				]
+			}
+		]
+	},
+    "sellers": [
+        {
+            "id": 1,
+            "name": "Нефритовая Лиса",
+            "deals": 6
+        },
+        {
+            "id": 2,
+            "name": "Дядюшка Ляо",
+            "deals": 2
+        },
+        {
+            "id": 3,
+            "name": "Издательство Питер",
+            "deals": 12
+        },
+        {
+            "id": 4,
+            "name": "Издательство Вильямс",
+            "deals": 8
+        },
+        {
+            "id": 5,
+            "name": "Издательство ДМК Пресс",
+            "deals": 4
+        }
+    ]
+}

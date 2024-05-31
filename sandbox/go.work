@@ -35,4 +35,5 @@ use (
 	./week10
 	./week10_homework/taskbot
 	./week11
+	./week11_homework/shop_gql
 )

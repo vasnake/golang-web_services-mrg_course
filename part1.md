@@ -191,6 +191,9 @@ It is strongly typed and garbage-collected and has explicit support for concurre
 
 Модуль: коллекция пакетов, сопровождаемая файлом `go.mod`. Средство дистрибуции кода, см."зависимости".
 
+Пакеты импортируются через указание пути к директории пакета.
+Имя пакета (заданное в `package name`) при импорте не используется.
+
 > Programs are constructed from packages, whose properties allow efficient management of dependencies.
 
 > Go programs are constructed by linking together packages.
