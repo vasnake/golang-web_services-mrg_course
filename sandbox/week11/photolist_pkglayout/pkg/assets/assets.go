@@ -1,5 +1,3 @@
-// +build dev
-
 package assets
 
 import (
@@ -10,8 +8,8 @@ import (
 //go:generate go run assets_gen.go
 
 var Assets http.FileSystem = union.New(map[string]http.FileSystem{
-	"/templates": http.Dir("./templates/"),
-	"/static":    http.Dir("./static/"),
+	"/templates": http.Dir("./week11/photolist_pkglayout/templates/"),
+	"/static":    http.Dir("./week11/photolist_pkglayout/static/"),
 })
 
 /*

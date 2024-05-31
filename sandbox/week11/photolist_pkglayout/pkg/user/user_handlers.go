@@ -2,37 +2,43 @@ package user
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"regexp"
 	"strconv"
+	"time"
 
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/vk"
 
 	"github.com/asaskevich/govalidator"
 
-	"photolist/pkg/session"
-	"photolist/pkg/utils/httputils"
-	"photolist/pkg/utils/randutils"
+	"week11/photolist_pkglayout/pkg/session"
+	"week11/photolist_pkglayout/pkg/utils/httputils"
+	"week11/photolist_pkglayout/pkg/utils/randutils"
 )
+
+var GitHubEndpoint = oauth2.Endpoint{
+	AuthURL:  "https://github.com/login/oauth/authorize",
+	TokenURL: "https://github.com/login/oauth/access_token",
+}
 
 const (
-	VK_APP_ID  = "7065390"
-	VK_APP_KEY = "cQZe3Vvo4mHotmetUdXK"
-	// куда идти с токеном за информацией
-	VK_API_URL = "https://api.vk.com/method/users.get?fields=photo_50&access_token=%s&v=5.131"
-	// куда идти для получения токена
-	VK_AUTH_URL = "https://oauth.vk.com/authorize?client_id=7065390&redirect_uri=http://localhost:8080/user/login_oauth&response_type=code&scope=email"
+	REDIRECT_URL = "http://localhost:8080/user/login_oauth" // callback
+	AUTH_URL     = "https://github.com/login/oauth/authorize?scope=user:email&client_id=%s"
+	API_URL      = "https://api.github.com/user?fields=email,photo_50&access_token=%s"
 )
 
-type VKOauthResp struct {
-	Response []struct {
-		FirstName string `json:"first_name"`
-		Photo     string `json:"photo_50"`
-	}
-}
+var (
+	// from command line, using flag package
+	// export OAUTH_APP_ID=Ov2***gJF
+	// export OAUTH_APP_SECRET=ada***860
+	// go run week10 -appid ${OAUTH_APP_ID:-foo} -appsecret ${OAUTH_APP_SECRET:-bar}
+	APP_ID     = "Ov2***gJF"
+	APP_SECRET = "ada***860"
+)
 
 type Templater interface {
 	Render(context.Context, http.ResponseWriter, string, map[string]interface{})
@@ -51,7 +57,7 @@ var (
 func (uh *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		uh.Tmpl.Render(r.Context(), w, "login.html", map[string]interface{}{
-			"VKAuthURL": VK_AUTH_URL,
+			"OAuthURL": fmt.Sprintf(AUTH_URL, APP_ID),
 		})
 		return
 	}
@@ -84,36 +90,71 @@ func (uh *UserHandler) LoginOauth(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no ouath code", http.StatusBadRequest)
 		return
 	}
+	show("oauth code: ", code)
 
 	conf := oauth2.Config{
-		ClientID:     VK_APP_ID,
-		ClientSecret: VK_APP_KEY,
-		RedirectURL:  "http://localhost:8080/user/login_oauth",
-		Endpoint:     vk.Endpoint,
+		ClientID:     APP_ID,
+		ClientSecret: APP_SECRET,
+		RedirectURL:  REDIRECT_URL,
+		Endpoint:     GitHubEndpoint,
 	}
-
-	token, err := conf.Exchange(r.Context(), code)
+	ctx := r.Context()
+	token, err := conf.Exchange(ctx, code)
 	if err != nil {
 		log.Println("exchange err", err)
 		http.Error(w, "cannot get oauth token", http.StatusInternalServerError)
 		return
 	}
+	show("oauth access token: ", token)
 
-	emailRaw := token.Extra("email")
-	email := ""
-	okEmail := true
-	if emailRaw != nil {
-		email, okEmail = emailRaw.(string)
-	}
-	userIDraw, okID := token.Extra("user_id").(float64)
-	if !okEmail || !okID {
-		log.Printf("cant convert data: UID: %T %v, Email: %T %v", token.Extra("user_id"), token.Extra("user_id"), token.Extra("email"), token.Extra("email"))
-		http.Error(w, "internal error", http.StatusInternalServerError)
+	// ask for data
+	httpClient := conf.Client(ctx, token)
+	apiResp, err := httpClient.Get(fmt.Sprintf(API_URL, token.AccessToken))
+	if err != nil {
+		log.Println("cannot request data from provider (api or token not working well)", err)
+		http.Error(w, err.Error(), 500)
 		return
 	}
+	defer apiResp.Body.Close()
+	// decode api response
+	respBodyBytes, err := io.ReadAll(apiResp.Body)
+	if err != nil {
+		log.Println("cannot read buffer", err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	show("api response: ", string(respBodyBytes))
+	userData := make(map[string]any, 32)
+	err = json.Unmarshal(respBodyBytes, &userData)
+	if err != nil {
+		log.Println("cannot json.Unmarshal", err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	if len(userData) == 0 {
+		log.Println("requested data is empty", err)
+		http.Error(w, "you should read the api docs", 500)
+		return
+	}
+	// extract some data
+	var email string
+	var userID string
+	emailAny, emailExists := userData["email"]
+	if emailExists {
+		email = emailAny.(string)
+		show("user email from oauth provider: ", email)
+	}
+	uidAny, uidExists := userData["id"]
+	if uidExists {
+		userID = strconv.FormatUint(uint64(uidAny.(float64)), 36) // float64: json package to blame
+		show("user id from oauth provider: ", userID)
+	}
 
-	login := "vk" + strconv.Itoa(int(userIDraw))
+	// oauth profile adaptor (create vanilla user: login, password)
+	login := "ghid_" + userID
 	pass := randutils.RandStringRunes(50)
+	show("creating app user. login, password: ", login, pass)
+
 	user, err := uh.UsersRepo.Create(login, email, pass)
 	if err != nil && err != errUserExists {
 		log.Println("db err", err)
@@ -275,4 +316,29 @@ func (uh *UserHandler) RecomendsAPI(w http.ResponseWriter, r *http.Request) {
 		"users":    result,
 		"followed": false,
 	})
+}
+
+// ts returns current timestamp in RFC3339 with milliseconds
+func ts() string {
+	/*
+		https://pkg.go.dev/time#pkg-constants
+		https://stackoverflow.com/questions/35479041/how-to-convert-iso-8601-time-in-golang
+	*/
+	const (
+		RFC3339      = "2006-01-02T15:04:05Z07:00"
+		RFC3339Milli = "2006-01-02T15:04:05.000Z07:00"
+	)
+	return time.Now().UTC().Format(RFC3339Milli)
+}
+
+// show writes message to standard output. Message combined from prefix msg and slice of arbitrary arguments
+func show(msg string, xs ...any) {
+	var line = ts() + ": " + msg
+
+	for _, x := range xs {
+		// https://pkg.go.dev/fmt
+		// line += fmt.Sprintf("%T(%v); ", x, x) // type(value)
+		line += fmt.Sprintf("%#v; ", x) // repr
+	}
+	fmt.Println(line)
 }

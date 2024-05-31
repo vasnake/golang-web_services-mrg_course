@@ -10,12 +10,12 @@ resolver:
 
 models:
   Photo:
-    model: photolist/pkg/photos.Photo
+    model: week11/photolist_pkglayout/pkg/photos.Photo
     fields:
       user:
         resolver: true
   User:
-    model: photolist/pkg/user.User
+    model: week11/photolist_pkglayout/pkg/user.User
     fields:
       photos:
         resolver: true

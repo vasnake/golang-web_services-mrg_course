@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	"photolist/pkg/session"
-	"photolist/pkg/user"
-	"photolist/pkg/utils/httputils"
+	"week11/photolist_pkglayout/pkg/session"
+	"week11/photolist_pkglayout/pkg/user"
+	"week11/photolist_pkglayout/pkg/utils/httputils"
 )
 
 type Storage interface {

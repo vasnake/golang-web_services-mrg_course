@@ -9,7 +9,7 @@ import (
 
 	"github.com/shurcooL/httpfs/html/vfstemplate"
 
-	"photolist/pkg/session"
+	"week11/photolist_pkglayout/pkg/session"
 )
 
 type TokenManager interface {

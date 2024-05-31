@@ -10,9 +10,9 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 
-	"photolist/pkg/photos"
-	"photolist/pkg/session"
-	"photolist/pkg/user"
+	"week11/photolist_pkglayout/pkg/photos"
+	"week11/photolist_pkglayout/pkg/session"
+	"week11/photolist_pkglayout/pkg/user"
 )
 
 type Resolver struct {

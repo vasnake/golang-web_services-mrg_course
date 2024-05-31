@@ -5,6 +5,10 @@ PRJ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 APP_SELECTOR=${GO_APP_SELECTOR:-week11}
 
+pushd ${PRJ_DIR}
+APP_COMMIT=$(git rev-parse --short HEAD)
+APP_BUILD_TIME=$(date -u '+%Y-%m-%d_%H:%M:%S')
+
 go_run() {
     local selector="${1}"
     case $selector in
@@ -40,6 +44,7 @@ go_run_module() {
     echo "####################################################################################################"
     # go run -ldflags="-X 'main.Version=$(git rev-parse HEAD)' -X 'main.Branch=$(git rev-parse --abbrev-ref HEAD)'" ${1} -appid ${OAUTH_APP_ID:-foo} -appsecret ${OAUTH_APP_SECRET:-bar} --comments=true --servers="127.0.0.1:8081,127.0.0.1:8082"
     go run \
+        -ldflags "-X 'week11/photolist_pkglayout/cmd/photolist.buildHash=${APP_COMMIT}' -X 'week11/photolist_pkglayout/cmd/photolist.buildTime=${APP_BUILD_TIME}'" \
         ${1} \
         -appid ${OAUTH_APP_ID:-foo} -appsecret ${OAUTH_APP_SECRET:-bar}
 

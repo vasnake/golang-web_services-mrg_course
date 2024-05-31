@@ -1805,10 +1805,24 @@ build: assets # зависимость build от assets
 
 ### положить в песочницу: рефакторинг пакетов photolist
 
-# I_AM_HERE
 `handouts\golang_web_services_2023-12-28.zip\11\photolist\101_structure\` -> `sandbox\week11\photolist_pkglayout\`
 
+Внести правки (импорты, OAuth, ...)
+
+`pushd sandbox/week11/photolist_pkglayout && docker-compose -f ./dev/docker-compose.yaml up&`
+
+```s
+pushd sandbox
+go run \
+  -ldflags "-X 'week11/photolist_pkglayout/cmd/photolist.buildHash=${APP_COMMIT}' -X 'week11/photolist_pkglayout/cmd/photolist.buildTime=${APP_BUILD_TIME}'" \
+  week11 \
+  -appid ${OAUTH_APP_ID:-foo} -appsecret ${OAUTH_APP_SECRET:-bar}
+```
+
 ### week11 homework
+
+# I_AM_HERE
+
 ???
 
 ## part 3, week 4 (12)

@@ -67,7 +67,7 @@ func MakeThumbnails(realFile, md5Sum string) error {
 	return nil
 }
 
-//  не очень эффективно - каждый раз вычитываем файл
+// не очень эффективно - каждый раз вычитываем файл
 func ResizeImage(originalPath string, resizedPath string, size int) error {
 	srcImage, err := imaging.Open(originalPath)
 	if err != nil {

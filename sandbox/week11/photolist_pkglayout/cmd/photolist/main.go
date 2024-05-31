@@ -1,21 +1,21 @@
-package main
+package photolist_app
 
 import (
 	"database/sql"
-	"io/ioutil"
+	"flag"
+	"fmt"
+	ioutil "io" // "io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
 	"time"
 
-	"photolist/pkg/assets"
-	"photolist/pkg/graphql"
-	"photolist/pkg/index"
-	"photolist/pkg/photos"
-	"photolist/pkg/session"
-	"photolist/pkg/templates"
-	"photolist/pkg/token"
-	"photolist/pkg/user"
+	"week11/photolist_pkglayout/pkg/assets"
+	"week11/photolist_pkglayout/pkg/graphql"
+	"week11/photolist_pkglayout/pkg/photos"
+	"week11/photolist_pkglayout/pkg/session"
+	"week11/photolist_pkglayout/pkg/templates"
+	"week11/photolist_pkglayout/pkg/token"
+	"week11/photolist_pkglayout/pkg/user"
 
 	gqlgenHandler "github.com/99designs/gqlgen/handler"
 	_ "github.com/go-sql-driver/mysql"
@@ -27,22 +27,24 @@ var (
 	buildTime string = "_dev"
 )
 
-func main() {
+func MainDemo() {
+	flag.StringVar(&user.APP_ID, "appid", "foo?", "oauth app id (client id) from github registered app")
+	flag.StringVar(&user.APP_SECRET, "appsecret", "bar?", "oauth app secret (client key) from github registered app")
+	flag.Parse()
+	show("you must not show this! appid, appsecret: ", user.APP_ID, user.APP_SECRET)
+
 	log.Printf("starting %s, commit %s, build %s", appName, buildHash, buildTime)
 
-	rand.Seed(time.Now().UnixNano())
-
 	// основные настройки к базе
-	dsn := "root:love@tcp(127.0.0.1:3306)/photolist?charset=utf8&interpolateParams=true"
+	// dsn := "root:love@tcp(127.0.0.1:3306)/photolist?charset=utf8&interpolateParams=true"
+	dsn := "root@tcp(127.0.0.1:3306)/photolist?charset=utf8&interpolateParams=true"
 	db, err := sql.Open("mysql", dsn)
-
 	err = db.Ping() // вот тут будет первое подключение к базе
 	if err != nil {
 		log.Fatalf("cant connect to db, err: %v\n", err)
 	}
+	defer db.Close()
 
-	// tokens, err := token.NewHMACHashToken("golangcourse")
-	// tokens, err := token.NewAesCryptHashToken("qsRY2e4hcM5T7X984E9WQ5uZ8Nty7fxB")
 	tokens, err := token.NewJwtToken("qsRY2e4hcM5T7X984E9WQ5uZ8Nty7fxB")
 
 	tmpls := templates.NewTemplates(assets.Assets, tokens)
@@ -59,8 +61,6 @@ func main() {
 		Tmpl:      tmpls,
 	}
 
-	// sm := session.NewSessionsDB(db)
-	// sm := session.NewSessionsJWT("golangcourseSessionSecret")
 	sm := session.NewSessionsJWTVer("golangcourseSessionSecret", db)
 
 	u := &user.UserHandler{
@@ -88,7 +88,7 @@ func main() {
 	mux.HandleFunc("/api/v1/user/following", u.FollowingAPI)
 	mux.HandleFunc("/api/v1/user/recomends", u.RecomendsAPI)
 
-	mux.HandleFunc("/", index.Index)
+	mux.HandleFunc("/", Index)
 
 	// START gqlgen part
 	resolver := &graphql.Resolver{
@@ -133,4 +133,38 @@ func main() {
 	listenAddr := ":8080"
 	log.Printf("starting listening server at %s", listenAddr)
 	http.ListenAndServe(listenAddr, nil)
+}
+
+func Index(w http.ResponseWriter, r *http.Request) {
+	_, err := session.SessionFromContext(r.Context())
+	if err != nil {
+		http.Redirect(w, r, "/user/login", http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, "/photos/", http.StatusFound)
+}
+
+// ts returns current timestamp in RFC3339 with milliseconds
+func ts() string {
+	/*
+		https://pkg.go.dev/time#pkg-constants
+		https://stackoverflow.com/questions/35479041/how-to-convert-iso-8601-time-in-golang
+	*/
+	const (
+		RFC3339      = "2006-01-02T15:04:05Z07:00"
+		RFC3339Milli = "2006-01-02T15:04:05.000Z07:00"
+	)
+	return time.Now().UTC().Format(RFC3339Milli)
+}
+
+// show writes message to standard output. Message combined from prefix msg and slice of arbitrary arguments
+func show(msg string, xs ...any) {
+	var line = ts() + ": " + msg
+
+	for _, x := range xs {
+		// https://pkg.go.dev/fmt
+		// line += fmt.Sprintf("%T(%v); ", x, x) // type(value)
+		line += fmt.Sprintf("%#v; ", x) // repr
+	}
+	fmt.Println(line)
 }

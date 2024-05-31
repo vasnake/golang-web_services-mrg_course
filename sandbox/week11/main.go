@@ -9,6 +9,7 @@ import (
 	"time"
 	gql_playground "week11/gqlgen6/server"
 	gql_photolist "week11/photolist_gql"
+	pkglayout "week11/photolist_pkglayout/cmd/photolist"
 )
 
 const (
@@ -27,7 +28,14 @@ func lessonTemplate() {
 
 func main() {
 	// gqlPlaygroundDemo()
-	gqlPhotolistDemo()
+	// gqlPhotolistDemo()
+	pkglayoutPhotolistDemo()
+}
+
+func pkglayoutPhotolistDemo() {
+	show("pkglayoutPhotolistDemo: program started ...")
+	pkglayout.MainDemo()
+	show("end of program. ")
 }
 
 func gqlPhotolistDemo() {
