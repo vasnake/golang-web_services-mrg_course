@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+	gql_playground "week11/gqlgen6/server"
 )
 
 const (
@@ -24,7 +25,13 @@ func lessonTemplate() {
 }
 
 func main() {
-	panic("not yet")
+	gqlPlaygroundDemo()
+}
+
+func gqlPlaygroundDemo() {
+	show("gqlPlaygroundDemo: program started ...")
+	gql_playground.MainDemo()
+	show("end of program. ")
 }
 
 // --- useful little functions ---

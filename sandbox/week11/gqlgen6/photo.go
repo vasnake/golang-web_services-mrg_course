@@ -5,9 +5,10 @@ import (
 	"strconv"
 )
 
+// custom gql model; для демонстрации превращения photo.userid в gql.user
 type Photo struct {
 	ID     uint `json:"id"`
-	UserID uint `json:"-"` // для демонстрации превращения модель.айди в графкл.юзер
+	UserID uint `json:"-"`
 	// User     *User  `json:"user"`
 	URL     string `json:"url"`
 	Comment string `json:"comment"`

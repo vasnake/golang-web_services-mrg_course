@@ -5,6 +5,16 @@ query {
     avatar
   }
 }
+->
+{
+  "data": {
+    "user": {
+      "id": "1",
+      "name": "rvasily",
+      "avatar": "https://via.placeholder.com/150"
+    }
+  }
+}
 
 
 
@@ -23,8 +33,58 @@ query {
     }}
   }
 }
+->
+{
+  "data": {
+    "user": {
+      "id": "1",
+      "name": "rvasily",
+      "avatar": "https://via.placeholder.com/150",
+      "photos": [
+        {
+          "id": "1",
+          "url": "https://via.placeholder.com/300",
+          "user": {
+            "id": "1",
+            "name": "rvasily",
+            "photos": [
+              {
+                "id": "2",
+                "url": "https://via.placeholder.com/300"
+              },
+              {
+                "id": "1",
+                "url": "https://via.placeholder.com/300"
+              }
+            ]
+          }
+        },
+        {
+          "id": "2",
+          "url": "https://via.placeholder.com/300",
+          "user": {
+            "id": "1",
+            "name": "rvasily",
+            "photos": [
+              {
+                "id": "1",
+                "url": "https://via.placeholder.com/300"
+              },
+              {
+                "id": "2",
+                "url": "https://via.placeholder.com/300"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
 
-# -----
+
+
+
 
 query {
   user(userID: "1") {
@@ -45,8 +105,24 @@ query {
     }
   }
 }
+->
+{
+  "errors": [
+    {
+      "message": "operation has complexity 4104, which exceeds the limit of 500",
+      "extensions": {
+        "code": "COMPLEXITY_LIMIT_EXCEEDED"
+      }
+    }
+  ],
+  "data": null
+}
 
-# ----
+
+
+
+
+
 
 query($userID: ID!, $cnt1:Int!, $cnt2:Int! ) {
   user(userID: $userID) {
@@ -68,10 +144,201 @@ query($userID: ID!, $cnt1:Int!, $cnt2:Int! ) {
   }
   photos(userID:$userID) {id, url}
 }
-
-
-{
+variables: {
   "userID":"1",
   "cnt1":10,
   "cnt2":20
 }
+->
+{
+  "data": {
+    "user": {
+      "id": "1",
+      "name": "rvasily",
+      "avatar": "https://via.placeholder.com/150",
+      "photos": [
+        {
+          "id": "1",
+          "url": "https://via.placeholder.com/300",
+          "user": {
+            "id": "1",
+            "name": "rvasily",
+            "photos": [
+              {
+                "id": "1",
+                "url": "https://via.placeholder.com/300"
+              },
+              {
+                "id": "2",
+                "url": "https://via.placeholder.com/300"
+              }
+            ]
+          }
+        },
+        {
+          "id": "2",
+          "url": "https://via.placeholder.com/300",
+          "user": {
+            "id": "1",
+            "name": "rvasily",
+            "photos": [
+              {
+                "id": "1",
+                "url": "https://via.placeholder.com/300"
+              },
+              {
+                "id": "2",
+                "url": "https://via.placeholder.com/300"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "photos": [
+      {
+        "id": "1",
+        "url": "https://via.placeholder.com/300"
+      },
+      {
+        "id": "2",
+        "url": "https://via.placeholder.com/300"
+      }
+    ]
+  }
+}
+
+
+
+
+
+
+
+
+
+sandbox/week11/gqlgen6$  curl localhost:8080/query \
+  -F operations='{ "query": "mutation($comment: String!, $file: Upload!) { uploadPhoto(comment: $comment, file: $file) { id } }", "variables": { "comment": "cool photo", "file": null } }' \
+  -F map='{ "0": ["variables.file"] }' \
+  -F 0=@./test_file.txt \
+  --trace-ascii -
+->
+== Info:   Trying 127.0.0.1:8080...
+== Info: Connected to localhost (127.0.0.1) port 8080 (#0)
+=> Send header, 191 bytes (0xbf)
+0000: POST /query HTTP/1.1
+0016: Host: localhost:8080
+002c: User-Agent: curl/7.81.0
+0045: Accept: */*
+0052: Content-Length: 603
+0067: Content-Type: multipart/form-data; boundary=--------------------
+00a7: ----37dbeec9e9f1d689
+00bd:
+=> Send data, 603 bytes (0x25b)
+0000: --------------------------37dbeec9e9f1d689
+002c: Content-Disposition: form-data; name="operations"
+005f:
+0061: { "query": "mutation($comment: String!, $file: Upload!) { upload
+00a1: Photo(comment: $comment, file: $file) { id } }", "variables": {
+00e1: "comment": "cool photo", "file": null } }
+010c: --------------------------37dbeec9e9f1d689
+0138: Content-Disposition: form-data; name="map"
+0164:
+0166: { "0": ["variables.file"] }
+0183: --------------------------37dbeec9e9f1d689
+01af: Content-Disposition: form-data; name="0"; filename="test_file.tx
+01ef: t"
+01f3: Content-Type: text/plain
+020d:
+020f: TEST_FILE_XXXXXXXXXXXXXXXXXX
+022d: --------------------------37dbeec9e9f1d689--
+== Info: We are completely uploaded and fine
+2024/05/31 09:12:58 CheckValidation map[string]interface {} map[%!V(string=comment):%!V(string=cool photo) %!V(string=file):{%!V(*transport.bytesReader=&{c000258018 0}) %!V(string=test_file.txt) %!V(int64=28) %!V(string=text/plain)}] []string{"noBadUrls", "noMatureLanguage"}
+2024/05/31 09:12:58 incoming file test_file.txt, 28 bytes, md5 a42d1f9df49f468556ac96fcc462c303
+2024/05/31 09:12:58 Photo.Id():  42
+== Info: Mark bundle as not supporting multiuse
+<= Recv header, 17 bytes (0x11)
+0000: HTTP/1.1 200 OK
+<= Recv header, 32 bytes (0x20)
+0000: Content-Type: application/json
+<= Recv header, 37 bytes (0x25)
+0000: Date: Fri, 31 May 2024 06:12:58 GMT
+<= Recv header, 20 bytes (0x14)
+0000: Content-Length: 36
+<= Recv header, 2 bytes (0x2)
+0000:
+<= Recv data, 36 bytes (0x24)
+0000: {"data":{"uploadPhoto":{"id":"42"}}}
+{"data":{"uploadPhoto":{"id":"42"}}}== Info: Connection #0 to host localhost left intact
+
+
+
+
+
+
+# mature language
+curl localhost:8080/query \
+  -F operations='{ "query": "mutation($comment: String!, $file: Upload!) { uploadPhoto(comment: $comment, file: $file) { id } }", "variables": { "comment": "блин!", "file": null } }' \
+  -F map='{ "0": ["variables.file"] }' \
+  -F 0=@./test_file.txt \
+  --trace-ascii -
+->
+== Info:   Trying 127.0.0.1:8080...
+== Info: Connected to localhost (127.0.0.1) port 8080 (#0)
+=> Send header, 191 bytes (0xbf)
+0000: POST /query HTTP/1.1
+0016: Host: localhost:8080
+002c: User-Agent: curl/7.81.0
+0045: Accept: */*
+0052: Content-Length: 602
+0067: Content-Type: multipart/form-data; boundary=--------------------
+00a7: ----e71728fce56afd16
+00bd:
+=> Send data, 602 bytes (0x25a)
+0000: --------------------------e71728fce56afd16
+002c: Content-Disposition: form-data; name="operations"
+005f:
+0061: { "query": "mutation($comment: String!, $file: Upload!) { upload
+00a1: Photo(comment: $comment, file: $file) { id } }", "variables": {
+00e1: "comment": "........!", "file": null } }
+010b: --------------------------e71728fce56afd16
+0137: Content-Disposition: form-data; name="map"
+0163:
+0165: { "0": ["variables.file"] }
+0182: --------------------------e71728fce56afd16
+01ae: Content-Disposition: form-data; name="0"; filename="test_file.tx
+01ee: t"
+01f2: Content-Type: text/plain
+020c:
+020e: TEST_FILE_XXXXXXXXXXXXXXXXXX
+022c: --------------------------e71728fce56afd16--
+== Info: We are completely uploaded and fine
+2024/05/31 09:16:12 CheckValidation map[string]interface {} map[%!V(string=comment):%!V(string=блин!) %!V(string=file):{%!V(*transport.bytesReader=&{c000258078 0}) %!V(string=test_file.txt) %!V(int64=28) %!V(string=text/plain)}] []string{"noBadUrls", "noMatureLanguage"}
+== Info: Mark bundle as not supporting multiuse
+<= Recv header, 17 bytes (0x11)
+0000: HTTP/1.1 200 OK
+<= Recv header, 32 bytes (0x20)
+0000: Content-Type: application/json
+<= Recv header, 37 bytes (0x25)
+0000: Date: Fri, 31 May 2024 06:16:12 GMT
+<= Recv header, 21 bytes (0x15)
+0000: Content-Length: 101
+<= Recv header, 2 bytes (0x2)
+0000:
+<= Recv data, 101 bytes (0x65)
+0000: {"errors":[{"message":"check noMatureLanguage failed","path":["u
+0040: ploadPhoto","comment"]}],"data":null}
+{"errors":[{"message":"check noMatureLanguage failed","path":["uploadPhoto","comment"]}],"data":null}== Info: Connection #0 to host localhost left intact
+
+
+
+
+
+
+# bad url
+curl localhost:8080/query \
+  -F operations='{ "query": "mutation($comment: String!, $file: Upload!) { uploadPhoto(comment: $comment, file: $file) { id } }", "variables": { "comment": "https://evil.com", "file": null } }' \
+  -F map='{ "0": ["variables.file"] }' \
+  -F 0=@./test_file.txt
+->
+2024/05/31 09:17:27 CheckValidation map[string]interface {} map[%!V(string=comment):%!V(string=https://evil.com) %!V(string=file):{%!V(*transport.bytesReader=&{c0000120d8 0}) %!V(string=test_file.txt) %!V(int64=28) %!V(string=text/plain)}] []string{"noBadUrls", "noMatureLanguage"}
+{"errors":[{"message":"check noBadUrls failed","path":["uploadPhoto","comment"]}],"data":null}
