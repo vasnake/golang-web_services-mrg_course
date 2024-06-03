@@ -80,6 +80,12 @@ func (r *sellerResolver) Items(ctx context.Context, obj *Seller, limit *int, off
 	panic(fmt.Errorf("not implemented: Items - items"))
 }
 
+type catalogResolver struct{ *Resolver }
+type itemResolver struct{ *Resolver }
+type mutationResolver struct{ *Resolver }
+type queryResolver struct{ *Resolver }
+type sellerResolver struct{ *Resolver }
+
 // Catalog returns CatalogResolver implementation.
 func (r *Resolver) Catalog() CatalogResolver { return &catalogResolver{r} }
 
@@ -94,9 +100,3 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 // Seller returns SellerResolver implementation.
 func (r *Resolver) Seller() SellerResolver { return &sellerResolver{r} }
-
-type catalogResolver struct{ *Resolver }
-type itemResolver struct{ *Resolver }
-type mutationResolver struct{ *Resolver }
-type queryResolver struct{ *Resolver }
-type sellerResolver struct{ *Resolver }

@@ -1837,7 +1837,7 @@ go run \
 3. Инициализируем gqlgen-проект через make init (или берем мой конфиг их архива)
 4. Генерируем gqlgen-обвязку через make gen
 4. Пишем сервис - подгрузка тестовых данных, всякая обвязка, структуры, резолверы
-5. Запускаем, проверяем запросы из test_queries.md в playgroud
+5. Запускаем, проверяем запросы (из test_queries.md?) в playgroud
 6. Проходим тесты 
 
  - `hw11_advanced.md`: дополнительная работа, для тех, у кого нет более интересных занятий
@@ -1857,9 +1857,11 @@ go run \
 
 Дополнительная работа (если есть время и желание): `hw11_advanced.md`
 
+С чего начать:
 ```s
 pushd week11_homework/shop_gql/
 go run github.com/99designs/gqlgen generate --verbose --config ./gqlgen.yml
+edit week11_homework\shop_gql\schema.resolvers.go
 ```
 snippets
 
