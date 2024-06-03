@@ -11,7 +11,18 @@ import (
 
 // Catalog is the resolver for the Catalog field.
 func (r *queryResolver) Catalog(ctx context.Context, id *string) (*Catalog, error) {
-	return &Catalog{}, nil
+	var err error = nil
+	c := r.dataAdapter.catalogByID(*id)
+	if c == nil {
+		err = fmt.Errorf("Catalog, search by id failed")
+	}
+	return c, err
+
+	// c, err := r.dataAdapter.catalogStructByIDString(id)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("Catalog, search by id failed. %w", err)
+	// }
+	// return r.dataAdapter.catalogFromStruct(c), nil
 }
 
 // Childs is the resolver for the childs field.

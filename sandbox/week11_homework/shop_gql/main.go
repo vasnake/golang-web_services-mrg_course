@@ -18,7 +18,7 @@ func main() {
 func GetApp() http.Handler {
 	data, err := loadTestData(TEST_DATA_FILE_NAME)
 	panicOnError("loadTestData failed", err)
-	show("loaded data: ", data)
+	// show("loaded data: ", data)
 
 	var sellers []SellerStruct
 	sellers, err = loadSellers(data)
@@ -32,9 +32,17 @@ func GetApp() http.Handler {
 	show("loaded catalogs: ", catalogs)
 	show("loaded items: ", items)
 
-	gqlResolver := &Resolver{
-		// UsersRepo:  usersRepo,
+	var storage = ShopStorage{
+		sellersRows: sellers,
+		itemsRows:   items,
+		catalogRows: catalogs,
 	}
+	var sga = StorageGQLAdapter{shopStorage: storage}
+	err = sga.rebuildLists()
+	panicOnError("adapter rebuildLists failed", err)
+
+	gqlResolver := &Resolver{dataAdapter: sga}
+
 	cfg := Config{
 		Resolvers: gqlResolver,
 	}
@@ -43,4 +51,10 @@ func GetApp() http.Handler {
 	srv.Use(gqlgen_extension.FixedComplexityLimit(500))
 
 	return srv
+}
+
+type ShopStorage struct {
+	sellersRows []SellerStruct
+	itemsRows   []GoodiesItemStruct
+	catalogRows []CatalogStruct
 }
