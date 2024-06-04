@@ -44,7 +44,19 @@ autobind: []
 # modelgen, the others will be allowed when binding to fields. Configure them to
 # your liking
 models:
+  Catalog:
+    # model: week11_homework/shop_gql.Catalog
+    model: shop_gql.Catalog
+    fields:
+      parent:
+        resolver: true
+      childs:
+        resolver: true
+      items:
+        resolver: true
   Item:
+    # model: week11_homework/shop_gql.Item
+    model: shop_gql.Item
     fields:
       parent:
         resolver: true
@@ -53,14 +65,6 @@ models:
       inCart:
         resolver: true
       inStockText:
-        resolver: true
-  Catalog:
-    fields:
-      parent:
-        resolver: true
-      childs:
-        resolver: true
-      items:
         resolver: true
   Seller:
     fields:

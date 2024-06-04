@@ -18,6 +18,36 @@ type CartItem struct {
 	Item *Item `json:"item"`
 }
 
+// Сущность каталога
+type Catalog struct {
+	// ID каталога
+	ID *string `json:"id,omitempty"`
+	// Название раздела каталога
+	Name *string `json:"name,omitempty"`
+	// Родительский раздел
+	Parent *Catalog `json:"parent"`
+	// Дочерние раздлелы
+	Childs []*Catalog `json:"childs"`
+	// Товары в разделе
+	Items []*Item `json:"items"`
+}
+
+// Сущность товара
+type Item struct {
+	// ID товара
+	ID *string `json:"id,omitempty"`
+	// Имя товара
+	Name *string `json:"name,omitempty"`
+	// Родительский каталог
+	Parent *Catalog `json:"parent"`
+	// Сущность продавец
+	Seller *Seller `json:"seller"`
+	// Количесто товара в корзине у пользователя
+	InCart int `json:"inCart"`
+	// Текст, сколько осталось на складе (<=1 - мало; >=2 && <=3 - хватает; >3 - много)
+	InStockText string `json:"inStockText"`
+}
+
 type Mutation struct {
 }
 

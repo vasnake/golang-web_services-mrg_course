@@ -1865,6 +1865,109 @@ edit week11_homework\shop_gql\schema.resolvers.go
 ```
 snippets
 
+После попыток воссоздания всего графа объектов, вспомнить, как это было в лекции
+```s
+# gql schema
+
+type Photo {
+  id: ID!
+  user: User! # здесь мы видим объект Юзер (что должно давать граф объектов, особенно если в юзере есть фотки)
+  url: String!
+  comment: String!
+  rating: Int!
+  liked: Boolean!
+}
+
+# gql yaml
+
+models:
+  Photo:
+    model: week11/photolist.Photo # здесь мы видим ссылку на кастомную структуру (спойлер: в ней нет юзера, только его айди)
+    fields:
+      user:
+        resolver: true # для Фото.Юзер нужен резолвер!
+
+# storage.go
+
+type Photo struct {
+	ID     uint32 `json:"id"`
+	UserID uint32 `json:"-"` # вот, в структуре нет графа, только айди. Для получения Фото нам не надо восстанавливать граф объектов
+	URL     string `json:"url"`
+	Comment string `json:"comment"`
+	Rating  int    `json:"rating"`
+	Liked   bool   `json:"liked"`
+}
+
+# resolver.go # и здесь мы видим реализацию получения объекта Юзер из Фото, по юзер-айди. Фреймворк сам восстановит граф, сделав n+1 запросов
+
+func (r *photoResolver) User(ctx context.Context, obj *Photo) (*User, error) {
+	return ctx.Value("userLoaderKey").(*UserLoader).Load(obj.UserID)
+}
+```
+snippets
+
+И попытаться воспроизвести эту идею с графом магазина
+```s
+# gql schema
+
+type Catalog {
+  id: ID
+  name: String
+  parent: Catalog! # нужна развязка через айди
+  childs: [Catalog!]! # нужна развязка через список айди
+  items(limit: Int = 3, offset: Int = 0): [Item!]! # это метод, не надо ничего развязывать
+}
+
+type Item {
+  id: ID
+  name: String
+  parent: Catalog! # нужна развязка через айди
+  seller: Seller! # нужна развязка через айди
+  inCart: Int! @authorized
+  inStockText: String!
+}
+
+# для этого сконфигурим генератор
+# gql yaml
+
+models:
+  Catalog:
+    model: week11_homework/shop_gql.Catalog # здесь мы видим ссылку на кастомную структуру (спойлер: в ней нет объекта, только его айди)
+    fields:
+      parent:
+        resolver: true
+      childs:
+        resolver: true
+  Item ...
+
+# custom_models.go
+
+type Catalog struct {
+	ID string `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
+  # 	UserID uint32 `json:"-"` # вот, в структуре нет графа, только айди. Для получения Фото нам не надо восстанавливать граф объектов
+	ParentID int `json:"-"`
+	ChildrenIDList []int `json:"-"`
+	ItemsIDList []int `json:"-"`
+}
+
+type Item struct {
+	ID *string `json:"id,omitempty"`
+	Name *string `json:"name,omitempty"`
+	InCart int `json:"inCart"`
+	InStockText string `json:"inStockText"`
+  # развязка графа
+	CatalogID int `json:"-"`
+	SellerID int `json:"-"`
+}
+
+go run github.com/99designs/gqlgen generate --verbose --config ./gqlgen.yml
+
+# ну и в резолвере потом написать реализацию методов получение объектов по айди (parent, children для каталога, ...)
+
+```
+snippets
+
 Done ?
 
 ## part 3, week 4 (12)

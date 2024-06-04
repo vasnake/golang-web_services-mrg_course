@@ -1,0 +1,172 @@
+package main
+
+import (
+	"fmt"
+	"slices"
+	"strconv"
+)
+
+// This file will not be regenerated automatically.
+//
+// It serves as dependency injection for your app, add any dependencies you require here.
+
+type Resolver struct {
+	dataAdapter StorageGQLAdapter // return r.dataAdapter.catalog(c), nil
+}
+
+type StorageGQLAdapter struct {
+	shopStorage ShopStorage
+	catalogList []*Catalog
+	itemList    []*Item
+	sellerList  []*Seller
+}
+
+func (sa *StorageGQLAdapter) catalogStructByIDString(id *string) (*CatalogStruct, error) {
+	cid, err := strconv.Atoi(*id)
+	if err != nil {
+		return nil, fmt.Errorf("catalogStructByIDString, can't convert id to int, %w", err)
+	}
+
+	return sa.catalogStructByID(cid)
+}
+
+func (sa *StorageGQLAdapter) catalogStructByID(cid int) (*CatalogStruct, error) {
+	for _, c := range sa.shopStorage.catalogRows {
+		if c.ID == cid {
+			return &c, nil
+		}
+	}
+
+	return nil, fmt.Errorf("catalogStructByID, can't find id %d", cid)
+}
+
+func (sa *StorageGQLAdapter) findRootCatalog() *CatalogStruct {
+	for _, c := range sa.shopStorage.catalogRows {
+		if c.Parent == 0 {
+			return &c
+		}
+	}
+
+	return nil
+}
+
+// itemRowIDList := sa.filterItemRowsBySeller(sid)
+func (sa *StorageGQLAdapter) filterItemRowsBySeller(sid int) []int {
+	var itemRowIDList []int = make([]int, 0, 16)
+	for _, ir := range sa.shopStorage.itemsRows {
+		if ir.Seller == sid {
+			itemRowIDList = append(itemRowIDList, ir.ID)
+		}
+	}
+	return itemRowIDList
+}
+
+// var itemRow GoodiesItemStruct = sa.itemRowByID(iid)
+func (sa *StorageGQLAdapter) itemRowByID(iid int) *GoodiesItemStruct {
+	for _, ir := range sa.shopStorage.itemsRows {
+		if ir.ID == iid {
+			return &ir
+		}
+	}
+	return nil
+}
+
+func (sa *StorageGQLAdapter) rebuildLists() error {
+	sa.catalogList = make([]*Catalog, 0, len(sa.shopStorage.catalogRows))
+	sa.itemList = make([]*Item, 0, len(sa.shopStorage.itemsRows))
+	sa.sellerList = make([]*Seller, 0, len(sa.shopStorage.sellersRows))
+
+	for _, cr := range sa.shopStorage.catalogRows {
+		catalog := Catalog{
+			ID:   strRef(strconv.Itoa(cr.ID)),
+			Name: strRef(cr.Name),
+			// Parent: nil, // refs will be set later
+			// Childs: nil,
+			// Items:  nil,
+		}
+		sa.catalogList = append(sa.catalogList, &catalog)
+	}
+
+	for _, ir := range sa.shopStorage.itemsRows {
+		item := Item{
+			ID:          strRef(strconv.Itoa(ir.ID)),
+			Name:        strRef(ir.Name),
+			InStockText: sa.inStockMapping(ir.InStock),
+			// Parent: catalogRef, // refs will be set later
+			// Seller: sellerRef,
+			// InCart: inUserCartCount,
+		}
+		sa.itemList = append(sa.itemList, &item)
+	}
+
+	for _, sr := range sa.shopStorage.sellersRows {
+		seller := Seller{
+			ID:    strRef(strconv.Itoa(sr.ID)),
+			Name:  strRef(sr.Name),
+			Deals: sr.Deals,
+			// Items: nil, //refs will be set later
+		}
+		sa.sellerList = append(sa.sellerList, &seller)
+	}
+
+	// set refs
+
+	for i := range sa.catalogList { // catalog <-> catalog // parent-child
+		cid, _ := strconv.Atoi(*sa.catalogList[i].ID)
+		catRow, _ := sa.catalogStructByID(cid)
+		pid := strRef(strconv.Itoa(catRow.Parent))
+		for _, c := range sa.catalogList {
+			if c.ID == pid {
+				sa.catalogList[i].Parent = c
+				c.Childs = append(c.Childs, sa.catalogList[i])
+			}
+		}
+	}
+
+	for i := range sa.itemList { // catalog <-> item
+		iid, _ := strconv.Atoi(*sa.itemList[i].ID)
+		var itemRow *GoodiesItemStruct = sa.itemRowByID(iid)
+		var cid *string = strRef(strconv.Itoa(itemRow.Catalog))
+		for _, catalog := range sa.catalogList {
+			if catalog.ID == cid {
+				sa.itemList[i].Parent = catalog
+				catalog.Items = append(catalog.Items, sa.itemList[i])
+			}
+		}
+	}
+
+	for i := range sa.sellerList { // seller <-> item
+		sid, _ := strconv.Atoi(*sa.sellerList[i].ID)
+		itemRowIDList := sa.filterItemRowsBySeller(sid)
+		sa.sellerList[i].Items = make([]*Item, 0, len(itemRowIDList))
+		for _, item := range sa.itemList {
+			iid, _ := strconv.Atoi(*item.ID)
+			if slices.Contains(itemRowIDList, iid) {
+				item.Seller = sa.sellerList[i]
+				sa.sellerList[i].Items = append(sa.sellerList[i].Items, item)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (sa *StorageGQLAdapter) catalogByID(cid string) *Catalog {
+	for _, c := range sa.catalogList {
+		if *c.ID == cid {
+			return c
+		}
+	}
+	return nil
+}
+
+func (sa *StorageGQLAdapter) inStockMapping(cnt int) string {
+	switch {
+	case cnt <= 1:
+		return "мало"
+	case cnt > 3:
+		return "много"
+	default:
+		return "хватает"
+	}
+}

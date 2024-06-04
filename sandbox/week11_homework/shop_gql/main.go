@@ -24,7 +24,6 @@ func GetApp() http.Handler {
 	sellers, err = loadSellers(data)
 	panicOnError("loadSellers failed", err)
 	show("loaded sellers: ", sellers)
-
 	var catalogs []CatalogStruct
 	var items []GoodiesItemStruct
 	catalogs, items, err = loadCatalogTree(data)
@@ -37,11 +36,12 @@ func GetApp() http.Handler {
 		itemsRows:   items,
 		catalogRows: catalogs,
 	}
-	var sga = StorageGQLAdapter{shopStorage: storage}
-	err = sga.rebuildLists()
-	panicOnError("adapter rebuildLists failed", err)
-
-	gqlResolver := &Resolver{dataAdapter: sga}
+	show("storage: ", storage)
+	// var sga = StorageGQLAdapter{shopStorage: storage}
+	// err = sga.rebuildLists()
+	// panicOnError("adapter rebuildLists failed", err)
+	// gqlResolver := &Resolver{dataAdapter: sga}
+	gqlResolver := &Resolver{}
 
 	cfg := Config{
 		Resolvers: gqlResolver,

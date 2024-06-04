@@ -9,14 +9,31 @@ import (
 	"fmt"
 )
 
-// Parent is the resolver for the parent field.
-func (r *catalogResolver) Parent(ctx context.Context, obj *Catalog) (*Catalog, error) {
-	panic(fmt.Errorf("not implemented: Parent - parent"))
+// Catalog is the resolver for the Catalog field.
+func (r *queryResolver) Catalog(ctx context.Context, id *string) (*Catalog, error) {
+	var err error = nil
+	c := r.dataAdapter.catalogByID(*id)
+	if c == nil {
+		err = fmt.Errorf("Catalog, search by id failed")
+	}
+	return c, err
+
+	// c, err := r.dataAdapter.catalogStructByIDString(id)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("Catalog, search by id failed. %w", err)
+	// }
+	// return r.dataAdapter.catalogFromStruct(c), nil
 }
 
 // Childs is the resolver for the childs field.
 func (r *catalogResolver) Childs(ctx context.Context, obj *Catalog) ([]*Catalog, error) {
-	panic(fmt.Errorf("not implemented: Childs - childs"))
+	var catalogChildren = make([]*Catalog, 0, 16)
+	return catalogChildren, nil
+}
+
+// Parent is the resolver for the parent field.
+func (r *catalogResolver) Parent(ctx context.Context, obj *Catalog) (*Catalog, error) {
+	panic(fmt.Errorf("not implemented: Parent - parent"))
 }
 
 // Items is the resolver for the items field.
@@ -54,11 +71,6 @@ func (r *mutationResolver) RemoveFromCart(ctx context.Context, in CartInput) ([]
 	panic(fmt.Errorf("not implemented: RemoveFromCart - RemoveFromCart"))
 }
 
-// Catalog is the resolver for the Catalog field.
-func (r *queryResolver) Catalog(ctx context.Context, id *string) (*Catalog, error) {
-	panic(fmt.Errorf("not implemented: Catalog - Catalog"))
-}
-
 // Shop is the resolver for the Shop field.
 func (r *queryResolver) Shop(ctx context.Context, parentID *string) ([]*Catalog, error) {
 	panic(fmt.Errorf("not implemented: Shop - Shop"))
@@ -79,6 +91,12 @@ func (r *sellerResolver) Items(ctx context.Context, obj *Seller, limit *int, off
 	panic(fmt.Errorf("not implemented: Items - items"))
 }
 
+type catalogResolver struct{ *Resolver }
+type itemResolver struct{ *Resolver }
+type mutationResolver struct{ *Resolver }
+type queryResolver struct{ *Resolver }
+type sellerResolver struct{ *Resolver }
+
 // Catalog returns CatalogResolver implementation.
 func (r *Resolver) Catalog() CatalogResolver { return &catalogResolver{r} }
 
@@ -93,9 +111,3 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 // Seller returns SellerResolver implementation.
 func (r *Resolver) Seller() SellerResolver { return &sellerResolver{r} }
-
-type catalogResolver struct{ *Resolver }
-type itemResolver struct{ *Resolver }
-type mutationResolver struct{ *Resolver }
-type queryResolver struct{ *Resolver }
-type sellerResolver struct{ *Resolver }
