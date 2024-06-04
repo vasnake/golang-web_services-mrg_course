@@ -6,6 +6,8 @@ import (
 	"os"
 )
 
+// Test data records (pseudo table rows)
+
 type SellerStruct struct {
 	ID    int
 	Name  string

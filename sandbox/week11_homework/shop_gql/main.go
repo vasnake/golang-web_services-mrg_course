@@ -36,25 +36,16 @@ func GetApp() http.Handler {
 		itemsRows:   items,
 		catalogRows: catalogs,
 	}
-	show("storage: ", storage)
-	// var sga = StorageGQLAdapter{shopStorage: storage}
-	// err = sga.rebuildLists()
-	// panicOnError("adapter rebuildLists failed", err)
-	// gqlResolver := &Resolver{dataAdapter: sga}
-	gqlResolver := &Resolver{}
 
+	var adapter = StorageGQLAdapter{shopStorage: storage}
+
+	var gqlResolver = &Resolver{dataAdapter: adapter}
 	cfg := Config{
 		Resolvers: gqlResolver,
 	}
 
-	srv := graphql_handler.NewDefaultServer(NewExecutableSchema(cfg))
+	var srv = graphql_handler.NewDefaultServer(NewExecutableSchema(cfg))
 	srv.Use(gqlgen_extension.FixedComplexityLimit(500))
 
 	return srv
-}
-
-type ShopStorage struct {
-	sellersRows []SellerStruct
-	itemsRows   []GoodiesItemStruct
-	catalogRows []CatalogStruct
 }

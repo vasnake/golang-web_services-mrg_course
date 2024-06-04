@@ -67,6 +67,7 @@ models:
       inStockText:
         resolver: true
   Seller:
+    model: shop_gql.Seller
     fields:
       items:
         resolver: true
