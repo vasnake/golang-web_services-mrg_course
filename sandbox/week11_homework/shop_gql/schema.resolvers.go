@@ -11,6 +11,30 @@ import (
 )
 
 // Parent is the resolver for the parent field.
+func (r *catalogResolver) Parent(ctx context.Context, obj *Catalog) (*Catalog, error) {
+	panic(fmt.Errorf("not implemented: Parent - parent"))
+}
+
+// Childs is the resolver for the childs field.
+func (r *catalogResolver) Childs(ctx context.Context, obj *Catalog) ([]*Catalog, error) {
+	// cid, err := strconv.Atoi(obj.ID)
+	// cid := obj.ID
+	// if err != nil {
+	// 	return nil, fmt.Errorf("catalogResolver.Childs failed, can't parse id string: %w", err)
+	// }
+	children, err := r.dataAdapter.GetCatalogChildrenByParentID(obj.ID)
+	if err != nil {
+		return nil, fmt.Errorf("catalogResolver.Childs failed, can't find children: %w", err)
+	}
+	return children, nil
+}
+
+// Items is the resolver for the items field.
+func (r *catalogResolver) Items(ctx context.Context, obj *Catalog, limit *int, offset *int) ([]*Item, error) {
+	panic(fmt.Errorf("not implemented: Items - items"))
+}
+
+// Parent is the resolver for the parent field.
 func (r *itemResolver) Parent(ctx context.Context, obj *Item) (*Catalog, error) {
 	panic(fmt.Errorf("not implemented: Parent - parent"))
 }
@@ -40,6 +64,34 @@ func (r *mutationResolver) RemoveFromCart(ctx context.Context, in CartInput) ([]
 	panic(fmt.Errorf("not implemented: RemoveFromCart - RemoveFromCart"))
 }
 
+// Catalog is the resolver for the Catalog field.
+func (r *queryResolver) Catalog(ctx context.Context, id *string) (*Catalog, error) {
+	cid, err := strconv.Atoi(*id)
+	if err != nil {
+		return nil, fmt.Errorf("queryResolver.Catalog failed, can't parse id string: %w", err)
+	}
+	c, err := r.dataAdapter.GetCatalogByID(cid)
+	if err != nil {
+		return nil, fmt.Errorf("queryResolver.Catalog failed, can't find Catalog by id: %w", err)
+	}
+	return c, nil
+}
+
+// Shop is the resolver for the Shop field.
+func (r *queryResolver) Shop(ctx context.Context, parentID *string) ([]*Catalog, error) {
+	panic(fmt.Errorf("not implemented: Shop - Shop"))
+}
+
+// Seller is the resolver for the Seller field.
+func (r *queryResolver) Seller(ctx context.Context, id *string) (*Seller, error) {
+	panic(fmt.Errorf("not implemented: Seller - Seller"))
+}
+
+// MyCart is the resolver for the MyCart field.
+func (r *queryResolver) MyCart(ctx context.Context) ([]*CartItem, error) {
+	panic(fmt.Errorf("not implemented: MyCart - MyCart"))
+}
+
 // Items is the resolver for the items field.
 func (r *sellerResolver) Items(ctx context.Context, obj *Seller, limit *int, offset *int) ([]*Item, error) {
 	panic(fmt.Errorf("not implemented: Items - items"))
@@ -60,63 +112,8 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 // Seller returns SellerResolver implementation.
 func (r *Resolver) Seller() SellerResolver { return &sellerResolver{r} }
 
+type catalogResolver struct{ *Resolver }
 type itemResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
-
-type sellerResolver struct{ *Resolver }
-
 type queryResolver struct{ *Resolver }
-
-// Catalog is the resolver for the Catalog field.
-func (qr *queryResolver) Catalog(ctx context.Context, id *string) (*Catalog, error) {
-	cid, err := strconv.Atoi(*id)
-	if err != nil {
-		return nil, fmt.Errorf("queryResolver.Catalog failed, can't parse id string: %w", err)
-	}
-	c, err := qr.dataAdapter.GetCatalogByID(cid)
-	if err != nil {
-		return nil, fmt.Errorf("queryResolver.Catalog failed, can't find Catalog by id: %w", err)
-	}
-	return c, nil
-}
-
-// Shop is the resolver for the Shop field.
-func (qr *queryResolver) Shop(ctx context.Context, parentID *string) ([]*Catalog, error) {
-	panic(fmt.Errorf("not implemented: Shop - Shop"))
-}
-
-// Seller is the resolver for the Seller field.
-func (qr *queryResolver) Seller(ctx context.Context, id *string) (*Seller, error) {
-	panic(fmt.Errorf("not implemented: Seller - Seller"))
-}
-
-// MyCart is the resolver for the MyCart field.
-func (qr *queryResolver) MyCart(ctx context.Context) ([]*CartItem, error) {
-	panic(fmt.Errorf("not implemented: MyCart - MyCart"))
-}
-
-type catalogResolver struct{ *Resolver }
-
-// Childs is the resolver for the childs field.
-func (cr *catalogResolver) Childs(ctx context.Context, obj *Catalog) ([]*Catalog, error) {
-	// cid, err := strconv.Atoi(obj.ID)
-	// cid := obj.ID
-	// if err != nil {
-	// 	return nil, fmt.Errorf("catalogResolver.Childs failed, can't parse id string: %w", err)
-	// }
-	children, err := cr.dataAdapter.GetCatalogChildrenByParentID(obj.ID)
-	if err != nil {
-		return nil, fmt.Errorf("catalogResolver.Childs failed, can't find children: %w", err)
-	}
-	return children, nil
-}
-
-// Parent is the resolver for the parent field.
-func (cr *catalogResolver) Parent(ctx context.Context, obj *Catalog) (*Catalog, error) {
-	panic(fmt.Errorf("not implemented: Parent - parent"))
-}
-
-// Items is the resolver for the items field.
-func (cr *catalogResolver) Items(ctx context.Context, obj *Catalog, limit *int, offset *int) ([]*Item, error) {
-	panic(fmt.Errorf("not implemented: Items - items"))
-}
+type sellerResolver struct{ *Resolver }
