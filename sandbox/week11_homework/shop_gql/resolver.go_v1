@@ -159,14 +159,3 @@ func (sa *StorageGQLAdapter) catalogByID(cid string) *Catalog {
 	}
 	return nil
 }
-
-func (sa *StorageGQLAdapter) inStockMapping(cnt int) string {
-	switch {
-	case cnt <= 1:
-		return "мало"
-	case cnt > 3:
-		return "много"
-	default:
-		return "хватает"
-	}
-}

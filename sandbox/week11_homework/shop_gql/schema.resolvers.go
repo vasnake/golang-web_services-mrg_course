@@ -31,7 +31,21 @@ func (r *catalogResolver) Childs(ctx context.Context, obj *Catalog) ([]*Catalog,
 
 // Items is the resolver for the items field.
 func (r *catalogResolver) Items(ctx context.Context, obj *Catalog, limit *int, offset *int) ([]*Item, error) {
-	panic(fmt.Errorf("not implemented: Items - items"))
+	var firstN int = 1 << 31 // TODO: configurable constant: max items to retrieve
+	if limit != nil && *limit > 0 {
+		firstN = *limit
+	}
+	firstN = min(firstN, len(obj.ItemsIDList))
+
+	result := make([]*Item, 0, firstN)
+
+	for _, iid := range obj.ItemsIDList[:firstN] {
+		item, err := r.dataAdapter.GetItemByID(iid)
+		panicOnError("catalogResolver.Items failed, can't find Item by id: ", err)
+		result = append(result, item)
+	}
+
+	return result, nil
 }
 
 // Parent is the resolver for the parent field.
@@ -94,7 +108,7 @@ func (r *queryResolver) MyCart(ctx context.Context) ([]*CartItem, error) {
 
 // Items is the resolver for the items field.
 func (r *sellerResolver) Items(ctx context.Context, obj *Seller, limit *int, offset *int) ([]*Item, error) {
-	panic(fmt.Errorf("not implemented: Items - items"))
+	panic(fmt.Errorf("not implemented: sellerResolver Items - items"))
 }
 
 // Catalog returns CatalogResolver implementation.
