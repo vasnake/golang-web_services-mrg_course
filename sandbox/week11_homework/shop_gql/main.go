@@ -27,10 +27,18 @@ func GetApp() http.Handler {
 	// https://gqlgen.com/reference/directives/
 	cfg.Directives.Authorized = CheckAuthorizedMiddleware
 
-	var srv = gql_handler.NewDefaultServer(NewExecutableSchema(cfg))
-	srv.Use(gql_handler_extension.FixedComplexityLimit(500))
+	var gqlSrv = gql_handler.NewDefaultServer(NewExecutableSchema(cfg))
+	gqlSrv.Use(gql_handler_extension.FixedComplexityLimit(500))
 
-	return srv
+	mux := http.NewServeMux()
+	mux.Handle("/query", gqlSrv)
+
+	var user_sessions_authHandlers = (&UserSessionAuth{}).New()
+	mux.HandleFunc("/register", user_sessions_authHandlers.RegisterNewUserHandler)
+
+	handler := user_sessions_authHandlers.InjectSession2ContextMiddleware(mux)
+
+	return handler
 }
 
 func loadData() ShopStorage {
