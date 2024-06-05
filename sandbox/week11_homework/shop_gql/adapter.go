@@ -31,18 +31,36 @@ func itemRow2Item(ir *GoodiesItemStruct) *Item {
 	}
 }
 
-func inStockMapping(cnt int) string {
+func sellerRow2Seller(sr *SellerStruct, items []int) *Seller {
+	return &Seller{
+		ID:          sr.ID,    // int `json:"id"`
+		Name:        sr.Name,  // string `json:"name,omitempty"`
+		Deals:       sr.Deals, // int `json:"deals"`
+		ItemsIDList: items,    // []int `json:"-"`
+	}
+}
+
+func inStockMapping(itemsCount int) string {
 	switch {
-	case cnt <= 1:
+	case itemsCount <= 1:
 		return "мало"
-	case cnt > 3:
+	case itemsCount > 3:
 		return "много"
 	default:
 		return "хватает"
 	}
 }
 
-// item, err := r.dataAdapter.GetItemByID(iid)
+func (sa *StorageGQLAdapter) GetSellerByID(sid int) (*Seller, error) {
+	sellerRow, err := sa.shopStorage.GetSellerByID(sid)
+	if err != nil {
+		return nil, fmt.Errorf("StorageGQLAdapter.GetSellerByID failed, can't find seller row: %w", err)
+	}
+
+	items := sa.shopStorage.FindItemsBySellerID(sid)
+	return sellerRow2Seller(sellerRow, items), nil
+}
+
 func (sa *StorageGQLAdapter) GetItemByID(iid int) (*Item, error) {
 	itemRow, err := sa.shopStorage.GetItemByID(iid)
 	if err != nil {

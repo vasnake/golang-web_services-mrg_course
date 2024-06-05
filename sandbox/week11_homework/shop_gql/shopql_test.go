@@ -829,7 +829,7 @@ func TestApp(t *testing.T) {
 		}, // 17
 	}
 
-	for _, item := range testCases {
+	for idx, item := range testCases {
 		ok := t.Run(item.Name, func(t *testing.T) {
 			if item.Before != nil {
 				item.Before()
@@ -841,7 +841,7 @@ func TestApp(t *testing.T) {
 				// var data CR
 				err := json.Unmarshal([]byte(item.ExpectedRaw), &item.Expected)
 				if err != nil {
-					t.Fatalf("cant unmarshal json: %v", err)
+					t.Fatalf("[%d] cant unmarshal json: %v", idx, err)
 				}
 			}
 
@@ -872,7 +872,7 @@ func TestApp(t *testing.T) {
 
 			resp, err := client.Do(req)
 			if err != nil {
-				t.Fatalf("request error: %v", err)
+				t.Fatalf("[%d] request error: %v", idx, err)
 			}
 			defer resp.Body.Close()
 			respBody, err := ioutil.ReadAll(resp.Body)
@@ -882,7 +882,7 @@ func TestApp(t *testing.T) {
 			// t.Log((item.ResponseStatus == 0 && resp.StatusCode != 200), item.ResponseStatus == 0, resp.StatusCode != 200, item.ResponseStatus, resp.StatusCode, resp.StatusCode == 200)
 
 			if item.ResponseStatus != 0 && (item.ResponseStatus != resp.StatusCode) {
-				t.Fatalf("bad status code, want: %v, have:%v", item.ResponseStatus, resp.StatusCode)
+				t.Fatalf("[%d] bad status code, want: %v, have:%v", idx, item.ResponseStatus, resp.StatusCode)
 			}
 
 			// for cases with just status check
@@ -892,14 +892,14 @@ func TestApp(t *testing.T) {
 			var got interface{}
 			err = json.Unmarshal(respBody, &got)
 			if err != nil {
-				t.Fatalf("cant unmarshal resp: %s, body: %s", err, respBody)
+				t.Fatalf("[%d] cant unmarshal resp: %s, body: %s", idx, err, respBody)
 			}
 
 			// for custom checking logic
 			// i'm to lazy to code entire registrtion flow, so it's just check and set token inside
 			if item.CheckFunc != nil {
 				if err := item.CheckFunc(got); err != nil {
-					t.Fatal("CheckFunc failed:", err)
+					t.Fatalf("[%d] CheckFunc failed: %s", idx, err)
 				}
 				return
 			}
@@ -907,13 +907,13 @@ func TestApp(t *testing.T) {
 			diff, equal := messagediff.PrettyDiff(item.Expected, got)
 			if !equal {
 				// dd(item.Expected, got)
-				t.Fatalf("\033[1;31mresults not match\033[0m\n\033[1;35mbody\033[0m: %s\n\033[1;32mwant\033[0m %#v\n\033[1;34mgot\033[0m %#v\n\033[1;33mdiff\033[0m:\n%s", respBody, item.Expected, got, diff)
+				t.Fatalf("\033[1;31mresults not match [%d] \033[0m\n\033[1;35mbody\033[0m: %s\n\033[1;32mwant\033[0m %#v\n\033[1;34mgot\033[0m %#v\n\033[1;33mdiff\033[0m:\n%s", idx, respBody, item.Expected, got, diff)
 			}
 
 			if item.After != nil {
 				err = item.After(resp, respBody, got)
 				if err != nil {
-					t.Fatalf("after func failed %s", err)
+					t.Fatalf("[%d] after func failed %s", idx, err)
 				}
 			}
 		})

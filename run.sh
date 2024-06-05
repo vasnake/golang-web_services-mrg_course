@@ -1,13 +1,13 @@
 #!/bin/bash
 # alias gr='bash -vxe /mnt/c/Users/valik/data/github/golang-web_services-mrg_course/run.sh'
 PRJ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# PATH=${PATH}:/mnt/c/bin/protoc-26.1-linux-x86_64/bin:${HOME}/go/bin
 
 APP_SELECTOR=${GO_APP_SELECTOR:-week11_homework}
 
 pushd ${PRJ_DIR}
 APP_COMMIT=foo # $(git rev-parse --short HEAD)
 APP_BUILD_TIME=bar # $(date -u '+%Y-%m-%d_%H:%M:%S')
+# PATH=${PATH}:/mnt/c/bin/protoc-26.1-linux-x86_64/bin:${HOME}/go/bin
 
 go_run() {
     local selector="${1}"

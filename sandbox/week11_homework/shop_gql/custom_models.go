@@ -46,17 +46,6 @@ type Seller struct {
 }
 
 /*
-// Сущность продавца
-type Seller struct {
-	// ID продавца
-	ID *string `json:"id,omitempty"`
-	// Имя продавца
-	Name *string `json:"name,omitempty"`
-	// Количество сделок у продавца (берется из testdata.json)
-	Deals int `json:"deals"`
-	// Товары продавца
-	Items []*Item `json:"items"`
-}
 
 // CartInput - параметры метода добавления товара в корзину
 type CartInput struct {

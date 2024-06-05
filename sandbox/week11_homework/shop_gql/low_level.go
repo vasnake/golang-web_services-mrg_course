@@ -10,6 +10,26 @@ import (
 
 // --- useful little functions ---
 
+// firstN, startFrom = actualLimitOffset(limit, offset, listSize, 0, listSize)
+func actualLimitOffset(limit, offset *int, dfltOffset, listSize int) (firstN, startFrom int) {
+	startFrom = getOrDefaultPositiveIntValue(offset, dfltOffset)
+	startFrom = min(startFrom, listSize)
+
+	firstN = getOrDefaultPositiveIntValue(limit, listSize)
+	// firstN = min(firstN, listSize) // listSize >= startFrom + firstN
+	firstN = min(firstN, listSize-startFrom)
+
+	return
+}
+
+func getOrDefaultPositiveIntValue(v *int, dflt int) int {
+	if v != nil && *v >= 0 {
+		return *v
+	} else {
+		return dflt
+	}
+}
+
 func loadIntFromMap(amap map[string]any, key string) (int, error) {
 	vAny, vExists := amap[key]
 	if !vExists {

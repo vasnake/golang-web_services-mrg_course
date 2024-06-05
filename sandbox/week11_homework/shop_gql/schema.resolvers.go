@@ -12,7 +12,7 @@ import (
 
 // Parent is the resolver for the parent field.
 func (r *catalogResolver) Parent(ctx context.Context, obj *Catalog) (*Catalog, error) {
-	panic(fmt.Errorf("not implemented: Parent - parent"))
+	panic(fmt.Errorf("catalogResolver not implemented: Parent - parent"))
 }
 
 // Childs is the resolver for the childs field.
@@ -31,15 +31,11 @@ func (r *catalogResolver) Childs(ctx context.Context, obj *Catalog) ([]*Catalog,
 
 // Items is the resolver for the items field.
 func (r *catalogResolver) Items(ctx context.Context, obj *Catalog, limit *int, offset *int) ([]*Item, error) {
-	var firstN int = 1 << 31 // TODO: configurable constant: max items to retrieve
-	if limit != nil && *limit > 0 {
-		firstN = *limit
-	}
-	firstN = min(firstN, len(obj.ItemsIDList))
+	firstN, startFrom := actualLimitOffset(limit, offset, 0, len(obj.ItemsIDList))
 
 	result := make([]*Item, 0, firstN)
 
-	for _, iid := range obj.ItemsIDList[:firstN] {
+	for _, iid := range obj.ItemsIDList[startFrom : startFrom+firstN] {
 		item, err := r.dataAdapter.GetItemByID(iid)
 		panicOnError("catalogResolver.Items failed, can't find Item by id: ", err)
 		result = append(result, item)
@@ -50,12 +46,16 @@ func (r *catalogResolver) Items(ctx context.Context, obj *Catalog, limit *int, o
 
 // Parent is the resolver for the parent field.
 func (r *itemResolver) Parent(ctx context.Context, obj *Item) (*Catalog, error) {
-	panic(fmt.Errorf("not implemented: Parent - parent"))
+	return r.dataAdapter.GetCatalogByID(obj.CatalogID)
 }
 
 // Seller is the resolver for the seller field.
 func (r *itemResolver) Seller(ctx context.Context, obj *Item) (*Seller, error) {
-	panic(fmt.Errorf("not implemented: Seller - seller"))
+	seller, err := r.dataAdapter.GetSellerByID(obj.SellerID)
+	if err != nil {
+		return nil, fmt.Errorf("itemResolver.Seller failed, can't find seller by id: %w", err)
+	}
+	return seller, nil
 }
 
 // InCart is the resolver for the inCart field.
@@ -65,7 +65,7 @@ func (r *itemResolver) InCart(ctx context.Context, obj *Item) (int, error) {
 
 // InStockText is the resolver for the inStockText field.
 func (r *itemResolver) InStockText(ctx context.Context, obj *Item) (string, error) {
-	panic(fmt.Errorf("not implemented: InStockText - inStockText"))
+	return obj.InStockText, nil
 }
 
 // AddToCart is the resolver for the AddToCart field.
@@ -98,7 +98,15 @@ func (r *queryResolver) Shop(ctx context.Context, parentID *string) ([]*Catalog,
 
 // Seller is the resolver for the Seller field.
 func (r *queryResolver) Seller(ctx context.Context, id *string) (*Seller, error) {
-	panic(fmt.Errorf("not implemented: Seller - Seller"))
+	sid, err := strconv.Atoi(*id)
+	if err != nil {
+		return nil, fmt.Errorf("queryResolver.Seller failed, can't parse id string: %w", err)
+	}
+	s, err := r.dataAdapter.GetSellerByID(sid)
+	if err != nil {
+		return nil, fmt.Errorf("queryResolver.Seller failed, can't find Seller by id: %w", err)
+	}
+	return s, nil
 }
 
 // MyCart is the resolver for the MyCart field.
@@ -108,7 +116,17 @@ func (r *queryResolver) MyCart(ctx context.Context) ([]*CartItem, error) {
 
 // Items is the resolver for the items field.
 func (r *sellerResolver) Items(ctx context.Context, obj *Seller, limit *int, offset *int) ([]*Item, error) {
-	panic(fmt.Errorf("not implemented: sellerResolver Items - items"))
+	firstN, startFrom := actualLimitOffset(limit, offset, 0, len(obj.ItemsIDList))
+
+	result := make([]*Item, 0, firstN)
+
+	for _, iid := range obj.ItemsIDList[startFrom : startFrom+firstN] {
+		item, err := r.dataAdapter.GetItemByID(iid)
+		panicOnError("sellerResolver.Items failed, can't find Item by id: ", err)
+		result = append(result, item)
+	}
+
+	return result, nil
 }
 
 // Catalog returns CatalogResolver implementation.

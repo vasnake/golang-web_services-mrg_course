@@ -1862,10 +1862,12 @@ go run \
 pushd week11_homework/shop_gql/
 go run github.com/99designs/gqlgen generate --verbose --config ./gqlgen.yml
 edit week11_homework\shop_gql\schema.resolvers.go
+# edit main.go: загрузка тестовых данных в "хранилище", создание хендлера для gql.
 ```
 snippets
 
-После попыток воссоздания всего графа объектов, вспомнить, как это было в лекции
+После попыток воссоздания всего графа объектов, мне пришлось вспомнить,
+как это (развязывание графа через айди-рефы) было в лекции:
 ```s
 # gql schema
 
@@ -1891,7 +1893,7 @@ models:
 
 type Photo struct {
 	ID     uint32 `json:"id"`
-	UserID uint32 `json:"-"` # вот, в структуре нет графа, только айди. Для получения Фото нам не надо восстанавливать граф объектов
+	UserID uint32 `json:"-"` # вот, в структуре нет объекта (граф!), только айди. Для получения Фото нам не надо восстанавливать граф объектов
 	URL     string `json:"url"`
 	Comment string `json:"comment"`
 	Rating  int    `json:"rating"`
@@ -1965,6 +1967,7 @@ go run github.com/99designs/gqlgen generate --verbose --config ./gqlgen.yml
 
 # ну и в резолвере потом написать реализацию методов получение объектов по айди (parent, children для каталога, ...)
 
+# далее вроде бы рокет-саенса нету, так, отладка разных нестыковок; перегенерация резолверов и структур, хня короче.
 ```
 snippets
 
