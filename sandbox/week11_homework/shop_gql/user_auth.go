@@ -24,7 +24,7 @@ func CheckAuthorizedMiddleware(ctx context.Context, obj interface{}, next graphq
 		return nil, err
 	}
 
-	show("CheckAuthorizedMiddleware, session: ", session)
+	show_noop("CheckAuthorizedMiddleware, session: ", session)
 	return next(ctx)
 }
 

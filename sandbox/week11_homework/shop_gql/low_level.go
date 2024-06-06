@@ -108,3 +108,10 @@ func show(msg string, xs ...any) {
 	}
 	fmt.Println(line)
 }
+
+// show_noop: do nothing, makes govet happy
+func show_noop(msg string, xs ...any) {
+	if len(msg)+len(xs) < 0 {
+		fmt.Println("impossible")
+	}
+}

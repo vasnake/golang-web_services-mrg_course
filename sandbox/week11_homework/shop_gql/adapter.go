@@ -29,10 +29,10 @@ func (sa *StorageGQLAdapter) GetShoppingCartItems(ctx context.Context) ([]*CartI
 	result := make([]*CartItem, 0, len(cart.items))
 
 	for idx, item := range cart.items {
-		result = append(
-			result,
-			itemRow2CartItem(item, cart.quantities[idx]),
-		)
+		cnt := cart.quantities[idx]
+		if cnt > 0 {
+			result = append(result, itemRow2CartItem(item, cnt))
+		}
 	}
 
 	return result, nil
@@ -48,20 +48,20 @@ func (sa *StorageGQLAdapter) AddToShoppingCart(ctx context.Context, itemID int, 
 	if err != nil {
 		return fmt.Errorf("StorageGQLAdapter.AddToShoppingCart failed, can't find user session: %w", err)
 	}
-	show("got session: ", sess)
+	show_noop("got session: ", sess)
 
 	itemRow, err := sa.shopStorage.GetItemByID(itemID)
 	if err != nil {
 		return fmt.Errorf("StorageGQLAdapter.AddToShoppingCart failed, can't find item: %w", err)
 	}
-	show("got shop item: ", itemRow)
+	show_noop("got shop item: ", itemRow)
 
 	if quantity > itemRow.InStock {
 		return fmt.Errorf("not enough quantity")
 	}
 
 	cart := sa.GetShoppingCartByUserID(sess.GetUserID())
-	show("got shopping cart: ", cart)
+	show_noop("got shopping cart: ", cart)
 
 	cart.AddItem(itemRow, quantity)
 	itemRow.InStock = itemRow.InStock - quantity

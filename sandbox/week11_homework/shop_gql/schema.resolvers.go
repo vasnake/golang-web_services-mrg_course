@@ -60,7 +60,19 @@ func (r *itemResolver) Seller(ctx context.Context, obj *Item) (*Seller, error) {
 
 // InCart is the resolver for the inCart field.
 func (r *itemResolver) InCart(ctx context.Context, obj *Item) (int, error) {
-	panic(fmt.Errorf("not implemented: InCart - inCart"))
+	// items count in user shopping cart
+	cartItems, err := r.dataAdapter.GetShoppingCartItems(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("itemResolver.InCart failed: %w", err)
+	}
+
+	for _, ci := range cartItems {
+		if ci.Item.ID == obj.ID {
+			return ci.Quantity, nil
+		}
+	}
+
+	return 0, nil
 }
 
 // InStockText is the resolver for the inStockText field.
@@ -88,7 +100,9 @@ func (r *mutationResolver) AddToCart(ctx context.Context, in *CartInput) ([]*Car
 
 // RemoveFromCart is the resolver for the RemoveFromCart field.
 func (r *mutationResolver) RemoveFromCart(ctx context.Context, in CartInput) ([]*CartItem, error) {
-	panic(fmt.Errorf("not implemented: RemoveFromCart - RemoveFromCart"))
+	ci := in
+	ci.Quantity = 0 - ci.Quantity
+	return r.AddToCart(ctx, &ci)
 }
 
 // Catalog is the resolver for the Catalog field.
@@ -124,7 +138,11 @@ func (r *queryResolver) Seller(ctx context.Context, id *string) (*Seller, error)
 
 // MyCart is the resolver for the MyCart field.
 func (r *queryResolver) MyCart(ctx context.Context) ([]*CartItem, error) {
-	panic(fmt.Errorf("not implemented: MyCart - MyCart"))
+	cartItems, err := r.dataAdapter.GetShoppingCartItems(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("mutationResolver.AddToCart failed: %w", err)
+	}
+	return cartItems, nil
 }
 
 // Items is the resolver for the items field.
