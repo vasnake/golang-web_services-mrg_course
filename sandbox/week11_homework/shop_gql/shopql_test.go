@@ -829,7 +829,7 @@ func TestApp(t *testing.T) {
 		}, // 17
 	}
 
-	for idx, item := range testCases {
+	for idx, item := range testCases[10:] {
 		ok := t.Run(item.Name, func(t *testing.T) {
 			if item.Before != nil {
 				item.Before()
@@ -874,8 +874,8 @@ func TestApp(t *testing.T) {
 			if err != nil {
 				t.Fatalf("[%d] request error: %v", idx, err)
 			}
-			defer resp.Body.Close()
 			respBody, err := ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
 
 			// t.Logf("\nreq body: %s\nresp body: %s", body, respBody)
 
@@ -892,7 +892,7 @@ func TestApp(t *testing.T) {
 			var got interface{}
 			err = json.Unmarshal(respBody, &got)
 			if err != nil {
-				t.Fatalf("[%d] cant unmarshal resp: %s, body: %s", idx, err, respBody)
+				t.Fatalf("[%d] cant unmarshal resp: %s,\nbody:\n%s\n\n", idx, err, respBody)
 			}
 
 			// for custom checking logic

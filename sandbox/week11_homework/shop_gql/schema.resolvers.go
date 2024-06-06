@@ -70,7 +70,19 @@ func (r *itemResolver) InStockText(ctx context.Context, obj *Item) (string, erro
 
 // AddToCart is the resolver for the AddToCart field.
 func (r *mutationResolver) AddToCart(ctx context.Context, in *CartInput) ([]*CartItem, error) {
-	panic(fmt.Errorf("TODO: not implemented: AddToCart - AddToCart"))
+	err := r.dataAdapter.AddToShoppingCart(ctx, in.ItemID, in.Quantity)
+	if err != nil {
+		return nil, fmt.Errorf("mutationResolver.AddToCart failed: %w", err)
+	}
+	// show("items added to cart")
+	cartItems, err := r.dataAdapter.GetShoppingCartItems(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("mutationResolver.AddToCart failed: %w", err)
+	}
+	// show("cart content retrieved: ", cartItems)
+
+	// cartItems := make([]*CartItem, 0, 16)
+	return cartItems, nil
 }
 
 // RemoveFromCart is the resolver for the RemoveFromCart field.

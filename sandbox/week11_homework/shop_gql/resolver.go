@@ -5,5 +5,11 @@ package main
 // It serves as dependency injection for your app, add any dependencies you require here.
 
 type Resolver struct {
-	dataAdapter StorageGQLAdapter
+	dataAdapter *StorageGQLAdapter
+}
+
+func (r *Resolver) New() *Resolver {
+	return &Resolver{
+		dataAdapter: (&StorageGQLAdapter{}).New(),
+	}
 }

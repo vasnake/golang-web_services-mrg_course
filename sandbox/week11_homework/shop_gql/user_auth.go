@@ -17,48 +17,57 @@ import (
 
 // CheckAuthorizedMiddleware: graphql middleware (cfg.directives)
 func CheckAuthorizedMiddleware(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
+	// Resolver        func(ctx context.Context) (res interface{}, err error)
 	session, err := SessionFromContext(ctx)
 	if err != nil {
+		show("CheckAuthorizedMiddleware, no session = un-authorized")
 		return nil, err
 	}
+
 	show("CheckAuthorizedMiddleware, session: ", session)
 	return next(ctx)
 }
 
 // auth middleware: add to context session data
-func (udb *UserSessionAuth) InjectSession2ContextMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		headerAuthValue := r.Header.Get("Authorization")
-		if headerAuthValue != "" {
-			sessToken := strings.TrimPrefix(headerAuthValue, "Token ")
-			if len(sessToken) != len(headerAuthValue) && sessToken != "" {
-				user, err := udb.GetUserBySession(sessToken)
-				if err == nil {
-					var sess AppSession = user
-					ctx := SessionToContext(r.Context(), sess)
+func (udb *UserSessionAuthSvc) InjectSession2ContextMiddleware(next http.Handler) http.Handler {
 
-					show("InjectSession2ContextMiddleware, session: ", sess)
-					next.ServeHTTP(w, r.WithContext(ctx))
+	return http.HandlerFunc(
+
+		func(writer http.ResponseWriter, req *http.Request) {
+			headerAuthValue := req.Header.Get("Authorization")
+			if headerAuthValue != "" {
+				sessToken := strings.TrimPrefix(headerAuthValue, "Token ")
+				if len(sessToken) != len(headerAuthValue) && sessToken != "" { // got session token
+
+					user, err := udb.GetUserBySession(sessToken)
+					if err == nil {
+						var sess AppSession = user
+						ctx := SessionToContext(req.Context(), sess) // put user data to context
+
+						show("InjectSession2ContextMiddleware, got session: ", sess)
+						next.ServeHTTP(writer, req.WithContext(ctx))
+						return //
+					}
 				}
 			}
-		}
 
-		// show("InjectSession2ContextMiddleware, no session")
-		next.ServeHTTP(w, r)
-	})
+			// show("InjectSession2ContextMiddleware, no session")
+			next.ServeHTTP(writer, req)
+		}, // lambda
+	) // HandleFunc
 }
 
-type UserSessionAuth struct {
+type UserSessionAuthSvc struct {
 	usersTable []*AppUserRow
 }
 
-func (udb *UserSessionAuth) New() *UserSessionAuth {
-	return &UserSessionAuth{
+func (udb *UserSessionAuthSvc) New() *UserSessionAuthSvc {
+	return &UserSessionAuthSvc{
 		usersTable: make([]*AppUserRow, 0, 16),
 	}
 }
 
-func (udb *UserSessionAuth) UserExists(aur *AppUserRow) bool {
+func (udb *UserSessionAuthSvc) UserExists(aur *AppUserRow) bool {
 	for _, ur := range udb.usersTable {
 		if ur.username == aur.username {
 			return true
@@ -67,18 +76,18 @@ func (udb *UserSessionAuth) UserExists(aur *AppUserRow) bool {
 	return false
 }
 
-func (udb *UserSessionAuth) createNewSession(user *AppUserRow) (updatedUser *AppUserRow, token string) {
+func (udb *UserSessionAuthSvc) createNewSession(user *AppUserRow) (updatedUser *AppUserRow, token string) {
 	token = nextID_36()
 	updatedUser = user
 	updatedUser.sessions = append(updatedUser.sessions, token)
 	return
 }
 
-func (udb *UserSessionAuth) insertUser(user *AppUserRow) {
+func (udb *UserSessionAuthSvc) insertUser(user *AppUserRow) {
 	udb.usersTable = append(udb.usersTable, user)
 }
 
-func (udb *UserSessionAuth) RegisterNewUserHandler(w http.ResponseWriter, r *http.Request) {
+func (udb *UserSessionAuthSvc) RegisterNewUserHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "RegisterNewUserHandler, only POST method accepted", http.StatusBadRequest)
 		return
@@ -105,7 +114,7 @@ func (udb *UserSessionAuth) RegisterNewUserHandler(w http.ResponseWriter, r *htt
 	writeJsonResponse(w, respContent, "")
 }
 
-func (udb *UserSessionAuth) GetUserBySession(sessToken string) (*AppUserRow, error) {
+func (udb *UserSessionAuthSvc) GetUserBySession(sessToken string) (*AppUserRow, error) {
 	for _, ur := range udb.usersTable {
 		if slices.Contains(ur.sessions, sessToken) {
 			return ur, nil
@@ -161,7 +170,9 @@ func SessionToContext(ctx context.Context, sess AppSession) context.Context {
 	return context.WithValue(ctx, CONTEXT_SESSION_KEY, sess)
 }
 
-type AppSession interface{}
+type AppSession interface {
+	GetUserID() string
+}
 
 const (
 	CONTEXT_SESSION_KEY = "SESSION_CONTEXT_KEY"
@@ -177,4 +188,9 @@ type AppUserRow struct {
 	username string
 	password string
 	sessions []string
+}
+
+// GetUserID implements AppSession.
+func (aur *AppUserRow) GetUserID() string {
+	return aur.ID
 }

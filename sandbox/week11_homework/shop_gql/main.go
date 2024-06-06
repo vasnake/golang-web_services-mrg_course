@@ -16,32 +16,31 @@ func main() {
 }
 
 func GetApp() http.Handler {
-	cfg := Config{
-		Resolvers: &(Resolver{
-			dataAdapter: StorageGQLAdapter{
-				shopStorage: loadData(),
-			},
-		}),
-	}
+	// state
+	r := (&Resolver{}).New()
+	r.dataAdapter.shopStorage = loadData()
 
-	// https://gqlgen.com/reference/directives/
-	cfg.Directives.Authorized = CheckAuthorizedMiddleware
+	// graphql service
+	gqlCfg := Config{Resolvers: r}
+	gqlCfg.Directives.Authorized = CheckAuthorizedMiddleware // https://gqlgen.com/reference/directives/
+	var gqlSvc = gql_handler.NewDefaultServer(NewExecutableSchema(gqlCfg))
+	gqlSvc.Use(gql_handler_extension.FixedComplexityLimit(500))
 
-	var gqlSrv = gql_handler.NewDefaultServer(NewExecutableSchema(cfg))
-	gqlSrv.Use(gql_handler_extension.FixedComplexityLimit(500))
+	routesMux := http.NewServeMux()
 
-	mux := http.NewServeMux()
-	mux.Handle("/query", gqlSrv)
+	// route for graphql handlers
+	routesMux.Handle("/query", gqlSvc)
+	// route for user registration handlers
+	var authSvc = (&UserSessionAuthSvc{}).New()
+	routesMux.HandleFunc("/register", authSvc.RegisterNewUserHandler)
 
-	var user_sessions_authHandlers = (&UserSessionAuth{}).New()
-	mux.HandleFunc("/register", user_sessions_authHandlers.RegisterNewUserHandler)
+	// add middleware
+	app := authSvc.InjectSession2ContextMiddleware(routesMux)
 
-	handler := user_sessions_authHandlers.InjectSession2ContextMiddleware(mux)
-
-	return handler
+	return app
 }
 
-func loadData() ShopStorage {
+func loadData() *ShopStorage {
 	data, err := loadTestData(TEST_DATA_FILE_NAME)
 	panicOnError("loadTestData failed", err)
 
@@ -58,7 +57,7 @@ func loadData() ShopStorage {
 	show("loaded items: ", items)
 	show("loaded catalogs: ", catalogs)
 
-	return ShopStorage{
+	return &ShopStorage{
 		sellersRows: sellers,
 		itemsRows:   items,
 		catalogRows: catalogs,

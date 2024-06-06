@@ -20,4 +20,5 @@ func writeJsonResponse(w http.ResponseWriter, body interface{}, errText string) 
 	})
 	panicOnError("writeJsonResponse failed, can't marshal json", err)
 	w.Write(jsonBytes)
+	show("writeJsonResponse, written %s", string(jsonBytes))
 }

@@ -1,54 +1,66 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	// "strconv"
 )
 
 // storage to gql converter
 type StorageGQLAdapter struct {
-	shopStorage ShopStorage
+	shopStorage      *ShopStorage
+	shoppingCartsSvc *ShoppingCartService
 }
 
-func catalogRow2Catalog(cr *CatalogStruct) *Catalog {
-	return &Catalog{
-		ID:             cr.ID, // strconv.Itoa(cr.ID),
-		Name:           cr.Name,
-		ParentID:       cr.Parent,
-		ChildrenIDList: cr.Children,
-		ItemsIDList:    cr.Items,
+func (sa *StorageGQLAdapter) New() *StorageGQLAdapter {
+	return &StorageGQLAdapter{
+		shopStorage:      (&ShopStorage{}).New(),
+		shoppingCartsSvc: (&ShoppingCartService{}).New(),
 	}
 }
 
-func itemRow2Item(ir *GoodiesItemStruct) *Item {
-	return &Item{
-		ID:          ir.ID,                      // int `json:"id"`
-		Name:        ir.Name,                    // string `json:"name,omitempty"`
-		CatalogID:   ir.Catalog,                 // int `json:"-"`
-		SellerID:    ir.Seller,                  // int `json:"-"`
-		InStockText: inStockMapping(ir.InStock), // string `json:"inStockText"`
-		// InCart: int `json:"inCart"`
+func (sa *StorageGQLAdapter) GetShoppingCartItems(ctx context.Context) ([]*CartItem, error) {
+	sess, err := SessionFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("StorageGQLAdapter.GetShoppingCartItems failed, can't find user session: %w", err)
 	}
+
+	cart := sa.GetShoppingCartByUserID(sess.GetUserID())
+	result := make([]*CartItem, 0, len(cart.items))
+
+	for idx, item := range cart.items {
+		result = append(
+			result,
+			itemRow2CartItem(item, cart.quantities[idx]),
+		)
+	}
+
+	return result, nil
 }
 
-func sellerRow2Seller(sr *SellerStruct, items []int) *Seller {
-	return &Seller{
-		ID:          sr.ID,    // int `json:"id"`
-		Name:        sr.Name,  // string `json:"name,omitempty"`
-		Deals:       sr.Deals, // int `json:"deals"`
-		ItemsIDList: items,    // []int `json:"-"`
-	}
+// GetShoppingCartByUserID: get existing or create new
+func (sa *StorageGQLAdapter) GetShoppingCartByUserID(userID string) *ShoppingCart {
+	return sa.shoppingCartsSvc.GetShoppingCartByUserID(userID)
 }
 
-func inStockMapping(itemsCount int) string {
-	switch {
-	case itemsCount <= 1:
-		return "мало"
-	case itemsCount > 3:
-		return "много"
-	default:
-		return "хватает"
+func (sa *StorageGQLAdapter) AddToShoppingCart(ctx context.Context, itemID int, quantity int) error {
+	sess, err := SessionFromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("StorageGQLAdapter.AddToShoppingCart failed, can't find user session: %w", err)
 	}
+	show("got session: ", sess)
+
+	itemRow, err := sa.shopStorage.GetItemByID(itemID)
+	if err != nil {
+		return fmt.Errorf("StorageGQLAdapter.AddToShoppingCart failed, can't find item: %w", err)
+	}
+	show("got shop item: ", itemRow)
+
+	cart := sa.GetShoppingCartByUserID(sess.GetUserID())
+	show("got shopping cart: ", cart)
+
+	cart.AddItem(itemRow, quantity)
+	return nil
 }
 
 func (sa *StorageGQLAdapter) GetSellerByID(sid int) (*Seller, error) {
@@ -93,4 +105,52 @@ func (sa *StorageGQLAdapter) GetCatalogChildrenByParentID(cid int) ([]*Catalog, 
 	}
 
 	return result, nil
+}
+
+func catalogRow2Catalog(cr *CatalogStruct) *Catalog {
+	return &Catalog{
+		ID:             cr.ID, // strconv.Itoa(cr.ID),
+		Name:           cr.Name,
+		ParentID:       cr.Parent,
+		ChildrenIDList: cr.Children,
+		ItemsIDList:    cr.Items,
+	}
+}
+
+func itemRow2CartItem(itm *GoodiesItemStruct, quantity int) *CartItem {
+	return &CartItem{
+		Quantity: quantity,
+		Item:     itemRow2Item(itm),
+	}
+}
+
+func itemRow2Item(itm *GoodiesItemStruct) *Item {
+	return &Item{
+		ID:          itm.ID,                      // int `json:"id"`
+		Name:        itm.Name,                    // string `json:"name,omitempty"`
+		CatalogID:   itm.Catalog,                 // int `json:"-"`
+		SellerID:    itm.Seller,                  // int `json:"-"`
+		InStockText: inStockMapping(itm.InStock), // string `json:"inStockText"`
+		// InCart: int `json:"inCart"`
+	}
+}
+
+func sellerRow2Seller(ss *SellerStruct, items []int) *Seller {
+	return &Seller{
+		ID:          ss.ID,    // int `json:"id"`
+		Name:        ss.Name,  // string `json:"name,omitempty"`
+		Deals:       ss.Deals, // int `json:"deals"`
+		ItemsIDList: items,    // []int `json:"-"`
+	}
+}
+
+func inStockMapping(itemsCount int) string {
+	switch {
+	case itemsCount <= 1:
+		return "мало"
+	case itemsCount > 3:
+		return "много"
+	default:
+		return "хватает"
+	}
 }
