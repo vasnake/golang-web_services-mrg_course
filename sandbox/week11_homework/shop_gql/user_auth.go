@@ -31,30 +31,31 @@ func CheckAuthorizedMiddleware(ctx context.Context, obj interface{}, next graphq
 // auth middleware: add to context session data
 func (udb *UserSessionAuthSvc) InjectSession2ContextMiddleware(next http.Handler) http.Handler {
 
-	return http.HandlerFunc(
+	var handlerFunc = func(writer http.ResponseWriter, req *http.Request) {
+		headerAuthValue := req.Header.Get("Authorization")
 
-		func(writer http.ResponseWriter, req *http.Request) {
-			headerAuthValue := req.Header.Get("Authorization")
-			if headerAuthValue != "" {
-				sessToken := strings.TrimPrefix(headerAuthValue, "Token ")
-				if len(sessToken) != len(headerAuthValue) && sessToken != "" { // got session token
+		// happy path
+		if headerAuthValue != "" {
+			sessToken := strings.TrimPrefix(headerAuthValue, "Token ")
+			if len(sessToken) != len(headerAuthValue) && sessToken != "" { // got session token
 
-					user, err := udb.GetUserBySession(sessToken)
-					if err == nil {
-						var sess AppSession = user
-						ctx := SessionToContext(req.Context(), sess) // put user data to context
+				user, err := udb.GetUserBySession(sessToken)
+				if err == nil {
+					var sess AppSession = user
+					ctx := SessionToContext(req.Context(), sess) // put user data to context
 
-						show("InjectSession2ContextMiddleware, got session: ", sess)
-						next.ServeHTTP(writer, req.WithContext(ctx))
-						return //
-					}
+					// show("InjectSession2ContextMiddleware, got session: ", sess)
+					next.ServeHTTP(writer, req.WithContext(ctx))
+					return // exit point, ServeHttp only once
 				}
 			}
+		} // end of happy path
 
-			// show("InjectSession2ContextMiddleware, no session")
-			next.ServeHTTP(writer, req)
-		}, // lambda
-	) // HandleFunc
+		// show("InjectSession2ContextMiddleware, no session")
+		next.ServeHTTP(writer, req) // return
+	} // lambda with closure around 'next'
+
+	return http.HandlerFunc(handlerFunc)
 }
 
 type UserSessionAuthSvc struct {

@@ -829,7 +829,7 @@ func TestApp(t *testing.T) {
 		}, // 17
 	}
 
-	for idx, item := range testCases[10:] {
+	for idx, item := range testCases {
 		ok := t.Run(item.Name, func(t *testing.T) {
 			if item.Before != nil {
 				item.Before()
