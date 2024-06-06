@@ -56,10 +56,16 @@ func (sa *StorageGQLAdapter) AddToShoppingCart(ctx context.Context, itemID int, 
 	}
 	show("got shop item: ", itemRow)
 
+	if quantity > itemRow.InStock {
+		return fmt.Errorf("not enough quantity")
+	}
+
 	cart := sa.GetShoppingCartByUserID(sess.GetUserID())
 	show("got shopping cart: ", cart)
 
 	cart.AddItem(itemRow, quantity)
+	itemRow.InStock = itemRow.InStock - quantity
+
 	return nil
 }
 

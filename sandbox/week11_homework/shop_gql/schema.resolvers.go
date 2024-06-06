@@ -72,9 +72,10 @@ func (r *itemResolver) InStockText(ctx context.Context, obj *Item) (string, erro
 func (r *mutationResolver) AddToCart(ctx context.Context, in *CartInput) ([]*CartItem, error) {
 	err := r.dataAdapter.AddToShoppingCart(ctx, in.ItemID, in.Quantity)
 	if err != nil {
-		return nil, fmt.Errorf("mutationResolver.AddToCart failed: %w", err)
+		return nil, err // fmt.Errorf("mutationResolver.AddToCart failed: %w", err)
 	}
 	// show("items added to cart")
+
 	cartItems, err := r.dataAdapter.GetShoppingCartItems(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("mutationResolver.AddToCart failed: %w", err)

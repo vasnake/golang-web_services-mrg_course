@@ -44,12 +44,13 @@ func loadData() *ShopStorage {
 	data, err := loadTestData(TEST_DATA_FILE_NAME)
 	panicOnError("loadTestData failed", err)
 
-	var sellers []SellerStruct
+	var sellers []*SellerStruct
+	var catalogs []*CatalogStruct
+	var items []*GoodiesItemStruct
+
 	sellers, err = loadSellers(data)
 	panicOnError("loadSellers failed", err)
 
-	var catalogs []CatalogStruct
-	var items []GoodiesItemStruct
 	catalogs, items, err = loadCatalogTree(data)
 	panicOnError("loadCatalogTree failed", err)
 

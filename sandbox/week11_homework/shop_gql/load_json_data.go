@@ -32,7 +32,7 @@ type CatalogStruct struct {
 	Items    []int // GoodiesItem ref
 }
 
-func loadCatalogTree(data map[string]any) ([]CatalogStruct, []GoodiesItemStruct, error) {
+func loadCatalogTree(data map[string]any) ([]*CatalogStruct, []*GoodiesItemStruct, error) {
 	catalogAny, exists := data["catalog"]
 	if !exists {
 		return nil, nil, fmt.Errorf("can't find catalog in given data")
@@ -42,8 +42,8 @@ func loadCatalogTree(data map[string]any) ([]CatalogStruct, []GoodiesItemStruct,
 		return nil, nil, fmt.Errorf("catalog type is not of map[string]any")
 	}
 
-	var catalogRows = make([]CatalogStruct, 0, 16)
-	var itemRows = make([]GoodiesItemStruct, 0, 16)
+	var catalogRows = make([]*CatalogStruct, 0, 16)
+	var itemRows = make([]*GoodiesItemStruct, 0, 16)
 	var catalogId int = 0
 	err := loadCatalogTreeRecursive(catalogMap, catalogId, &catalogRows, &itemRows)
 
@@ -62,7 +62,7 @@ func loadCatalogTree(data map[string]any) ([]CatalogStruct, []GoodiesItemStruct,
 	return catalogRows, itemRows, err
 }
 
-func loadCatalogTreeRecursive(catalogMap map[string]any, parent int, catalogRows *[]CatalogStruct, itemRows *[]GoodiesItemStruct) error {
+func loadCatalogTreeRecursive(catalogMap map[string]any, parent int, catalogRows *[]*CatalogStruct, itemRows *[]*GoodiesItemStruct) error {
 	id, err := loadIntFromMap(catalogMap, "id")
 	if err != nil {
 		return fmt.Errorf("load catalog id failed, %w", err)
@@ -93,11 +93,11 @@ func loadCatalogTreeRecursive(catalogMap map[string]any, parent int, catalogRows
 			}
 			item.Catalog = catalog.ID
 			catalog.Items = append(catalog.Items, item.ID)
-			*itemRows = append(*itemRows, item)
+			*itemRows = append(*itemRows, &item)
 		}
 	}
 
-	*catalogRows = append(*catalogRows, catalog)
+	*catalogRows = append(*catalogRows, &catalog)
 
 	// sub-catalogs
 	childrenAny, childrenExists := catalogMap["childs"]
@@ -148,7 +148,7 @@ func loadItem(data map[string]any) (GoodiesItemStruct, error) {
 	return item, nil
 }
 
-func loadSellers(data map[string]any) ([]SellerStruct, error) {
+func loadSellers(data map[string]any) ([]*SellerStruct, error) {
 	sellersAny, exists := data["sellers"]
 	if !exists {
 		return nil, fmt.Errorf("can't find sellers in given data")
@@ -158,7 +158,7 @@ func loadSellers(data map[string]any) ([]SellerStruct, error) {
 		return nil, fmt.Errorf("sellers type is not of []any")
 	}
 
-	var result = make([]SellerStruct, 0, 16)
+	var result = make([]*SellerStruct, 0, 16)
 	for _, sellerAny := range sellersSlice {
 		sellerMap, isMap := sellerAny.(map[string]any)
 		if !isMap {
@@ -178,7 +178,7 @@ func loadSellers(data map[string]any) ([]SellerStruct, error) {
 			return nil, fmt.Errorf("load seller name failed, %w", err)
 		}
 
-		result = append(result, SellerStruct{ID: id, Name: name, Deals: deals})
+		result = append(result, &SellerStruct{ID: id, Name: name, Deals: deals})
 	}
 
 	return result, nil
