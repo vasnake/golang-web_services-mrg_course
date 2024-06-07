@@ -2,7 +2,7 @@
 # alias gr='bash -vxe /mnt/c/Users/valik/data/github/golang-web_services-mrg_course/run.sh'
 PRJ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-APP_SELECTOR=${GO_APP_SELECTOR:-week11_homework}
+APP_SELECTOR=${GO_APP_SELECTOR:-week12}
 
 pushd ${PRJ_DIR}
 APP_COMMIT=foo # $(git rev-parse --short HEAD)
@@ -37,6 +37,7 @@ go_run() {
         week10_homework)            go_run_sandbox_week10_taskbot_test;;
         week11)                     go_run_sandbox week11;;
         week11_homework)            go_run_sandbox_week11_shop_gql_test;;
+        week12)                     go_run_sandbox week12;;
         *)                          errorExit "Unknown program: ${selector}";;
     esac
 }
@@ -586,7 +587,7 @@ func main() { panic("not yet") }
 EOT
         go mod tidy
         popd # sandbox
-        go work use ./${module}        
+        go work use ./${module}
         gofmt -w ${module}
         # go vet ${module}
         go test -v ${module}

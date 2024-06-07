@@ -1981,18 +1981,40 @@ Done.
 
 ## part 3, week 4 (12)
 
-# I_AM_HERE
-
 Сборка docker-контейнера, хранение файлов в S3, трейсинг запросов
-[Код, домашки, литература](week_12/materials.zip) https://cloud.mail.ru/public/NteB/XuFz1UTqJ
+[Код, домашки, литература](week_12/materials.zip)
 
-### Сборка docker-контейнера - 1 (102_build modules)
+UPD:
+- `handouts/golang_web_services_2023-12-28.zip/12/`
+- `handouts/golang_web_services_2024-04-26.zip/12/`
+
+```s
+local module=week12
+pushd ${PRJ_DIR}/sandbox
+mkdir -p ${module} && pushd ./${module}
+go mod init ${module}
+cat > main.go << EOT
+package main
+func main() { panic("not yet") }
+EOT
+go mod tidy
+popd # sandbox
+go work use ./${module}        
+gofmt -w ${module}
+go test -v ${module}
+go run ${module}
+```
+[week 12 playground](./sandbox/week12/main.go) `GO_APP_SELECTOR=week12 gr`
+
+### Сборка docker-контейнера - 1 (102_build, Go modules)
+
+Рассказ про модули в Go 1.11+
+`handouts\golang_web_services_2023-12-28.zip\12\photolist\102_build\`
 
 - [modules.txt](week_12/photolist_102_modules.txt)
 - [Makefile](week_12/photolist_102_Makefile)
 - [main](week_12/photolist_102_main.go)
 
-Модули в Go 1.11+
 Стандарт по управлению зависимостями в проектах.
 Разные проекты могут использовать разные версии модулей, модули разложены по версиям и доступны одновременно.
 
@@ -2007,19 +2029,20 @@ Done.
 
 `go mod download` скачивает все зависимости и кладет их в системный кэш `go/pkg/mod/`
 
-`go mod vendor` складывает зависимости не в системный кэш а в папку `vendor` проекта.
-Чтобы работало, собирать проект надо через `go build -mod=vendor ...`
+`go mod vendor` складывает зависимости в папку `vendor` проекта, если вдруг надо "все свое ношу с собой".
+Чтобы такое работало при сборке, собирать проект надо через `go build -mod=vendor ...`
 
-Внутри проекта свои внутренние зависимости импортируются как `photolist/pkg/pkgname`
-из модуля photolist.
+Внутри проекта свои внутренние зависимости импортируются как `photolist/pkg/pkgname` из модуля photolist.
 Если бы инит был сделан как `go mod init github.com/rvasily/photolist`, то импорт бы это отражал:
-`github.com/rvasily/photolist/pkg/pkgname` но на гитхаб бы оно не полезло ибо локально уже лежит всё.
+`github.com/rvasily/photolist/pkg/pkgname` но на гитхаб бы оно не полезло ибо: локально уже лежит всё.
 
 Прощай GOPATH.
 
-Транзитивные зависимости?
+Про транзитивные зависимости не рассказал.
 
-### Сборка docker-контейнера - 2 (102_build docker)
+### Сборка docker-контейнера - 2 (102_build, docker)
+
+Docker, сборка своего image. Контейнер с нашей аппой внутре.
 
 - [Dockerfile](week_12/photolist_102_Dockerfile)
 - [.dockerignore](week_12/photolist_102_.dockerignore)
@@ -2027,47 +2050,59 @@ Done.
 - [Dockerfile.Multistage](week_12/photolist_102_Dockerfile.Multistage)
 - [main](week_12/photolist_102_main.go)
 
-Linux CGROUPS, NAMESPACES: изоляция процесса, технологии под капотом докер.
+Сборка, деплой, изоляция: для поддержки этих ops мы используем докер.
+
+Linux CGROUPS, NAMESPACES (JAIL, CHROOT): изоляция процесса; эти технологии работают под капотом docker.
 
 Сборка и запуск в одном контейнере.
 Копирование папки с учётом игнорируемых файлов.
 
-`make docker` сборка образа. При сборке обломался на команде `git ...` ибо в образе такого бинаря нет (об этом позже).
+`make docker` сборка образа.
+При сборке обломался на команде `git ...` ибо в образе такого бинаря нет (об этом позже).
 Сборка образа заканчивается запуском аппы (нет), ибо последняя команда в Dockerfile это `CMD ...`.
+Эта команда выполняется при запуске контейнера из этого образа (image vs container).
 Сборка заканчивается созданием образа.
 
-`make docker_run` запуск контейнера, с пробросом порта tcp. Запускается аппа, через `CMD ...` в Dockerfile.
+`make docker_run` запуск контейнера, с пробросом порта tcp. Запускается аппа (see `CMD ...` в Dockerfile).
 
 Размер образов: всё плохо, см. `docker images`.
-979 мегабайт на бинарь аппы (образ). Родительский образ, зависимости, исходники, ...
+979 мегабайт на бинарь аппы (образ). Родительский образ, зависимости, исходники, ... чего там только нет.
 
-Собираем в одном образе, деплоим в другом образе.
+Как надо: собираем в одном образе (большом), деплоим в другом образе (маленьком).
 https://github.com/proxeter/go-service-template/blob/master/deployments/docker/Dockerfile
+
 Многошаговая сборка `make docker_multistage` на выходе дает маленький образ, только ОС и аппа.
-100 мегабайт.
+Используется три образа: "зависимости", туда закачаны все либы; "билд", там наши исходники и результат сборки;
+"деплой", там бинарь аппы и сертификаты.
+"деплой": 100 мегабайт.
 
 NB: в программе поменялся коннект к БД, `dsn`. Сеть докера внесла коррективы.
 Очевидно, коннект надо пробрасывать как параметр снаружи. Как и другие параметры.
 
 ### Сборка docker-контейнера - 3 (docker compose)
 
+Docker compose: полезная утилита, запуск нескольких контейнеров в связи друг-с-другом.
+`handouts\golang_web_services_2023-12-28.zip\12\photolist\102_build\`
+
 - [adminer.dc.yaml](week_12/photolist_102_dev_adminer.dc.yaml)
 - [docker-compose.yml](week_12/photolist_102_deploiments_docker-compose.yml)
 - [db_init.sql](week_12/photolist_102_dev_db_init.sql)
 - [nginx.conf](week_12/photolist_102_configs_nginx.conf)
 
-Docker compose полезная утилита, запуск нескольких контейнеров в связи друг-с-другом.
 Более-менее сложные аппы требуют наличия разных сервисов: БД, мониторинг, конфиг, ...
 Эти сервисы могут быть в контейнерах и удобно запускать пачку контейнеров одной командой.
-Как и конфигурить в одном файле.
-Также, compose может использовать swarm, что может быть удобно тем, кто не хочет k8s.
+Как и конфигурить их в одном файле.
+Также, compose может использовать docker-swarm, что может быть удобно тем, кто не хочет k8s.
 
-adminer.dc.yaml, иллюстрация простого композа, файл compose для запуска adminer и mysql (из директории dev).
-При старте mysql запускается инит базы из db_init.sql (не раскрыта связка docker-entrypoint-initdb.d и db_init.sql).
+adminer.dc.yaml: иллюстрация простого композа, файл compose для запуска adminer и mysql (из директории dev).
+При старте mysql запускается инит базы из файла `db_init.sql` (связка `docker-entrypoint-initdb.d` и `db_init.sql`).
+Подключается директория хоста как volume в контейнер, место для хранения файлов с данными БД,
+для обеспечения сохранения данных при перезапуске контейнера.
 Устанавливаются переменные среды: пароль и имя БД.
-NB пути в конфиге указаны относительно положения yml файла конфига!
 
-docker-compose:
+NB: пути в конфиге указаны относительно положения yml файла конфига!
+
+docker-compose.yml:
 - photolist c предварительной сборкой, линкован по сети с контейнером mysql; зависит от mysql.
     Команда для запуска через скрипт `wait-for-it.sh`, для запуска аппы после появления БД.
 - mysql, так-же как и в adminer.dc.yaml;
@@ -2078,35 +2113,53 @@ docker-compose:
 
 ### Хранение файлов в S3 - 1 (Simple Storage Service, minio)
 
+Как улучшить систему хранения файлов. Локальный хост не умеет в масштабирование.
+`handouts\golang_web_services_2023-12-28.zip\12\s3\`
+
 - [photolist 102/graphql_resolver](week_12/photolist_102_graphql_resolver.go) UploadPhoto: SaveFile, MakeThumbnails
 - [s3/aws](week_12/s3_aws.go)
 - [s3/minio](week_12/s3_minio.go)
 
-Как улучшить систему хранения файлов. Локальный хост не годится для масштабирования.
-Ничего удобнее S3 пока не придумали.
+Ничего удобнее S3 пока не придумали https://aws.amazon.com/s3/
 
-Программа-демо создания бакета "photolist" и выполнения основных операций с файлами.
+- https://cloud.vk.com/storage/
+- https://themedev.net/blog/best-s3-object-storage-providers/
+- https://min.io/
+
+Программа-демо: создание бакета "photolist" и выполнение основных операций с бакетами и файлами.
 `github.com/aws/aws-sdk-go/aws`
 
 При разработке используется локальный сервис - имитации S3, `min.io`.
 Проблема MinIO: для успешного восстановления при сбоях надо ReplFactor4 (4 диска). Будьте осторожны!
 
-Есть библиотека `minio/minio-go` если хочется ограничиться именно minio, там есть полезняшки, которых нет в S3.
+Есть библиотека `minio/minio-go` https://github.com/minio/minio-go
+если хочется ограничиться именно minio, там есть полезняшки, которых нет в S3.
 
-Есть веб-интерфейс http://127.0.0.1:9000/minio/
+Есть веб-интерфейс (нет) http://127.0.0.1:9000/minio/
+это S3 endpoint https://stackoverflow.com/questions/69079602/docker-unable-to-access-minio-web-browser
+
+Консоль для minio на другом порту, по умолчанию динамическом.
+Я поправил конфиг в docker_compose.yaml для доступа в консоль через:
+http://localhost:9001/browser/photolist
 
 ### Хранение файлов в S3 - 2 (files direct web access)
 
+# I_AM_HERE
+Как получать доступ к файлам в бакетах через веб непосредственно, через nginx
+`handouts\golang_web_services_2023-12-28.zip\12\s3\`
+
 - [s3/minio](week_12/s3_minio.go) policy
 - [s3/aws policy](week_12/s3_aws.go) policy
-- [s3/docker-compose](week_12/s3_docker-compose.yaml) minio
+- [s3/docker-compose](week_12/s3_docker-compose.yaml) minio, nginx
 - [s3/configs/nginx.conf](week_12/s3_configs_nginx.conf) images
 
-Как получать доступ через веб. Зачем? Чтобы клиент мог получить файлы напрямую, сразу из хранилища.
+Зачем? Чтобы клиент мог получить файлы напрямую, сразу из хранилища.
 Через nginx, чтобы как-то прикрыть хранилище.
 
+По умолчанию доступа к бакетам и файлам нет (у анонимуса).
+Отдельный вопрос, зачем нам анонимус, мы можем дать некую роль проксе (nginx)? Видимо это сложно для наших лапок.
 Надо открыть доступ к папке для анонимуса.
-Делается это через задание политики, `SetBucketPolicy`, `PutBucketPolicy`.
+Делается это через задание политики, `SetBucketPolicy`, `PutBucketPolicy`. См. код демо.
 
 Минио сервис поднимается через композ докера, вместе с nginx.
 Там же прописаны ключи ACCESS, SECRET, что плохо (надо их прокидывать из vault), но для дева сойдет.
@@ -2115,6 +2168,10 @@ docker-compose:
 
 Это было демо на технологии хранения файлов в S3.
 Теперь пора все это интегрировать в аппу photolist.
+
+- minio url http://localhost:9000/photolist/building_1.jpg
+- minio console http://localhost:9001/browser/photolist
+- nginx url (see nginx.conf) http://localhost:8081/images/building_1.jpg
 
 ### Хранение файлов в S3 - 3 (photolist S3 integration)
 
