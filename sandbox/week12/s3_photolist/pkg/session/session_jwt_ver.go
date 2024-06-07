@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"photolist/pkg/utils/randutils"
+	"week12/s3_photolist/pkg/utils/randutils"
 
 	jwt "github.com/golang-jwt/jwt"
 )

@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"photolist/pkg/session"
-	"photolist/pkg/user"
+	"week12/s3_photolist/pkg/session"
+	"week12/s3_photolist/pkg/user"
 )
 
 // go run github.com/vektah/dataloaden UserLoader uint32 *photolist.User

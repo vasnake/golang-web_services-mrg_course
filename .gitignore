@@ -28,3 +28,5 @@ sandbox/images
 
 # demo data
 sandbox/week12/s3_demo/minio_data/
+sandbox/week12/s3_demo/minio_data/
+sandbox/week12/s3_photolist/minio_data/

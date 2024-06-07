@@ -121,7 +121,7 @@ function renderPhotosHTML(elems) {
                 <a href="/photos/${elem.user.name}" class="userName"><img style="border-radius: 15px;" height=32 width=32 src="${elem.user.avatar}" /> ${elem.user.name}</a>
                 <a onclick="followUser(this);" data-id="${elem.user.id}" href="#">${elem.user.followed ? "[unfollow]" : "[follow]"}</a>
             </div>
-            <img src="/images/${elem.user.id}/${elem.url}_600.jpg" />
+            <img src="http://localhost:8081/images/${elem.user.id}/${elem.url}_600.jpg" />
             <div class="details">
                 <span onclick="rateCommentToggle(this)" data-id="${elem.id}" class="hi ${elem.liked === true ? 'hi-red' : ''}">❤</span>
                 <span class="rating" id="rating-${elem.id}">${elem.rating}</span>

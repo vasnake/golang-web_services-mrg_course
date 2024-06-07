@@ -1,8 +1,17 @@
 package main
 
-import "week12/s3_demo"
+import (
+	"week12/s3_demo"
+	s3_photolist_main "week12/s3_photolist/cmd/photolist"
+)
 
 func main() {
+	// demo1()
+	// demo2()
+	demo3()
+}
+
+func demo1() {
 	s3_demo.MainS3Demo() // sandbox/week12/s3_demo$  docker compose -f ./docker-compose.yaml up&
 	/*
 	   Existing buckets:
@@ -12,8 +21,10 @@ func main() {
 	   2024/06/07 12:38:15 download file with md5sum: 93aaabaf6c9afc54965d721f108474df
 	   see sandbox\week12\s3_demo\minio_data\photolist\building_1.jpg\2f65fa59-4166-4634-a340-6cef9cd87e0d\part.1
 	*/
+}
 
-	// s3_demo.MainMinioDemo() // sandbox/week12/s3_demo$  docker compose -f ./docker-compose.yaml up&
+func demo2() {
+	s3_demo.MainMinioDemo() // sandbox/week12/s3_demo$  docker compose -f ./docker-compose.yaml up&
 	/*
 	   2024-06-07T10:10:24.529Z: Existing buckets: []minio.BucketInfo{minio.BucketInfo{Name:"photolist", CreationDate:time.Date(2024, time.June, 7, 9, 26, 44, 192000000, time.UTC)}};
 	   2024-06-07T10:10:24.529Z: bucket: minio.BucketInfo{Name:"photolist", CreationDate:time.Date(2024, time.June, 7, 9, 26, 44, 192000000, time.UTC)};
@@ -21,5 +32,8 @@ func main() {
 	   2024/06/07 13:10:24 Successfully uploaded building_1.jpg of size 204361
 	   2024/06/07 13:10:24 download file with md5sum: 93aaabaf6c9afc54965d721f108474df
 	*/
+}
 
+func demo3() {
+	s3_photolist_main.MainDemo()
 }

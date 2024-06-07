@@ -7,8 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"photolist/pkg/photos"
-	"photolist/pkg/user"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -17,6 +15,9 @@ import (
 	"github.com/99designs/gqlgen/graphql/introspection"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
+
+	"week12/s3_photolist/pkg/photos"
+	"week12/s3_photolist/pkg/user"
 )
 
 // region    ************************** generated!.gotpl **************************
