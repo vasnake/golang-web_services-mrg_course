@@ -1,0 +1,29 @@
+schema:
+- api/schema.graphql
+exec:
+  filename: pkg/graphql/graphql_generated.go
+model:
+  filename: pkg/graphql/graphql_models_gen.go
+resolver:
+  filename: pkg/graphql/graphql_resolver.go
+  type: Resolver
+
+models:
+  Photo:
+    model: photolist/pkg/photos.Photo
+    fields:
+      user:
+        resolver: true
+  User:
+    model: photolist/pkg/user.User
+    fields:
+      photos:
+        resolver: true
+      followed:
+        resolver: true
+      followedUsers:
+        resolver: true
+      recomendedUsers:
+        resolver: true
+
+autobind: []

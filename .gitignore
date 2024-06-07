@@ -25,3 +25,6 @@ t/
 tmp/
 temp/
 sandbox/images
+
+# demo data
+sandbox/week12/s3_demo/minio_data/

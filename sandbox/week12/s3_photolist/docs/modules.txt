@@ -1,0 +1,18 @@
+go mod init photolist
+go mod init github.com/rvasily/photolist
+go build
+go mod download
+go mod verify
+go mod tidy
+
+GO111MODULE=on go mod init photolist
+GO111MODULE=on go build
+GO111MODULE=on go mod download
+GO111MODULE=on go mod verify
+
+go mod vendor
+GO111MODULE=on go mod vendor
+
+go build -mod=vendor \
+		-o ./bin/photolist \
+		./cmd/photolist
