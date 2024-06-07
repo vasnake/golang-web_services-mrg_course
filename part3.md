@@ -2144,7 +2144,6 @@ http://localhost:9001/browser/photolist
 
 ### Хранение файлов в S3 - 2 (files direct web access)
 
-# I_AM_HERE
 Как получать доступ к файлам в бакетах через веб непосредственно, через nginx
 `handouts\golang_web_services_2023-12-28.zip\12\s3\`
 
@@ -2158,6 +2157,10 @@ http://localhost:9001/browser/photolist
 
 По умолчанию доступа к бакетам и файлам нет (у анонимуса).
 Отдельный вопрос, зачем нам анонимус, мы можем дать некую роль проксе (nginx)? Видимо это сложно для наших лапок.
+
+Отдельный вопрос, зачем нам прямой доступ? Полезнее делать это через контролируемую нами прослойку (доступ, кеш, масштабирование, ...).
+Ну надо так надо.
+
 Надо открыть доступ к папке для анонимуса.
 Делается это через задание политики, `SetBucketPolicy`, `PutBucketPolicy`. См. код демо.
 
@@ -2174,6 +2177,8 @@ http://localhost:9001/browser/photolist
 - nginx url (see nginx.conf) http://localhost:8081/images/building_1.jpg
 
 ### Хранение файлов в S3 - 3 (photolist S3 integration)
+
+# I_AM_HERE
 
 photolist_103/
 - [blobstorage/fs](week_12/photolist_103_blobstorage_fs.go)

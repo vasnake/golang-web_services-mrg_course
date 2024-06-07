@@ -18,14 +18,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	// "github.com/aws/aws-sdk-go-v2/internal/auth/smithy"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	// "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
 )
 
 func MainS3Demo() {
 	// https://aws.github.io/aws-sdk-go-v2/docs/migrating/
+
 	// s3Config := &aws.Config{
 	// 	Credentials:      credentials.NewStaticCredentials("access_123", "secret_123", ""),
 	// 	Endpoint:         aws.String("http://127.0.0.1:9000"),
@@ -71,14 +70,8 @@ func MainS3Demo() {
 	_, err = s3Client.CreateBucket(ctx, &s3.CreateBucketInput{Bucket: bucket})
 	if err != nil {
 		// panicOnError("CreateBucket error", err)
-		// panic: CreateBucket error:
-		// operation error S3: CreateBucket, https response error StatusCode: 409
-		// , RequestID: 17D6AEBE7ECF03EB, HostID: dd9025bab4ad464b049177c95eb6ebf374d3b3fd1af9251148b658df7ac2e3e8
-		// , BucketAlreadyOwnedByYou:
 		var apierr smithy.APIError
 		if errors.As(err, &apierr) {
-			// msg := apierr.ErrorMessage()
-			// show("smithy.APIError: ", code, msg) // smithy.APIError: "BucketAlreadyOwnedByYou"; "";
 			if apierr.ErrorCode() == "BucketAlreadyOwnedByYou" {
 				show("bucket exists already: ", *bucket)
 			} else {
@@ -123,6 +116,26 @@ func MainS3Demo() {
 	hasher := md5.New()
 	io.Copy(hasher, result.Body)
 	log.Printf("download file with md5sum: %x\n", hasher.Sum(nil))
+
+	// set policy
+
+	policy := `{
+		"Version":"2012-10-17",
+		"Statement":[
+			{
+				"Action":["s3:GetObject"],
+				"Effect":"Allow",
+				"Principal":{"AWS":["*"]},
+				"Resource":["arn:aws:s3:::` + bucketName + `/*"],
+				"Sid":""
+			}
+		]
+	}`
+	_, err = s3Client.PutBucketPolicy(ctx, &s3.PutBucketPolicyInput{
+		Bucket: bucket,
+		Policy: aws.String(policy),
+	})
+	panicOnError("PutBucketPolicy failed", err)
 
 	/*
 	   policy := `{
