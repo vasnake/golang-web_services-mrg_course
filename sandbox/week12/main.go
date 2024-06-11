@@ -8,10 +8,11 @@ import (
 func main() {
 	// demo1()
 	// demo2()
-	demo3()
+	demo_103_images()
 }
 
 func demo1() {
+	// s3 provider: minio s3 api
 	s3_demo.MainS3Demo() // sandbox/week12/s3_demo$  docker compose -f ./docker-compose.yaml up&
 	/*
 	   Existing buckets:
@@ -24,6 +25,7 @@ func demo1() {
 }
 
 func demo2() {
+	// s3 provider: minio custom api
 	s3_demo.MainMinioDemo() // sandbox/week12/s3_demo$  docker compose -f ./docker-compose.yaml up&
 	/*
 	   2024-06-07T10:10:24.529Z: Existing buckets: []minio.BucketInfo{minio.BucketInfo{Name:"photolist", CreationDate:time.Date(2024, time.June, 7, 9, 26, 44, 192000000, time.UTC)}};
@@ -34,6 +36,26 @@ func demo2() {
 	*/
 }
 
-func demo3() {
+func demo_103_images() {
+	// images storage: s3
 	s3_photolist_main.MainDemo()
+}
+
+// # I_AM_HERE
+
+func demo_104_acl() {
+	// config: viper
+	// add nano-service user-sessions-db (grpc)
+	// images from s3 via nginx + custom auth (images ACL)
+}
+
+func demo_105_ctx() {
+	// request id, tracing
+	// log graphql operations (name, timing, path) via middleware
+}
+
+func demo_106_tracing_jaeger() {
+	//open tracing, open telemetry, jaeger
+	// request id, span, middleware
+	// samplerconfig
 }

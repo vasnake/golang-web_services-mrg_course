@@ -2235,7 +2235,6 @@ sandbox: я отложил на потом (самый последний вар
 Хотим сделать приватные альбомы, разграничивать доступ по UserID.
 `handouts\golang_web_services_2023-12-28.zip\12\photolist\104_acl\`
 
-photolist/104_acl
 - [configs/nginx.conf](week_12/photolist_104_configs_nginx.conf)
 - [cmd/main](week_12/photolist_104_cmd_main.go)
 - [user/user_handlers](week_12/photolist_104_user_handlers.go)
@@ -2285,10 +2284,9 @@ Next: Никто не мешает вынести обработку такой 
 
 ### Хранение файлов в S3 - 5 (files auth service)
 
-Как вынести авторизацию на доступ к картинкам в отдельный сервис.
+Как вынести авторизацию на доступ к картинкам в отдельный сервис (процесс).
 `handouts\golang_web_services_2023-12-28.zip\12\photolist\104_acl\configs\nginx\nginx.conf`
 
-photolist/104_acl
 - [configs/nginx.conf](week_12/photolist_104_configs_nginx.conf)
 - [files.txt](week_12/photolist_104_files.txt)
 - [Makefile](week_12/photolist_104_Makefile)
@@ -2317,7 +2315,6 @@ Next: теперь пришла пора сделать проброс конф�
 Нужна система управления конфигурацией
 `handouts\golang_web_services_2023-12-28.zip\12\photolist\104_acl\configs\photolist.yaml`
 
-photolist/104
 - [cmd/photolist/main](week_12/photolist_104_cmd_photolist_main.go)
 - [config/cfg ](week_12/photolist_104_config_cfg.go)`type Config struct { ... } ... func Read(...)`
 - [configs/photolist.yaml](week_12/photolist_104_configs_photolist.yaml)
@@ -2374,7 +2371,6 @@ Next: создать еще один микросервис, чтобы полу
 `handouts\golang_web_services_2023-12-28.zip\12\photolist\104_acl\pkg\session\auth.go`,
 `cmd\auth\main.go`,
 
-photolist/104
 - [cmd/photoauth/main.go](week_12/photolist_104_cmd_photoauth_main.go)
 - [api/auth.proto](week_12/photolist_104_api_auth.proto)
 - [go.mod](week_12/photolist_104_go.mod)
@@ -2382,6 +2378,9 @@ photolist/104
 - [session/auth](week_12/photolist_104_session_auth.go) # server
 - [session/session_grpc](week_12/photolist_104_session_grpc.go) # client
 - [deployments/docker-compose.yml](week_12/photolist_104_deployments_docker-compose.yml) # сервис `auth`
+
+Теперь код аппы раскидан по трем процессам:
+аппа photolist, сервис photoauth для доступа к картинкам через nginx, сервис auth для обслуживания user-sessions-db.
 
 Для демонстрации некоторых концепций. В небольших проектах такое решение это явный overkill.
 Когда программистов много и кода еще больше, изоляция микросервисов повышает производительность разрабов.
@@ -2443,8 +2442,6 @@ Next: как порешать такие проблемы микросервис
 
 ### Трейсинг запросов - 1 (request_id, trace-id)
 
-# I_AM_HERE
-
 Идентификатор запроса, request id, RID, trace_id etc.
 Посмотрите заголовки любого HTTP запроса на крупном сайте, типа амазона: `x-amz-rid`.
 
@@ -2453,65 +2450,132 @@ Next: как порешать такие проблемы микросервис
 
 Стандартизируется, `trace-context/#trace-id` https://www.w3.org/TR/trace-context/#trace-id
 
-Сделал у себя `X-Request-ID`. Показал как выглядит в логах микросервисов.
+Сделал у себя заголовок `X-Request-ID`.
+Показал как выглядит в логах микросервисов: как последовательность запросов (nginx-photolist-auth, nginx-auth-s3, ...)
+с одним сквозным идентификатором.
 
 ### Трейсинг запросов - 2 (параметры запросов graphql в логе)
 
-photolist/105_ctx
+Как выводить в лог параметры запросов (GraphQL), чтобы в логе было видно операцию, тайминги, параметры, результаты, время, etc.
+`handouts\golang_web_services_2023-12-28.zip\12\photolist\105_ctx\`
+
 - [middleware/accesslog](week_12/photolist_105_middleware_accesslog.go)
 - [cmd/photolist/main](week_12/photolist_105_cmd_photolist_main.go)
 - [static/js/list_gql.js](week_12/photolist_105_static_js_list_gql.js)
 - [graphql/gqlgen_middleware](week_12/photolist_105_graphql_gqlgen_middleware.go)
 
-Как выводить в лог параметры запросов (GraphQL), чтобы в логе было видно операцию, параметры, результаты, время, etc.
+Мы используем GraphQL, это такая "вещь в себе", а нам нужны подробности.
+Начал с того, что заявил, что хочет отличать операции GraphQL в логах.
+Сейчас это выглядит просто как запрос на endpoint graphql, без подробностей.
 
-Начал с того, что заявил, что хочет отличать операции GraphQL в логах. Сейчас это выглядит просто как запрос на endpoint graphql,
-без подробностей.
-
+middleware AccessLog ... нет таких подробностей.
 В миддлваре http handler эти подробности не видны, что делать?
-Можно было бы решить на уровне веб-хендлеров, подставляя в урл имя операции `NewRequest(POST, /graphql/ + opName)`.
+
+Можно было бы решить на уровне веб-хендлеров, подставляя (JS) в урл имя операции `NewRequest(POST, /graphql/ + opName)`.
 Или так `NewRequest(POST, /graphql?op= + opName)`
 Мы не ищем легких путей.
 
 В теле запроса GraphQL есть поле `operationName`, как оно там появилось?
-Это поле приходит из текста запроса js, e.g. `getPhotosQuery` `const getPhotosQuery = query renderUserPage($userID: ID!) ...`
-Это имя (renderUserPage) в спеке GraphQL идет как опция, хочу пишу, хочу нет.
-Хотя мы имя задали в запросе, он еще раз прописывает его в параметрах `var body = JSON.stringify(params)`.
+Это поле приходит из текста запроса (js), e.g. `getPhotosQuery` `const getPhotosQuery = query renderUserPage($userID: ID!) ...`
+Это имя (`renderUserPage`) в спеке GraphQL идет как опция, хочу пишу, хочу нет.
+Т.е. было бы корректно и так `const getPhotosQuery = query ($userID: ID!) ...`.
+Мы еще раз прописываем его в параметрах
+```js
+const getPhotosQuery = `query renderUserPage($userID: ID!) {
+    user (userID: $userID) {
+      id
+      name
+      avatar
+      photos {
+...
+        liked
+      }
+    }
+    me {
+        id
+        name
+...
+    }
+  }
+`
+function getUserPhotos(uid) {
+    var request = NewGQLRequest();
+    var params = {
+        variables: { userID: uid },
+        query: getPhotosQuery,
+        operationName: "renderUserPage",
+    };
+    var body = JSON.stringify(params);
+```
+js
 
-Получили имя операции в теле запроса. В мидлвари, акеслог, тело недоступно, имя оп. не попадает в акеслог.
+Получили имя операции в теле запроса. В мидлвари (акеслог) тело недоступно, имя операции не попадает в акеслог.
 Тут все по прежнему.
 
 В RequestContext graphql есть hooks: ResolverMiddleware, RequestMiddleware, Tracer.
-- request враппер работает с заголовками, GetRequestContext
-- resolver работает с данными, GetResolverContext
+- request враппер работает с запросами, GetRequestContext
+- resolver работает с данными уровня реализации API, GetResolverContext
 - tracer see later
 
-Хуки устанавливаются в main, где цепляются хендлеры запросов.
-Смотрим реализацию хуков. Имя операции, заданное в теле запроса в js, доступно в GetRequestContext и попадает в лог
-имено в RequestMiddleware.
+Хуки устанавливаются в main, где цепляются хендлеры запросов
+```go
+		gqlHandler := gqlgenHandler.GraphQL(
+			graphql.NewExecutableSchema(gqlCfg),
+			gqlgenHandler.ComplexityLimit(500),
+			gqlgenHandler.RequestMiddleware(graphql.RequestMiddleware),   // каждый запрос после парсинга
+			gqlgenHandler.ResolverMiddleware(graphql.ResolverMiddleware), // каждый вызлв ресолвера
+		)
+```
+main
 
-Есть возможность получать всю инфу в одной строчке accesslog, если мидлварь будет записывать параметры и метрики запроса в контекст,
+Смотрим реализацию хуков.
+Имя операции, заданное в теле запроса в js, доступно в GetOperationContext и попадает в лог имено в RequestMiddleware
+```go
+func RequestMiddleware(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
+	reqCtx := graphql.GetOperationContext(ctx)
+	cs := extension.GetComplexityStats(ctx)
+	start := time.Now()
+	result := next(ctx)
+	requestID := middleware.RequestIDFromContext(ctx)
+	log.Printf("[RequestMiddleware] %s %s %s %d", requestID, time.Since(start), reqCtx.OperationName, cs.Complexity)
+	return result
+}
+func ResolverMiddleware(ctx context.Context, next graphql.Resolver) (res interface{}, err error) {
+	reqCtx := graphql.GetFieldContext(ctx)
+	start := time.Now()
+	res, err = next(ctx)
+	requestID := middleware.RequestIDFromContext(ctx)
+	log.Printf("[resolver] %s %s %v '%v'", requestID, time.Since(start), reqCtx.Path(), err)
+	return
+}
+```
+middleware
+
+Есть возможность получать всю инфу в одной строчке accesslog:
+если мидлварь будет записывать параметры и метрики запроса в контекст,
 из которого потом AccessLogMiddleware эту инфу достанет и выведет в лог.
 
 ResolverMiddleware выводит в лог `path` и ошибку резолвера данных.
-`path` показывает имя того поля данных, для которого выполняется данный резолвер. Т.е. для структуры с 7 полями будет выполнено 8 резолверов.
-И в лог добавится 8 строк.
+`path` показывает имя того поля данных, для которого выполняется данный резолвер (e.g. `user avatar`).
+Т.е. для структуры с 7 полями будет выполнено 8 резолверов И в лог добавится 8 строк.
 Такой лог мгновенно засирает память, поэтому надо его включать только на избранные запросы.
 
 Обратите внимание, мы выводим в лог время, затраченное на операции. Это важно для анализа.
 
 ### Трейсинг запросов - 3 (Jaeger)
 
-photolist_106_tracing
+Jaeger: распределенная трассировка
+`handouts\golang_web_services_2023-12-28.zip\12\photolist\106_tracing_jaeger\`
+
 - [middleware/accesslog](week_12/photolist_106_middleware_accesslog.go)
 - [session/common](week_12/photolist_106_session_common.go)
 - [graphql/gql_tracer](week_12/photolist_106_graphql_gql_tracer.go)
 - [cmd/photolist/main](week_12/photolist_106_cmd_photolist_main.go)
 
-Jaeger: распределенная трассировка.
 Измерения (см. пред. лекцию) можно анализировать.
+Open Telemetry, Jaeger https://github.com/jaegertracing/jaeger
 
-Показыает, как в веб-интерфейсе Jaeger смотреть трассировку.
+Смотрим, как в веб-интерфейсе Jaeger смотреть трассировку.
 Поиск трассы по RID: в поле `Tags` веб-формы вбил `myrequestid=$RID_VALUE`, хотя в аппе, в заголовке запроса это
 `x-Request-ID`.
 
@@ -2520,40 +2584,107 @@ Jaeger: распределенная трассировка.
 Заострил внимание на том, что 3 мс, которые, как он думал, потрачены на оверхед graphql,
 на самом деле потрачены на поход в сервис авторизации (наносервис проверки сессии).
 
-Как это выглядит в коде.
+Как это выглядит в коде. Span.
 
 В мидлвари акеслога трейсинг подключается к контексту открытием спана
 `opentracing.StartSpanFromContext(...)` который закрывается `defer span.Finish()`.
-
 Там же указывается имя тега `myrequestid` с указанием requestID. Что, в целом избыточно, но демонстрирует работу тегов.
+```go
+func AccessLog(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		span, newCtx := opentracing.StartSpanFromContext(ctx, r.URL.Path)
+		defer span.Finish()
+		requestID := RequestIDFromContext(ctx) ; span.SetTag("myrequestid", requestID)
+		start := time.Now()
+		r = r.WithContext(newCtx) ; next.ServeHTTP(w, r)
+		log.Printf("[access] %s %s %s %s %s", requestID, time.Since(start), r.RemoteAddr, r.Method, r.URL.Path)
+})}
+```
+middleware
 
 В сессии, в `AuthMiddleware`, мы начинаем с `opentracing.StartSpanFromContext()` и задаем некоторые параметры этому спану.
 Закрываем его НЕ через defer а через `span.Finish()` руками, после отработки проверки сессии.
 Поскольку внутрь уже не надо пробрасывать текущий спан, контекст не модифицируется.
+```go
+func AuthMiddleware(sm SessionManager, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+...
+		span, _ := opentracing.StartSpanFromContext(ctx, "auth")
+		ext.SpanKind.Set(span, "server") ; ext.Component.Set(span, "auth")
+		sess, err := sm.Check(ctx, r)
+		span.Finish()
+...
+		ctx = context.WithValue(ctx, sessionKey, sess) ; next.ServeHTTP(w, r.WithContext(ctx))
+	})}
+```
+auth-middleware
 
-В обработке трейсинга graphql есть нюанс. Там уже есть поддержка трейсинга, но автор решил, что дефолтная реализация не
-подходит для демо, поэтому слегка переписал ее.
+В обработке трейсинга graphql есть нюанс. Там уже есть поддержка трейсинга,
+но автор решил, что дефолтная реализация не подходит для демо, поэтому слегка переписал ее
+`pkg\graphql\gqlg_tracer.go`
 В частности, с использованием `OperationName`.
 См. `StartOperationExecution`, `EndOperationExecution`.
+```go
+func (tracerImpl) StartOperationExecution(ctx context.Context) context.Context {
+	requestContext := graphql.GetRequestContext(ctx)
+	opName := requestContext.OperationName
+	if opName == "" { opName = requestContext.RawQuery }
+	span, ctx := opentracing.StartSpanFromContext(ctx, opName)
+	ext.SpanKind.Set(span, "server")
+	ext.Component.Set(span, "gqlgen")
+	span.SetTag("opName", requestContext.OperationName)
+	return ctx
+}
+```
+gql-trace
 
 Как запускается трейсинг? В main, начиная с `jaeger.Configuration{...}`
-NB `SamplerConfig`, поддержка отправки части трейсов.
-Дополнительно, егерь умеет просылать метрики (собранные вами в аппе) в prometeus, писать логи.
+```go
+	jaegerCfgInstance := jaegercfg.Configuration{
+		ServiceName: appName,
+		Sampler: &jaegercfg.SamplerConfig{
+			Type:  jaeger.SamplerTypeConst,
+			Param: 1,
+		},
+		Reporter: &jaegercfg.ReporterConfig{
+			LogSpans:           true,
+			LocalAgentHostPort: v1.GetString("JAEGER_AGENT_ADDR"), // viper
+		},
+		Tags: []opentracing.Tag{
+			{Key: "buildHash", Value: buildHash},
+			{Key: "buildTime", Value: buildTime},
+  },}
+	tracer, closer, err := jaegerCfgInstance.NewTracer(
+		jaegercfg.Logger(jaegerlog.StdLogger),
+		jaegercfg.Metrics(metrics.NullFactory),
+	)
+	opentracing.SetGlobalTracer(tracer)
+	defer closer.Close()  
+```
+main
+
+NB: `SamplerConfig`, поддержка отправки части трейсов.
+
+Дополнительно, егерь умеет просылать метрики (собранные вами в аппе) в prometeus; писать логи.
 
 ### Трейсинг запросов - 4 (distributed)
 
-photolist/106_tracing
+Предыдущий вариант демонстрирует трейсинг в рамках одного процесса (photolist).
+Но нас интересует распределенный трейсинг, отслеживание прохождения запроса по разным процессам, хостам.
+`handouts\golang_web_services_2023-12-28.zip\12\photolist\106_tracing_jaeger\`
+
 - [session/grcp](week_12/photolist_106_session_grcp.go)
 - [cmd/auth/main](week_12/photolist_106_cmd_auth_main.go)
 
-Предыдущий вариант демонстрирует трейсинг в рамках одного процесса (photolist).
-Но нас интересует распределенный трейсинг, отслеживание прохождения запроса по разным процессам, хостам.
-
 jaeger умеет в распределенный трейсинг.
+На примере photoauth + auth.
 
 RequestID прокидывается через метаданные, см. `func ctxWithTrace(...)`. Это бывший метод `ctxWithRID`.
 Чтобы ссылка на родительский спан уехала в другой сервис (grpc), мы используем `opentracing.GlobalTracer().Inject(...)`.
-По факту, можно использовать егерьский uber-trace-id в качестве своего RID.
+
+По факту, можно использовать егерьский uber-trace-id в качестве своего RID. Он там уже есть и без наших приседаний.
 Далее, в каждом методе обработки сессии используется этот модифицированный контекст.
 
 В самом сервисе auth (проверка сессий), есть `func AccessLogInterceptor(...)`.
@@ -2564,6 +2695,54 @@ RequestID прокидывается через метаданные, см. `fun
 `opentracing-contrib/go-grpc` https://github.com/opentracing-contrib/go-grpc
 
 Таким образом, покрывая код спанами, можно всегда найти тормозной участок системы.
+
+```go
+func ctxWithTrace(ctx context.Context, opName string) (opentracing.Span, context.Context) {
+	span, newCtx := opentracing.StartSpanFromContext(ctx, opName)
+	md := metadata.Pairs("X-Request-ID", middleware.RequestIDFromContext(ctx))
+	ext.Component.Set(span, "grpc-session")
+	mdWriter := traceutils.MetadataReaderWriter{md}
+  // inject vs extract
+	opentracing.GlobalTracer().Inject( span.Context(), opentracing.HTTPHeaders, mdWriter, )
+	return span, metadata.NewOutgoingContext(newCtx, md)
+}
+func (sm *SessionsGRPC) Check(ctx context.Context, r *http.Request) (*Session, error) {
+	sp, grpcCtx := ctxWithTrace(ctx, "Session.Check")
+	defer sp.Finish()
+	sessionCookie, err := r.Cookie(cookieName)
+	authSess, err := sm.client.Check(grpcCtx, &AuthCheckIn{SessKey: sessionCookie.Value})
+	return &Session{...}, nil
+}
+```
+session
+
+```go
+func AccessLogInterceptor( ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler, ) (interface{}, error) {
+	start := time.Now()
+	var requestID string
+	md, mdExists := metadata.FromIncomingContext(ctx)
+	if mdExists {
+		requestID = md["x-request-id"][0]
+	} else {
+		requestID = "-"
+	}
+  // extract vs inject
+	clientContext, err := opentracing.GlobalTracer().Extract(opentracing.HTTPHeaders, traceutils.MetadataReaderWriter{md})
+	var serverSpan opentracing.Span
+	if err == nil {
+		serverSpan = opentracing.StartSpan(info.FullMethod, ext.RPCServerOption(clientContext))
+	} else {
+		serverSpan = opentracing.StartSpan(info.FullMethod)
+	}
+	defer serverSpan.Finish()
+	reply, err := handler(ctx, req)
+	log.Printf("[access] %s %s %s '%v'", requestID, time.Since(start), info.FullMethod, err)
+	return reply, err
+}
+```
+grpc-server
+
+# I_AM_HERE
 
 ### week12 homework
 ???
