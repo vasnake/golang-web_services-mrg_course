@@ -2178,9 +2178,8 @@ http://localhost:9001/browser/photolist
 
 ### Хранение файлов в S3 - 3 (photolist S3 integration)
 
-# I_AM_HERE
 Интеграция проекта с хранилищем S3.
-Пользователю изменения видны только в формате url при просмотре файла (в урле юзер-айди/ююайди)
+Изменения не затрагивают внешний вид и поведение, изменения видны только в формате url при просмотре файла (в урле юзер-айди/ююайди)
 `handouts\golang_web_services_2023-12-28.zip\12\photolist\103_images\`
 
 - [blobstorage/fs](week_12/photolist_103_blobstorage_fs.go)
@@ -2191,12 +2190,12 @@ http://localhost:9001/browser/photolist
 - [configs/nginx.conf](week_12/photolist_103_configs_nginx.conf)
 - [deploiments/docker-compose.yml](week_12/photolist_103_deploiments_docker-compose.yml)
 
-Новая реализация интерфейса хранилища, `FSStorage`. Даже не новая реализация а новый интерфейс.
+Новая реализация интерфейса хранилища, `FSStorage`. Более того: новый интерфейс.
 Новый пакет `blobstorage` с дефолтной реализацией интерфейса (диск локалхост) `fs.go`.
 
 Реализация интерфейса для S3 `blobstorage/s3.go`.
-NB: Сессия там не из аппы а из S3.
-В методе `Put` теперь записываются метаданные файла (`user-id`), это будет рассмотрено позже.
+NB: там есть "сессия", но это сессия не из аппы а из S3.
+В методе `Put` теперь записываются метаданные файла (`user-id`), это будет рассмотрено позже. 
 Вероятно, для определения владельца файла (доступ).
 Нет метода `Read` ибо чтение файлов будет напрямую клиентом через HTTP из хранилища (через nginx).
 
@@ -2210,45 +2209,84 @@ NB: Сессия там не из аппы а из S3.
 В резолвере graphql UploadPhoto, как и в тамбнейлах, для буфера байт надо сделать обертку Reader,
 чтобы байты можно было передавать в методы хранилища: `bytes.NewReader(buff.Bytes())`
 
-В конфиге прокси: изменения связаны с поддержкой user-id в урлах и избыточными заголовками S3.
+В конфиге прокси (nginx): изменения связаны с поддержкой user-id в урлах и избыточными заголовками S3.
 
 В композе осталась одна точка входа: порт 8080:80 nginx. Порты аппы наружу не прокидываются.
 
-Аппа стала масштабируемой (stateless), можно аппу запускать на нескольких контейнерах (хранилища (бд и файлы) теперь отвязаны от хоста аппы).
+Аппа стала масштабируемой (stateless), можно аппу запускать на нескольких контейнерах;
+хранилища (бд и файлы) теперь отвязаны от хоста аппы.
+
 Правда, не решен вопрос с конфигурацией, неясно, как в каждый инстанс аппы передавать параметры коннектов к хранилищу.
 
 Далее: откроем тайну `user-id` в урлах картинок.
 
-sandbox: я отложил на потом (самый последний вариант, видимо) упаковку аппы в докер,
+sandbox: я отложил на потом (самый последний вариант, видимо) упаковку аппы в докер;
 в песочнице я ее запускаю "нативно", без докера. В докере только хранилище (db, s3).
 Соответственно, в конфигах композа и нгинкс есть некоторые изменения.
 
+Директории типа
+`sandbox\week12\s3_photolist\minio_data\`
+можно удалять. Но после этого надо перезапускать wsl.
+Видимо, где-то внутри хоста остается маркер "директория с файлами создана", и мешает жить.
+
 ### Хранение файлов в S3 - 4 (user-id в урлах картинок)
+
+Сделали урлы картинов вида `/images/$userid/$uuid.jpg`, для поддержки ACL.
+Хотим сделать приватные альбомы, разграничивать доступ по UserID.
+`handouts\golang_web_services_2023-12-28.zip\12\photolist\104_acl\`
 
 photolist/104_acl
 - [configs/nginx.conf](week_12/photolist_104_configs_nginx.conf)
 - [cmd/main](week_12/photolist_104_cmd_main.go)
 - [user/user_handlers](week_12/photolist_104_user_handlers.go)
 
-Хотим сделать приватные альбомы, разграничивать доступ по UserID.
 Это было бы сделать легко, если бы отдачей картинок занималась аппа.
-Но мы сделали отдачу картинок напрямую из хранилища.
+Но мы сделали отдачу картинок напрямую из хранилища (чтобы не жечь зря процессорное время)
+```s
+  location ~* ^/images/(\d+)/(.*) {
+    rewrite ^/images/(\d+)/(.*) /photolist/$2 break;
+    ...
+    proxy_pass http://minio:9000;
+  }
+```
+nginx
 
-nginx спешит на помощь.
-Модуль `ngx_http_auth_request_module` https://nginx.org/en/docs/http/ngx_http_auth_request_module.html
+Для помощи в таких кейсах у nginx есть модуль
+`ngx_http_auth_request_module` https://nginx.org/en/docs/http/ngx_http_auth_request_module.html
+```s
+  location ~* ^/images/(\d+)/(.*) {
+    auth_request /auth;
+    rewrite ^/images/(\d+)/(.*) /photolist/$2 break;
+    ...
+    proxy_pass http://minio:9000;
+  }
+  location = /auth {
+      internal;
+      proxy_pass http://photoauth:8080/api/v1/internal/images/auth; # сервис авторизации доступа к картинкам
+      proxy_pass_request_body off;
+      proxy_set_header Content-Length "";
+      proxy_set_header X-Original-URI $request_uri;
+  }
+```
+nginx
 
 Наша аппа дает апи авторизации доступа к картинке, но не обязана качать картинку.
+Тяжелая задача раздачи картинок ложится целиком на nginx+s3provider.
 
 - `auth_request /auth`
 - `location = /auth { proxy_pass http://photolist:8080/api ... }`
 
 `http.HandleFunc("/api/v1/internal/images/auth" ...)`
 
-`InternalImagesAuth(...)`
+`InternalImagesAuth(...)` логика: если я подписан на пользователя х, то мне позволено смотреть его картинки. Иначе: доступ закрыт.
 
 Next: Никто не мешает вынести обработку такой авторизации на отдельный сервис.
+Польза от такого выноса: поместить эндпойнт авторизации поближе к серверам nginx, чтобы им не бегать далеко.
 
 ### Хранение файлов в S3 - 5 (files auth service)
+
+Как вынести авторизацию на доступ к картинкам в отдельный сервис.
+`handouts\golang_web_services_2023-12-28.zip\12\photolist\104_acl\configs\nginx\nginx.conf`
 
 photolist/104_acl
 - [configs/nginx.conf](week_12/photolist_104_configs_nginx.conf)
@@ -2257,20 +2295,27 @@ photolist/104_acl
 - [deployments/docker-compose.yml](week_12/photolist_104_deployments_docker-compose.yml)
 - [cmd/photoauth/main](week_12/photolist_104_cmd_photoauth_main.go)
 
-Как вынести авторизацию на доступ к картинкам в отдельный сервис.
-
+Новый сервис назовем `photoauth`.
 `proxy_pass http://photoauth:8080...`
 
-`cmd/photoauth/main.go` Теперь в директории `cmd` лежат две аппы (main пакеты).
+ Теперь в директории `cmd` лежат две аппы (main пакеты)
+- `cmd/photolist/main.go`
+- `cmd/photoauth/main.go`
 
+make собирает аппу отдельно:
 `go build ... ./cmd/photoauth`
 
-`photoauth: ... depends_on: ... photolist` NB собирается в том-же образе, что и photolist. Хотя, надо бы в отдельном образе.
-Запуск только после сборки и запуска photolist.
+В докере будет отдельный контейнер для photoauth
+`photoauth: ... depends_on: ... photolist` NB: собирается в том-же образе, что и photolist.
+Хотя, надо бы в отдельном образе. Запуск photoauth только после сборки и запуска photolist.
 
-Next: теперь пришла пора сделать проброс конфига коннекта к БД, ибо уже два сервиса нуждаются в одной БД.
+Next: теперь пришла пора сделать проброс конфига коннекта к БД, ибо уже два сервиса нуждаются в одной БД,
+прописывать руками два раза одно и то-же: моветон.
 
 ### Конфигурирование приложения - 1 (viper Config)
+
+Нужна система управления конфигурацией
+`handouts\golang_web_services_2023-12-28.zip\12\photolist\104_acl\configs\photolist.yaml`
 
 photolist/104
 - [cmd/photolist/main](week_12/photolist_104_cmd_photolist_main.go)
@@ -2281,16 +2326,38 @@ photolist/104
 - [configs/photoauth.env](week_12/photolist_104_configs_photoauth.env)
 
 Уже два сервиса используют одну БД. Нужно как-то пробрасывать конфиг, задаваемый в одном месте.
-Нужна система управления конфигурацией.
 
-Юиблиотека `spf13/viper` https://github.com/spf13/viper
-`cfg := &config.Config{} ...`
+Юиблиотека `spf13/viper` `import "github.com/spf13/viper"` https://github.com/spf13/viper
+```go
+	cfg := &config.Config{}
+	v1, err := config.Read(appName, config.Defaults, cfg)
+	log.Println(v1, cfg, err, v1.GetString("example.env2"))
+	dsn := "%s:%s@tcp(%s)/%s?charset=utf8&interpolateParams=true" // "root:love@tcp(127.0.0.1:3306)/photolist?charset=utf8&interpolateParams=true"
+	dsn = fmt.Sprintf(dsn, cfg.DB.Username, cfg.DB.Password, cfg.DB.Host, cfg.DB.Database)
+
+func Read(appName string, defaults map[string]interface{}, cfg interface{}) (*viper.Viper, error) {...}
+```
+viper
+
 Демо получение настроект из файла и переменных окружения.
+Исключительно с целью демонстрации: в проде лучше выбрать конкретный способо доставки конфигов.
+
+Хотя ... через env удобно получать секреты, через файлы удобно получать основную массу параметров.
 
 Конфиги будут у нас лежать в yml файлах и переменных окружения.
 Все параметры вынесены в конфиг. Никакого хардкода.
 
-Файлы конфигов проброшены через volumes докера, что дает возможность менять конфиги без пересборки контейнера.
+Файлы конфигов проброшены через volumes докера, что дает возможность менять конфиги без пересборки контейнера
+```yaml
+  photoauth:
+    volumes:
+      - ../configs/photoauth.yaml:/etc/photoauth.yaml
+    env_file:
+      - ../configs/common.env
+      - ../configs/photoauth.env
+```
+docker-compose
+
 Переменные окружения задаются через файлы `env_file: - ../configs/common.env`
 https://docs.docker.com/compose/environment-variables/#the-env_file-configuration-option
 
@@ -2298,39 +2365,85 @@ https://docs.docker.com/compose/environment-variables/#the-env_file-configuratio
 `v1.GetString("example.env2")`
 
 Next: создать еще один микросервис, чтобы получить проблемы и решать их, получая знания.
+Сделаем grpc сервис, for fun and education.
 
 ### Конфигурирование приложения - 2 (отдельный сервис авторизации, grpc)
+
+Вынес сервис авторизации в отдельный процесс: auth grpc API
+`handouts\golang_web_services_2023-12-28.zip\12\photolist\104_acl\api\auth.proto`,
+`handouts\golang_web_services_2023-12-28.zip\12\photolist\104_acl\pkg\session\auth.go`,
+`cmd\auth\main.go`,
 
 photolist/104
 - [cmd/photoauth/main.go](week_12/photolist_104_cmd_photoauth_main.go)
 - [api/auth.proto](week_12/photolist_104_api_auth.proto)
 - [go.mod](week_12/photolist_104_go.mod)
 - [cmd/auth/main](week_12/photolist_104_cmd_auth_main.go)
-- [session/auth](week_12/photolist_104_session_auth.go)
-- [session/session_grpc](week_12/photolist_104_session_grpc.go)
-- [deployments/docker-compose.yml](week_12/photolist_104_deployments_docker-compose.yml) сервис `auth`
+- [session/auth](week_12/photolist_104_session_auth.go) # server
+- [session/session_grpc](week_12/photolist_104_session_grpc.go) # client
+- [deployments/docker-compose.yml](week_12/photolist_104_deployments_docker-compose.yml) # сервис `auth`
 
-Вынес сервис авторизации, grpc API. Для демонстрации некоторых концепций. В небольших проектах такое решение это явный overkill.
+Для демонстрации некоторых концепций. В небольших проектах такое решение это явный overkill.
+Когда программистов много и кода еще больше, изоляция микросервисов повышает производительность разрабов.
 
-В коде клиента авторизации, создание менеджера сессий `sm, err := session.NewSessionGRPC(...)` реализованного как отдельный сервис.
+В коде клиента авторизации: мы видим создание менеджера сессий `sm, err := session.NewSessionGRPC(...)`
+реализованного как отдельный сервис grpc.
 
-API сервиса описано в proto файле.
-Немного шаманства с переименованием модуля `grpc`.  Импортируется он по одному пути а фактически находится по другому.
-Кодогенератор grpc сгенерил заглушки.
+API сервиса описано в proto файле
+```proto
+service Auth {
+    rpc Check (AuthCheckIn) returns (AuthSession) {}
+    rpc Create (AuthUserIn) returns (AuthSession) {}
+    rpc DestroyCurrent (AuthSession) returns (AuthNothing) {}
+    rpc DestroyAll (AuthUserIn) returns (AuthNothing) {}
+}
+```
+auth.proto
 
-Возвращаемый параметр как модель сущности в БД. Для нано-сервиса это ОК, но для сложных случаев надо рассаживать API и модели БД.
-В общем случае это разные структуры данных.
+Немного шаманства с переименованием модуля `grpc` (зачем: неясно, чтобы было).
+Импортируется он по одному пути а фактически находится по другому
+`go mod edit -replace=google.golang.org/grpc=github.com/grpc/grpc-go@latest`
 
-Реализация интерфейса менеджера сессий. Тут он рассадил структуры API и реализации, повысив модульность.
+Кодогенератор grpc сгенерил заглушки
+`protoc -I api/ api/auth.proto --go_out=plugins=grpc:./pkg/session/`
+
+Нано-сервис авторизации не использует дополнительных структур для определения API и параметров/значений.
+В ход пошли структуры уже определенные в интерфейсе нано-сервиса.
+Для нано-сервиса это ОК, но для сложных случаев надо рассаживать API и модели БД по разным структурам.
+В общем случае это разные структуры данных, надо перекладывать байтики из одного слоя в другой.
+
+Реализация интерфейса менеджера сессий (клиент сервиса авторизации).
+Тут (в отличие от серверной части) он рассадил структуры API и реализации, повысив модульность.
+
+Кстати, если до этого использовали jwt-ver реализацию сессий, то сейчас вернулись к db реализации сессий.
+Полнофункциональные сессии пользователя с персистентностью пары (sessionID, userID).
+
+часть композа
+```yaml
+  auth: # name (не самое удачное название, user-sessions-db было бы адекватнее)
+    env_file:
+      - ../configs/common.env
+      - ../configs/auth.env
+    volumes:
+      - ../configs/auth.yaml:/etc/auth.yaml
+    image: photolist:latest
+    command: ["/app/wait-for-it.sh", "dbMysql:3306", "--", "/app/auth"]
+```
+docker-compose
 
 Проблемы: слой grpc и слой хендлеров использования сервиса grpc не соответствуют по контексту:
-e.g. grpc хочет context (управление таймаутами, etc) а в хендлере его нет.
+манагер-сессий хочет http.Request.Cookie, грпц-обвязка хочет context.Context ...
+grpc хочет context (управление таймаутами, etc) а в хендлере его нет.
 Интерфейс SessionManager не предусматривает прокидывание контекстов, нужных для выполнения grpc запросов к сервису авторизации.
-Архитектура нуждается в рефакторинге, дроблении на слои и добавление интерфейсов в качетсве клея.
+Вопрос: как будем делать трейсинг (requestID где)?
+
+Архитектура нуждается в рефакторинге, дроблении на слои и добавление интерфейсов в качестве клея.
 
 Next: как порешать такие проблемы микросервисов.
 
 ### Трейсинг запросов - 1 (request_id, trace-id)
+
+# I_AM_HERE
 
 Идентификатор запроса, request id, RID, trace_id etc.
 Посмотрите заголовки любого HTTP запроса на крупном сайте, типа амазона: `x-amz-rid`.
