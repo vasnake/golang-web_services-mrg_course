@@ -2671,6 +2671,8 @@ NB: `SamplerConfig`, поддержка отправки части трейсо
 
 ### Трейсинг запросов - 4 (distributed)
 
+side note: теперь модно опеньтелеметри https://opentelemetry.io/
+
 Предыдущий вариант демонстрирует трейсинг в рамках одного процесса (photolist).
 Но нас интересует распределенный трейсинг, отслеживание прохождения запроса по разным процессам, хостам.
 `handouts\golang_web_services_2023-12-28.zip\12\photolist\106_tracing_jaeger\`
@@ -2745,4 +2747,13 @@ grpc-server
 # I_AM_HERE
 
 ### week12 homework
+
 ???
+
+многопользовательская MUD на основе асинхрона https://stepik.org/lesson/1200650/step/1?unit=1213859
+
+- `handouts\golang_web_services_2023-12-28.zip\12\99_hw\mud\`
+- `handouts\golang_web_services_2024-04-26.zip\12\99_hw\mud\`
+
+- Василий Романов, Как Стать Синьером https://youtu.be/gqJfANPrNm4?feature=shared
+- Василий Романов, Уроки Проекта с Коммитом 2001 г. https://youtu.be/bK775SnBA-I?feature=shared

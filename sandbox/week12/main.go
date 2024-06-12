@@ -58,4 +58,5 @@ func demo_106_tracing_jaeger() {
 	//open tracing, open telemetry, jaeger
 	// request id, span, middleware
 	// samplerconfig
+	// distributed tracing: photoauth - auth grpc
 }
