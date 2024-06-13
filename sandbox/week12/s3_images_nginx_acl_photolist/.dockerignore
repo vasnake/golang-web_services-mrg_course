@@ -1,0 +1,7 @@
+bin/*
+images/*
+tmp/*
+.git
+.DS_Store
+.gitignore
+minio_data

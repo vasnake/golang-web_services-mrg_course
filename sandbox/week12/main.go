@@ -8,7 +8,13 @@ import (
 func main() {
 	// demo1()
 	// demo2()
-	demo_103_images()
+	// demo_103_images()
+
+	// # I_AM_HERE
+	demo_104_acl()
+
+	// demo_105_ctx()
+	// demo_106_tracing_jaeger()
 }
 
 func demo1() {
@@ -25,7 +31,7 @@ func demo1() {
 }
 
 func demo2() {
-	// s3 provider: minio custom api
+	// s3 provider: minio api
 	s3_demo.MainMinioDemo() // sandbox/week12/s3_demo$  docker compose -f ./docker-compose.yaml up&
 	/*
 	   2024-06-07T10:10:24.529Z: Existing buckets: []minio.BucketInfo{minio.BucketInfo{Name:"photolist", CreationDate:time.Date(2024, time.June, 7, 9, 26, 44, 192000000, time.UTC)}};
@@ -41,22 +47,20 @@ func demo_103_images() {
 	s3_photolist_main.MainDemo()
 }
 
-// # I_AM_HERE
-
 func demo_104_acl() {
 	// config: viper
-	// add nano-service user-sessions-db (grpc)
+	// add 2 auth services: photoauth (for nginx images acl); auth nano-service "user-sessions-db" (grpc)
 	// images from s3 via nginx + custom auth (images ACL)
 }
 
 func demo_105_ctx() {
-	// request id, tracing
+	// tracing, request id
 	// log graphql operations (name, timing, path) via middleware
 }
 
 func demo_106_tracing_jaeger() {
-	//open tracing, open telemetry, jaeger
+	// distributed tracing: photoauth - auth grpc
+	// open tracing, open telemetry, jaeger
 	// request id, span, middleware
 	// samplerconfig
-	// distributed tracing: photoauth - auth grpc
 }

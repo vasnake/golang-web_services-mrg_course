@@ -1,0 +1,117 @@
+
+
+go run github.com/99designs/gqlgen init
+
+go run github.com/99designs/gqlgen -v
+
+go generate ./...
+
+
+query {
+  user(userID: "6") {
+    id
+    name
+    avatar
+  }
+}
+
+curl localhost:8080/graphql \
+  -H 'Cookie: session=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOjYsImV4cCI6MTU3OTM1MzQ0OCwianRpIjoieVNOempIRGFYWWFHQVJCS2ljaENiQWFpS2RFT3JuY2MiLCJpYXQiOjE1NzE1Nzc0NDh9.iDp_yr9Qhd5LXnOM1Ocvhkhp6u27X7jLtPTmrFGZOqk' \
+  -F operations='{ "query": "mutation($comment: String!, $file: Upload!) { uploadPhoto(comment: $comment, file: $file) { id } }", "variables": { "comment": "uploaded by graphql", "file": null } }' \
+  -F map='{ "0": ["variables.file"] }' \
+  -F 0=@./photo_samples/building_1.jpg
+
+  
+  --trace-ascii -
+
+    request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+    var body = 'name=' + encodeURIComponent(name) +
+        '&surname=' + encodeURIComponent(surname);
+
+
+
+
+query {
+  user(userID: "6") {
+    id
+    name
+    avatar
+    photos(count: 10) {
+      id
+      url
+      user {
+        id
+        name
+      }
+    }
+  }
+}
+
+
+# -----
+
+query {
+  user(userID: "1") {
+    id
+    name
+    avatar
+    photos(count:20) {
+      id
+      url
+      user {
+        id
+        name
+        photos(count:100) {
+          id
+          url
+        }
+      }
+    }
+  }
+}
+
+# ----
+
+query($userID: ID!, $cnt1:Int!, $cnt2:Int! ) {
+  user(userID: $userID) {
+    id
+    name
+    avatar
+    photos(count:$cnt1) {
+      id
+      url
+      user {
+        id
+        name
+        photos(count:$cnt2) {
+          id
+          url
+        }
+      }
+    }
+  }
+  photos(userID:$userID) {id, url}
+}
+
+
+{
+  "userID":"1",
+  "cnt1":10,
+  "cnt2":20
+}
+
+
+
+curl localhost:8080/query \
+  -H 'Cookie: session=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOjYsImV4cCI6MTU3OTM1MzQ0OCwianRpIjoieVNOempIRGFYWWFHQVJCS2ljaENiQWFpS2RFT3JuY2MiLCJpYXQiOjE1NzE1Nzc0NDh9.iDp_yr9Qhd5LXnOM1Ocvhkhp6u27X7jLtPTmrFGZOqk' \
+  -F operations='{ "query": "mutation($comment: String!, $file: Upload!) { uploadPhoto(comment: $comment, file: $file) { id } }", "variables": { "comment": "uploaded by graphql", "file": null } }' \
+  -F map='{ "0": ["variables.file"] }' \
+  -F 0=@./photo_samples/building_1.jpg \
+  --trace-ascii -
+
+
+curl 'http://localhost:8080/graphql' -H 'Pragma: no-cache' -H 'Sec-Fetch-Site: same-origin' -H 'Origin: http://localhost:8080' -H 'Accept-Encoding: gzip, deflate, br' -H 'Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7' -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36' -H 'Sec-Fetch-Mode: cors' -H 'content-type: application/json' -H 'accept: */*' -H 'Cache-Control: no-cache' -H 'Referer: http://localhost:8080/playground' 
+
+
+-H 'Connection: keep-alive' --data-binary '{"operationName":"_","variables":{},"query":"mutation _ {\n  followUser(userID: \"7\", direction: \"up\") {\n    id\n    name\n    avatar\n  }\n}\n"}' --compressed

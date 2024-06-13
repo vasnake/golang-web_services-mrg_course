@@ -1,0 +1,65 @@
+views
+123
+
+buildings
+123
+
+
+
+csrf везде
+рендер шаблонов
+логин везде
+
+проектирование апи
+1
+2
+3
+4
+
+рендер по аяксу
+функция для ошибок
+
+подписка на дургих
+просмотр чужих фоток
+
+graphql - intro
+
+умная лента!
+
+// ------------
+
+mvc
+golang project structure
+my structure
+cyclic imports
+makefile
+go modules
+    vendoring
+
+docker
+multistage build
+
+docker-compose + mysql + nginx + volume mount
+    restart
+
+private photos
+    nginx auth - separate service - with build!
+    acl
+    rbac
+    casbin
+
+golangci-lint
+gitlab ci
+manual deploy
+
+docker config - env + viper
+
+prometeus start event 
+
+kubernetes
+
+
+
+
+
+
