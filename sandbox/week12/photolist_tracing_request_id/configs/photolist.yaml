@@ -1,0 +1,20 @@
+http: 
+  port: 8080
+db:
+  host:     dbMysql:3306
+  username: root
+  password: love
+  database: photolist
+s3: 
+  host:   http://minio:9000
+  access: access_123
+  secret: secret_123
+  bucket: photolist
+session: 
+  type:   db
+  secret: golangcourseSessionSecret
+token: 
+  type:   jwt
+  secret: qsRY2e4hcM5T7X984E9WQ5uZ8Nty7fxB
+example:
+  yaml: "yaml config value"

@@ -2,7 +2,7 @@
 # alias gr='bash -vxe /mnt/c/Users/valik/data/github/golang-web_services-mrg_course/run.sh'
 PRJ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-APP_SELECTOR=${GO_APP_SELECTOR:-week12}
+APP_SELECTOR=${GO_APP_SELECTOR:-week12} # GO_APP_SELECTOR=week12 gr
 
 pushd ${PRJ_DIR}
 APP_COMMIT=foo # $(git rev-parse --short HEAD)

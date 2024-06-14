@@ -10,11 +10,10 @@ func main() {
 	// demo1()
 	// demo2()
 	// demo_103_images()
+	// demo_104_acl()
 
 	// # I_AM_HERE
-	demo_104_acl()
-
-	// demo_105_ctx()
+	demo_105_ctx()
 	// demo_106_tracing_jaeger()
 }
 
@@ -50,22 +49,22 @@ func demo_103_images() {
 
 func demo_104_acl() {
 	// config: viper
-	// add 2 auth services: photoauth (for nginx images acl); auth nano-service "user-sessions-db" (grpc)
 	// images from s3 via nginx + custom auth (images ACL)
+	// add 2 auth services: photoauth (for nginx images acl); auth nano-service "user-sessions-db" (grpc)
 	/*
-			   работать это должно так:
+	   работать это должно так:
 
-			   в докере запускаются nginx и хранилища (mysql, s3)
-			   sandbox\week12\s3_images_nginx_acl_photolist\deployments\docker-compose.yml
+	   в докере запускаются nginx и хранилища (mysql, s3)
+	   sandbox\week12\s3_images_nginx_acl_photolist\deployments\docker-compose.yml
 
-			   на хосте в трех разных терминалах запускаются три процесса (см конфиги sandbox\week12\s3_images_nginx_acl_photolist\configs\):
-			   - sandbox\week12\s3_images_nginx_acl_photolist\cmd\auth\main.go
-			   - sandbox\week12\s3_images_nginx_acl_photolist\cmd\photoauth\main.go
-			   - sandbox\week12\s3_images_nginx_acl_photolist\cmd\photolist\main.go
+	   на хосте в трех разных терминалах запускаются три процесса (см конфиги sandbox\week12\s3_images_nginx_acl_photolist\configs\):
+	   - sandbox\week12\s3_images_nginx_acl_photolist\cmd\auth\main.go
+	   - sandbox\week12\s3_images_nginx_acl_photolist\cmd\photoauth\main.go
+	   - sandbox\week12\s3_images_nginx_acl_photolist\cmd\photolist\main.go
 
-		       браузером ходить надо на localhost:8080 - это nginx as reverse proxy, container:80
-			   sandbox\week12\s3_images_nginx_acl_photolist\configs\nginx\nginx.conf
-			   https://stackoverflow.com/questions/31324981/how-to-access-host-port-from-docker-container
+	   браузером ходить надо на localhost:8080 - это nginx as reverse proxy, container:80
+	   sandbox\week12\s3_images_nginx_acl_photolist\configs\nginx\nginx.conf
+	   https://stackoverflow.com/questions/31324981/how-to-access-host-port-from-docker-container
 	*/
 
 	// pushd sandbox
@@ -123,8 +122,12 @@ func demo_104_acl() {
 }
 
 func demo_105_ctx() {
-	// tracing, request id
+	// tracing, request id, request context
 	// log graphql operations (name, timing, path) via middleware
+
+	/*
+
+	 */
 }
 
 func demo_106_tracing_jaeger() {

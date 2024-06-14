@@ -1,0 +1,12 @@
+http: 
+  port: 8080
+db:
+  host:     dbMysql:3306
+  username: root
+  password: love
+  database: photolist
+session: 
+  type:   grpc
+  grpc_addr: "auth:10000"
+example:
+  yaml: "yaml config value"
