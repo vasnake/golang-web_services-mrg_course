@@ -2,6 +2,7 @@ package main
 
 import (
 	"week12/s3_demo"
+	s3_acl "week12/s3_images_nginx_acl_photolist/cmd/photolist"
 	s3_photolist_main "week12/s3_photolist/cmd/photolist"
 )
 
@@ -51,6 +52,74 @@ func demo_104_acl() {
 	// config: viper
 	// add 2 auth services: photoauth (for nginx images acl); auth nano-service "user-sessions-db" (grpc)
 	// images from s3 via nginx + custom auth (images ACL)
+	/*
+			   работать это должно так:
+
+			   в докере запускаются nginx и хранилища (mysql, s3)
+			   sandbox\week12\s3_images_nginx_acl_photolist\deployments\docker-compose.yml
+
+			   на хосте в трех разных терминалах запускаются три процесса (см конфиги sandbox\week12\s3_images_nginx_acl_photolist\configs\):
+			   - sandbox\week12\s3_images_nginx_acl_photolist\cmd\auth\main.go
+			   - sandbox\week12\s3_images_nginx_acl_photolist\cmd\photoauth\main.go
+			   - sandbox\week12\s3_images_nginx_acl_photolist\cmd\photolist\main.go
+
+		       браузером ходить надо на localhost:8080 - это nginx as reverse proxy, container:80
+			   sandbox\week12\s3_images_nginx_acl_photolist\configs\nginx\nginx.conf
+			   https://stackoverflow.com/questions/31324981/how-to-access-host-port-from-docker-container
+	*/
+
+	// pushd sandbox
+	// docker compose -f ./week12/s3_images_nginx_acl_photolist/deployments/docker-compose.yml up
+
+	// set -a && source week12/s3_images_nginx_acl_photolist/configs/common.env && set +a
+
+	// set -a && source week12/s3_images_nginx_acl_photolist/configs/auth.env && set +a
+	// go run -ldflags "-X 'main.buildHash=${APP_COMMIT}' -X 'main.buildTime=${APP_BUILD_TIME}'" ./week12/s3_images_nginx_acl_photolist/cmd/auth/main.go
+
+	// set -a && source week12/s3_images_nginx_acl_photolist/configs/photoauth.env && set +a
+	// go run -ldflags "-X 'main.buildHash=${APP_COMMIT}' -X 'main.buildTime=${APP_BUILD_TIME}'" ./week12/s3_images_nginx_acl_photolist/cmd/photoauth/main.go
+
+	// export OAUTH_APP_SECRET=a***0
+	// export OAUTH_APP_ID=O***F
+	// GO_APP_SELECTOR=week12 gr # former: go run -ldflags "-X 'main.buildHash=${APP_COMMIT}' -X 'main.buildTime=${APP_BUILD_TIME}'" ./week12/s3_images_nginx_acl_photolist/cmd/photolist/main.go -appid ${OAUTH_APP_ID:-foo} -appsecret ${OAUTH_APP_SECRET:-bar}
+
+	s3_acl.MainDemo()
+	/*
+	   go run -ldflags "-X 'main.buildHash=${APP_COMMIT}' -X 'main.buildTime=${APP_BUILD_TIME}'" ./week12/s3_images_nginx_acl_photolist/cmd/auth/main.go
+	   2024/06/14 11:47:46 [startup 1] service 'auth', -ldflags info: buildHash '9c81fe0', buildTime '2024-06-14_08:47:43'
+	   2024/06/14 11:47:46 [startup 2] service 'auth', 'go build -buildvcs' info: Version 'unknown', Revision 'unknown', DirtyBuild '%!s(bool=true)', LastCommit '0001-01-01 00:00:00 +0000 UTC', ShortInfo 'devel'
+	   2024-06-14T08:47:46.154Z: service.port from config: "localhost:10000";
+	   2024-06-14T08:47:46.154Z: sql.Open mysql DSN: "root:@tcp(localhost:3306)/photolist?charset=utf8&interpolateParams=true";
+	   2024/06/14 11:47:46 [startup 6] grpc serve at tcp port 'localhost:10000'
+
+	   go run -ldflags "-X 'main.buildHash=${APP_COMMIT}' -X 'main.buildTime=${APP_BUILD_TIME}'" ./week12/s3_images_nginx_acl_photolist/cmd/photoauth/main.go
+	   2024/06/14 11:48:08 [startup] photoauth, commit 9c81fe0, build 2024-06-14_07:48:39
+	   2024/06/14 11:48:08 [startup] cfg.HTTP.Port "localhost:8081", example.env1 "", example.env2 "env config value"
+	   2024-06-14T08:48:08.333Z: downstream svc session.grpc_addr from config: "localhost:10000";
+	   2024-06-14T08:48:08.333Z: listen http.port from config: "localhost:8081";
+	   2024-06-14T08:48:08.333Z: sql.Open mysql DSN: "root:@tcp(localhost:3306)/photolist?charset=utf8&interpolateParams=true";
+	   2024/06/14 11:48:08 [startup] listening server at localhost:8081
+	   2024/06/14 11:57:07 call UserRepository.IsFollowed - maybe user dataloader? 1 2
+	   2024/06/14 11:57:24 call UserRepository.IsFollowed - maybe user dataloader? 1 2
+
+	   go run -ldflags "-X 'main.buildHash=${APP_COMMIT}' -X 'main.buildTime=${APP_BUILD_TIME}'" ./week12/s3_images_nginx_acl_photolist/cmd/photolist/main.go -appid ${OAUTH_APP_ID:-foo} -appsecret ${OAUTH_APP_SECRET:-bar}
+	   2024/06/14 11:48:16 [startup] photolist, commit 9c81fe0, build 2024-06-14_07:55:02
+	   2024-06-14T08:48:16.504Z: you must not show this! appid, appsecret: "O***F"; "a***0";
+	   2024-06-14T08:48:16.506Z: listen http.port from config: "localhost:8082";
+	   2024-06-14T08:48:16.506Z: sql.Open mysql DSN: "root:@tcp(localhost:3306)/photolist?charset=utf8&interpolateParams=true";
+	   2024/06/14 11:48:16 [startup] listening server at localhost:8082
+	   2024-06-14T08:56:20.096Z: oauth code: "a***9";
+	   2024-06-14T08:56:20.675Z: oauth access token: &oauth2.Token{AccessToken:...
+	   2024-06-14T08:56:21.270Z: api response: "{\"login\":...
+	   2024-06-14T08:56:21.271Z: user email from oauth provider: ...
+	   2024-06-14T08:56:21.271Z: user id from oauth provider: "2dv0h";
+	   2024-06-14T08:56:21.271Z: creating app user ...
+	   2024/06/14 11:56:21 call UserRepository.IsFollowed - maybe user dataloader? 1 2
+	   2024/06/14 11:56:54 call UserRepository.IsFollowed - maybe user dataloader? 1 2
+	   2024/06/14 11:57:07 call UserRepository.IsFollowed - maybe user dataloader? 1 2
+	   2024/06/14 11:57:18 call UserRepository.IsFollowed - maybe user dataloader? 1 2
+	   2024/06/14 11:57:24 call UserRepository.IsFollowed - maybe user dataloader? 1 2
+	*/
 }
 
 func demo_105_ctx() {

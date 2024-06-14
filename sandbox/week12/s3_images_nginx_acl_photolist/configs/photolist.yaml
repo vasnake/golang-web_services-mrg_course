@@ -1,12 +1,12 @@
-http: 
-  port: 8080
+http:
+  port: localhost:8082
 db:
-  host:     dbMysql:3306
+  host:     localhost:3306
   username: root
-  password: love
+  password:
   database: photolist
 s3: 
-  host:   http://minio:9000
+  host:   http://localhost:9000
   access: access_123
   secret: secret_123
   bucket: photolist

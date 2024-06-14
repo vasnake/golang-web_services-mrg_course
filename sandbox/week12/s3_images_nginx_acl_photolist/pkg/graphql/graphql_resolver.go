@@ -12,10 +12,10 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/gofrs/uuid"
 
-	"photolist/pkg/blobstorage"
-	"photolist/pkg/photos"
-	"photolist/pkg/session"
-	"photolist/pkg/user"
+	"week12/s3_images_nginx_acl_photolist/pkg/blobstorage"
+	"week12/s3_images_nginx_acl_photolist/pkg/photos"
+	"week12/s3_images_nginx_acl_photolist/pkg/session"
+	"week12/s3_images_nginx_acl_photolist/pkg/user"
 )
 
 type Resolver struct {

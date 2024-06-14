@@ -12,10 +12,10 @@ import (
 
 	"github.com/gofrs/uuid"
 
-	"photolist/pkg/blobstorage"
-	"photolist/pkg/session"
-	"photolist/pkg/user"
-	"photolist/pkg/utils/httputils"
+	"week12/s3_images_nginx_acl_photolist/pkg/blobstorage"
+	"week12/s3_images_nginx_acl_photolist/pkg/session"
+	"week12/s3_images_nginx_acl_photolist/pkg/user"
+	"week12/s3_images_nginx_acl_photolist/pkg/utils/httputils"
 )
 
 type PhotosRepoInterface interface {

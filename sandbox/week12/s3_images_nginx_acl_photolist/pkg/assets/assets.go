@@ -1,5 +1,3 @@
-// +build dev
-
 package assets
 
 import (
@@ -7,27 +5,7 @@ import (
 	"net/http"
 )
 
-//go:generate go run assets_gen.go
-
 var Assets http.FileSystem = union.New(map[string]http.FileSystem{
-	"/templates": http.Dir("./templates/"),
-	"/static":    http.Dir("./static/"),
+	"/templates": http.Dir("./week12/s3_images_nginx_acl_photolist/templates/"),
+	"/static":    http.Dir("./week12/s3_images_nginx_acl_photolist/static/"),
 })
-
-/*
-https://github.com/shurcooL/vfsgen
-https://github.com/shurcooL/httpfs/html
-
-go generate --tags=dev
--> go run assets_gen.go assets.go
-
-go build --tags=dev -o ./tmp/dev .
-    main.go
-    assets.go
-    + static/
-    + templates/
-
-go build -o ./tmp/release .
-    main.go
-    assets_vfsdata.go
-*/

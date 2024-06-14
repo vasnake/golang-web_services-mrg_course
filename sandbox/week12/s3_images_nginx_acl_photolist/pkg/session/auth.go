@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"photolist/pkg/utils/randutils"
+	"week12/s3_images_nginx_acl_photolist/pkg/utils/randutils"
 )
 
 type AuthService struct {

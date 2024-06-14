@@ -8,7 +8,7 @@ import (
 
 type Config struct {
 	HTTP struct {
-		Port int
+		Port string
 	}
 	DB struct {
 		Host     string
@@ -65,23 +65,29 @@ var Defaults = map[string]interface{}{
 }
 
 func Read(appName string, defaults map[string]interface{}, cfg interface{}) (*viper.Viper, error) {
-	v := viper.New()
+	vpr := viper.New()
 	for key, value := range defaults {
-		v.SetDefault(key, value)
+		vpr.SetDefault(key, value)
 	}
-	v.SetConfigName(appName)
-	v.AddConfigPath("/etc/")
-	v.AutomaticEnv()
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	err := v.ReadInConfig()
+
+	vpr.SetConfigName(appName)
+	// vpr.AddConfigPath("/etc/")
+	vpr.AddConfigPath("week12/s3_images_nginx_acl_photolist/configs/")
+	viper.AddConfigPath(".") // optionally look for config in the working directory
+
+	vpr.AutomaticEnv()
+	vpr.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	err := vpr.ReadInConfig()
 	if err != nil {
 		return nil, err
 	}
+
 	if cfg != nil {
-		err := v.Unmarshal(cfg)
+		err := vpr.Unmarshal(cfg)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return v, nil
+	return vpr, nil
 }

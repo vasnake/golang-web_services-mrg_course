@@ -2745,6 +2745,44 @@ func AccessLogInterceptor( ctx context.Context, req interface{}, info *grpc.Unar
 grpc-server
 
 # I_AM_HERE
+```go
+func demo_104_acl() {
+	// config: viper
+	// add 2 auth services: photoauth (for nginx images acl); auth nano-service "user-sessions-db" (grpc)
+	// images from s3 via nginx + custom auth (images ACL)
+}
+
+func demo_105_ctx() {
+	// tracing, request id
+	// log graphql operations (name, timing, path) via middleware
+}
+
+func demo_106_tracing_jaeger() {
+	// distributed tracing: photoauth - auth grpc
+	// open tracing, open telemetry, jaeger
+	// request id, span, middleware
+	// samplerconfig
+}
+```
+три демы фотолиста.
+
+Мое решение запускать процессы фотолиста (фотолист, фотоаутх, аутх) на хосте (не в докере) и процессы мускуля, с3, нгинкс в докере ...
+потребовало решить проблему доступа к портам хоста из контейнеров
+```s
+# compose
+  nginx:
+    extra_hosts:
+      - host.docker.internal:host-gateway
+
+# viper cfg
+http: 
+  port: localhost:8082
+
+# nginx.cfg
+proxy_pass http://host.docker.internal:8082/;
+```
+tcp
+https://docs.docker.com/desktop/windows/permission-requirements/
 
 ### week12 homework
 

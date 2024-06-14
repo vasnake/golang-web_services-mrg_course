@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"photolist/pkg/utils/randutils"
+	"week12/s3_images_nginx_acl_photolist/pkg/utils/randutils"
 )
 
 type SessionsDB struct {

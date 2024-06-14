@@ -44,12 +44,15 @@ go_run() {
 
 go_run_module() {
     echo "####################################################################################################"
+    # modern way: https://blog.carlana.net/post/2023/golang-git-hash-how-to/
     # go run -ldflags="-X 'main.Version=$(git rev-parse HEAD)' -X 'main.Branch=$(git rev-parse --abbrev-ref HEAD)'" ${1} -appid ${OAUTH_APP_ID:-foo} -appsecret ${OAUTH_APP_SECRET:-bar} --comments=true --servers="127.0.0.1:8081,127.0.0.1:8082"
-    # -ldflags "-X 'week11/photolist_pkglayout/cmd/photolist.buildHash=${APP_COMMIT}' -X 'week11/photolist_pkglayout/cmd/photolist.buildTime=${APP_BUILD_TIME}'" \
-    go run \
-        -ldflags "-X 'week12/s3_photolist/cmd/photolist.buildHash=${APP_COMMIT}' -X 'week12/s3_photolist/cmd/photolist.buildTime=${APP_BUILD_TIME}'" \
-        ${1} \
-        -appid ${OAUTH_APP_ID:-foo} -appsecret ${OAUTH_APP_SECRET:-bar}
+    # go run -ldflags "-X 'week11/photolist_pkglayout/cmd/photolist.buildHash=${APP_COMMIT}' -X 'week11/photolist_pkglayout/cmd/photolist.buildTime=${APP_BUILD_TIME}'" \
+    # go run -ldflags "-X 'main.buildHash=${APP_COMMIT}' -X 'main.buildTime=${APP_BUILD_TIME}'" ./week12/s3_images_nginx_acl_photolist/cmd/auth/main.go
+    go run ${1} -appid ${OAUTH_APP_ID:-foo} -appsecret ${OAUTH_APP_SECRET:-bar}
+
+    # pushd sandbox
+	# sudo chmod -R 777 /tmp/photolist
+	# go build -ldflags "-X 'main.buildHash=${APP_COMMIT}' -X 'main.buildTime=${APP_BUILD_TIME}'" -o /tmp/photolist/auth.svc week12/s3_images_nginx_acl_photolist/cmd/auth/main.go && /tmp/photolist/auth.svc
 
     exit_code=$?
     echo "####################################################################################################"
