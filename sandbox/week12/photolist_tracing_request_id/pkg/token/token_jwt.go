@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"photolist/pkg/session"
+	"week12/photolist_tracing_request_id/pkg/session"
 
 	jwt "github.com/golang-jwt/jwt"
 )

@@ -12,10 +12,10 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/gofrs/uuid"
 
-	"photolist/pkg/blobstorage"
-	"photolist/pkg/photos"
-	"photolist/pkg/session"
-	"photolist/pkg/user"
+	"week12/photolist_tracing_request_id/pkg/blobstorage"
+	"week12/photolist_tracing_request_id/pkg/photos"
+	"week12/photolist_tracing_request_id/pkg/session"
+	"week12/photolist_tracing_request_id/pkg/user"
 )
 
 type Resolver struct {

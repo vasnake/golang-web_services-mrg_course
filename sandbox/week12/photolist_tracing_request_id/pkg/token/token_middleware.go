@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"photolist/pkg/session"
+	"week12/photolist_tracing_request_id/pkg/session"
 )
 
 type TokenManager interface {

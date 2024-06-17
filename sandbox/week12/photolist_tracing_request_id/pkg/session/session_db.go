@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"photolist/pkg/utils/randutils"
+	"week12/photolist_tracing_request_id/pkg/utils/randutils"
 )
 
 var (

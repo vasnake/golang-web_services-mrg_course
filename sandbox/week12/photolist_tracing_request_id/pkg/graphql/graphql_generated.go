@@ -7,11 +7,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"photolist/pkg/photos"
-	"photolist/pkg/user"
 	"strconv"
 	"sync"
 	"sync/atomic"
+
+	"week12/photolist_tracing_request_id/pkg/photos"
+	"week12/photolist_tracing_request_id/pkg/user"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"photolist/pkg/utils/randutils"
+	"week12/photolist_tracing_request_id/pkg/utils/randutils"
 )
 
 const requestIDKey = "requestID"
@@ -25,7 +25,7 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 func RequestIDFromContext(ctx context.Context) string {
 	requestID, ok := ctx.Value(requestIDKey).(string)
 	if !ok {
-		return "-"
+		return "unknown"
 	}
 	return requestID
 }

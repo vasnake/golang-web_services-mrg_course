@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"photolist/pkg/middleware"
-	"photolist/pkg/session"
-	"photolist/pkg/user"
+	"week12/photolist_tracing_request_id/pkg/middleware"
+	"week12/photolist_tracing_request_id/pkg/session"
+	"week12/photolist_tracing_request_id/pkg/user"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler/extension"

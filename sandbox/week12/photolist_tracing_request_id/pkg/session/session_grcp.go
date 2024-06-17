@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	"photolist/pkg/middleware"
+	"week12/photolist_tracing_request_id/pkg/middleware"
 )
 
 var (
