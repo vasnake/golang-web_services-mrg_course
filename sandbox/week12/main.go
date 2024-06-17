@@ -18,10 +18,10 @@ func main() {
 	// demo_103_images()
 	// demo_104_acl()
 
-	demo_105_ctx()
+	// demo_105_ctx()
 
 	// # last version of photolist app
-	// demo_106_tracing_jaeger()
+	demo_106_tracing_jaeger()
 }
 
 func demo1() {
@@ -228,8 +228,19 @@ go run week12 -appid Ov23lirslzXRwbCt2gJF -appsecret ada307c051a73e56fd7a8287b95
 }
 
 func demo_106_tracing_jaeger() {
-	// distributed tracing: photoauth - auth grpc
+	// distributed tracing: photoauth <-grpc-> auth
 	// open tracing, open telemetry, jaeger
 	// request id, span, middleware
 	// samplerconfig
+	msg := `
+
+Это последняя в курсе версия photolist,
+поэтому деплой я сделал как в курсе: внутри контейнера (docker compose).
+См. sandbox\week12_photolist_final\Makefile
+
+pushd sandbox/week12_photolist_final/
+go mod tidy
+
+`
+	show(msg)
 }

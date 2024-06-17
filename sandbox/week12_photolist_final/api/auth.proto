@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+// в корне проекта
+// go mod edit -replace=google.golang.org/grpc=github.com/grpc/grpc-go@latest
+// protoc -I api/ api/auth.proto --go_out=plugins=grpc:./pkg/session/
+
+package session;
+
+message AuthSession {
+    string ID     = 1;
+    uint32 UserID = 2;
+    int32  Ver    = 3;
+}
+
+message AuthUserIn {
+    uint32 UserID = 1;
+    int32  Ver    = 2;
+}
+
+message AuthCheckIn {
+    string SessKey = 1;
+}
+
+message AuthNothing {
+    bool Nothing = 1;
+}
+
+service Auth {
+    rpc Check (AuthCheckIn) returns (AuthSession) {}
+    rpc Create (AuthUserIn) returns (AuthSession) {}
+    rpc DestroyCurrent (AuthSession) returns (AuthNothing) {}
+    rpc DestroyAll (AuthUserIn) returns (AuthNothing) {}
+}

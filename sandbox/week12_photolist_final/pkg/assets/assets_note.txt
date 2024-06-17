@@ -1,0 +1,16 @@
+https://github.com/shurcooL/vfsgen
+https://github.com/shurcooL/httpfs/html
+
+go generate --tags=dev
+-> go run assets_gen.go assets.go
+
+go build --tags=dev -o ./tmp/dev .
+    main.go
+    assets.go
+    + static/
+    + templates/
+
+go build -o ./tmp/release .
+    main.go
+    assets_vfsdata.go
+
