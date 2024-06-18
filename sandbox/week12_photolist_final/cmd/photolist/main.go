@@ -2,10 +2,10 @@ package main
 
 import (
 	"database/sql"
+	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
-	"math/rand"
 	"net/http"
 	"time"
 
@@ -28,38 +28,180 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/uber/jaeger-client-go"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
+
 	// jaegerlog "github.com/uber/jaeger-client-go/log"
 	"github.com/uber/jaeger-lib/metrics"
 )
 
 var (
 	appName   string = "photolist"
-	buildHash string = "_dev"
-	buildTime string = "_dev"
+	buildHash string = "unknown"
+	buildTime string = "unknown"
 )
 
 func main() {
 	log.Printf("[startup] %s, commit %s, build %s", appName, buildHash, buildTime)
-	rand.Seed(time.Now().UnixNano())
+
+	// from command line, using flag package
+	// export OAUTH_APP_ID=Ov2***gJF
+	// export OAUTH_APP_SECRET=ada***860
+	// go run main.go -appid ${OAUTH_APP_ID:-foo} -appsecret ${OAUTH_APP_SECRET:-bar}
+	flag.StringVar(&user.APP_ID, "appid", "unknown", "oauth app id (client id) from github registered app")
+	flag.StringVar(&user.APP_SECRET, "appsecret", "unknown", "oauth app secret (client key) from github registered app")
+	flag.Parse()
+	show("you must not show this! appid, appsecret from flag package: ", user.APP_ID, user.APP_SECRET)
 
 	cfg := &config.Config{}
-	v1, err := config.Read(appName, config.Defaults, cfg)
-	log.Println(v1, cfg, err, v1.GetString("example.env2"))
-
-	// основные настройки к базе
-	// dsn := "root:love@tcp(127.0.0.1:3306)/photolist?charset=utf8&interpolateParams=true"
-	dsn := "%s:%s@tcp(%s)/%s?charset=utf8&interpolateParams=true"
-	dsn = fmt.Sprintf(dsn, cfg.DB.Username, cfg.DB.Password, cfg.DB.Host, cfg.DB.Database)
-	db, err := sql.Open("mysql", dsn)
-	err = db.Ping() // вот тут будет первое подключение к базе
+	viperSvc, err := config.Read(appName, config.Defaults, cfg)
 	if err != nil {
-		log.Fatalf("cant connect to db, err: %v\n", err)
+		log.Fatalf("can't read config: %v\n", err)
+	}
+	log.Printf("config, example.env2: %s", viperSvc.GetString("example.env2"))
+
+	// from secrets.env file
+	oauthAppId := viperSvc.GetString("OAUTH_APP_ID")
+	oauthAppSecret := viperSvc.GetString("OAUTH_APP_SECRET")
+	if oauthAppId != "" && user.APP_ID == "unknown" {
+		user.APP_ID = oauthAppId
+	}
+	if oauthAppSecret != "" && user.APP_SECRET == "unknown" {
+		user.APP_SECRET = oauthAppSecret
+	}
+	show("you must not show this! appid, appsecret from viper package: ", user.APP_ID, user.APP_SECRET)
+
+	if user.APP_ID == "" || user.APP_ID == "unknown" || user.APP_SECRET == "" || user.APP_SECRET == "unknown" {
+		show("OAuth functionality broken, OAuth tokens not provided")
 	}
 
-	// log.Println("JAEGER_AGENT_HOST", )
+	listenAddr := viperSvc.GetString("http.port")
+	log.Printf("tcp listen addr (config http.port): '%s'", listenAddr)
 
-	// start tracing cfg
-	jaegerCfgInstance := jaegercfg.Configuration{
+	db, closeDBFunc := openDBConnect(cfg)
+	defer closeDBFunc()
+
+	closeTracerFunc := setTracer(appName, buildHash, buildTime, viperSvc.GetString("JAEGER_AGENT_ADDR"))
+	defer closeTracerFunc()
+
+	csrfTokens, err := token.NewJwtToken(cfg.Token.Secret)
+	if err != nil {
+		log.Fatalf("can't init tokens: %v\n", err)
+	}
+
+	pageTemplates := templates.NewTemplates(assets.Assets, csrfTokens)
+
+	blobStorage, err := blobstorage.NewS3Storage(cfg.S3.Host, cfg.S3.Access, cfg.S3.Secret, cfg.S3.Bucket)
+	if err != nil {
+		log.Fatalf("can't create s3 blobstorage %v\n", err)
+	}
+
+	photosRepo := photos.NewPhotosRepository(db)
+	usersRepo := user.NewUsersRepository(db)
+	sessionSvc := session.NewSessionsDB(db)
+
+	appSvc := &photos.PhotolistHandler{
+		UsersRepo:   usersRepo,
+		PhotosRepo:  photosRepo,
+		Tmpl:        pageTemplates,
+		BlobStorage: blobStorage,
+	}
+
+	userSvc := &user.UserHandler{
+		Tmpl:      pageTemplates,
+		Sessions:  sessionSvc,
+		UsersRepo: usersRepo,
+	}
+
+	gqlResolver := &graphql.Resolver{
+		PhotosRepo:  photosRepo,
+		UsersRepo:   usersRepo,
+		BlobStorage: blobStorage,
+	}
+	gqlHttpHandlerFunc := gqlgenHandler.GraphQL(
+		graphql.NewExecutableSchema(graphql.Config{Resolvers: gqlResolver}),
+		gqlgenHandler.ComplexityLimit(500),
+		gqlgenHandler.RequestMiddleware(graphql.RequestMiddleware),
+		gqlgenHandler.ResolverMiddleware(graphql.ResolverMiddleware),
+		gqlgenHandler.Tracer(graphql.NewTracer()),
+	)
+	gqlHttpHandler := graphql.UserLoaderMiddleware(gqlResolver, gqlHttpHandlerFunc)
+
+	mux := setupRoutesMultiplexer(appSvc, userSvc, gqlHttpHandler)
+
+	// middleware
+	// отрабатывают в обратном добавлению порядке, те RequestIDMiddleware будет 1-м
+	httpRootHandler := token.CsrfTokenMiddleware(csrfTokens, mux)
+
+	httpRootHandler = session.AuthMiddleware(sessionSvc, httpRootHandler)
+	httpRootHandler = middleware.AccessLog(httpRootHandler)
+	httpRootHandler = middleware.RequestIDMiddleware(httpRootHandler)
+
+	http.Handle("/", httpRootHandler)
+	http.Handle("/static/", http.FileServer(assets.Assets))
+	handleFavicon(assets.Assets)
+
+	// don't need this, separate svc exists: photoauth
+	http.HandleFunc("/api/v1/internal/images/auth", userSvc.InternalImagesAuth)
+
+	// don't need this, nginx works fine
+	http.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir("./images"))))
+
+	log.Printf("[startup] listening server at %s", listenAddr)
+	http.ListenAndServe(listenAddr, nil)
+}
+
+var setupRoutesMultiplexer = func(appSvc *photos.PhotolistHandler, userSvc *user.UserHandler, gqlHttpHandler http.Handler) *http.ServeMux {
+	mux := http.NewServeMux()
+
+	// mux.HandleFunc("/photos/", h.List)
+	mux.HandleFunc("/photos/", appSvc.ListGQL)
+
+	mux.HandleFunc("/api/v1/photos/list", appSvc.ListAPI)
+	mux.HandleFunc("/api/v1/photos/upload", appSvc.UploadAPI)
+	mux.HandleFunc("/api/v1/photos/rate", appSvc.RateAPI)
+
+	mux.HandleFunc("/user/login", userSvc.Login)
+	mux.HandleFunc("/user/login_oauth", userSvc.LoginOauth)
+	mux.HandleFunc("/user/logout", userSvc.Logout)
+	mux.HandleFunc("/user/reg", userSvc.Reg)
+	mux.HandleFunc("/user/change_pass", userSvc.ChangePassword)
+
+	mux.HandleFunc("/api/v1/user/follow", userSvc.FollowAPI)
+	mux.HandleFunc("/api/v1/user/following", userSvc.FollowingAPI)
+	mux.HandleFunc("/api/v1/user/recomends", userSvc.RecomendsAPI)
+
+	mux.HandleFunc("/", index.Index)
+
+	{ // START gqlgen part
+		mux.Handle("/graphql", gqlHttpHandler)
+		mux.Handle("/graphql/", gqlHttpHandler)
+		// TODO enable csrf for graphql after playground done
+		mux.HandleFunc("/playground", gqlgenHandler.Playground("GraphQL playground", "/graphql"))
+	} // END gqlgen part
+
+	return mux
+}
+
+var handleFavicon = func(fs http.FileSystem) {
+	file, err := fs.Open("/static/favicon.ico")
+	if err == nil {
+		faviconBytes, err := io.ReadAll(file)
+		file.Close()
+		if err == nil {
+			http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+				w.Write(faviconBytes)
+			})
+		} else {
+			log.Printf("favicon, io ReadAll failed: %w", err)
+		}
+	} else {
+		log.Printf("favicon, Assets Open failed: %w", err)
+	}
+
+	return
+}
+
+var setTracer = func(appName, buildHash, buildTime, agentAddr string) func() {
+	cfg := jaegercfg.Configuration{
 		ServiceName: appName,
 		Sampler: &jaegercfg.SamplerConfig{
 			Type:  jaeger.SamplerTypeConst,
@@ -67,7 +209,7 @@ func main() {
 		},
 		Reporter: &jaegercfg.ReporterConfig{
 			LogSpans:           true,
-			LocalAgentHostPort: v1.GetString("JAEGER_AGENT_ADDR"),
+			LocalAgentHostPort: agentAddr,
 		},
 		Tags: []opentracing.Tag{
 			{Key: "buildHash", Value: buildHash},
@@ -75,121 +217,55 @@ func main() {
 		},
 	}
 
-	tracer, closer, err := jaegerCfgInstance.NewTracer(
+	tracer, closer, err := cfg.NewTracer(
 		// jaegercfg.Logger(jaegerlog.StdLogger),
 		jaegercfg.Metrics(metrics.NullFactory),
 	)
+	if err != nil {
+		log.Fatalf("jaeger NewTracer failed: %v\n", err)
+	}
+
 	opentracing.SetGlobalTracer(tracer)
-	defer closer.Close()
-	// end tracing cfg
 
-	// tokens, err := token.NewHMACHashToken("golangcourse")
-	// tokens, err := token.NewAesCryptHashToken("qsRY2e4hcM5T7X984E9WQ5uZ8Nty7fxB")
-	tokens, err := token.NewJwtToken(cfg.Token.Secret)
-	tmpls := templates.NewTemplates(assets.Assets, tokens)
+	return func() { closer.Close() }
+}
+
+var openDBConnect = func(cfg *config.Config) (*sql.DB, func()) {
+	// основные настройки к базе
+	// mysqlDsn := "root:love@tcp(127.0.0.1:3306)/photolist?charset=utf8&interpolateParams=true"
+	mysqlDsn := "%s:%s@tcp(%s)/%s?charset=utf8&interpolateParams=true"
+	mysqlDsn = fmt.Sprintf(mysqlDsn, cfg.DB.Username, cfg.DB.Password, cfg.DB.Host, cfg.DB.Database)
+	log.Printf("mysql DSN: %s", mysqlDsn)
+	db, err := sql.Open("mysql", mysqlDsn)
+	err = db.Ping() // вот тут будет первое подключение к базе
 	if err != nil {
-		log.Fatalf("cant init tokens: %v\n", err)
+		log.Fatalf("can't connect to db: %v\n", err)
 	}
 
-	// storage := blobstorage.NewFSStorage("./images/")
-	storage, err := blobstorage.NewS3Storage(cfg.S3.Host,
-		cfg.S3.Access, cfg.S3.Secret,
-		cfg.S3.Bucket)
-	if err != nil {
-		log.Fatalln("cant creat s3 blobstorage", err)
-	}
+	return db, func() { db.Close() }
+}
 
-	photosRepo := photos.NewPhotosRepository(db)
-	usersRepo := user.NewUsersRepository(db)
-
-	h := &photos.PhotolistHandler{
-		UsersRepo:   usersRepo,
-		PhotosRepo:  photosRepo,
-		Tmpl:        tmpls,
-		BlobStorage: storage,
-	}
-
-	sm := session.NewSessionsDB(db)
-	// sm := session.NewSessionsJWT("golangcourseSessionSecret")
-	// sm := session.NewSessionsJWTVer(cfg.Session.Secret, db)
-
-	u := &user.UserHandler{
-		Tmpl:      tmpls,
-		Sessions:  sm,
-		UsersRepo: usersRepo,
-	}
-
-	mux := http.NewServeMux()
-
-	// mux.HandleFunc("/photos/", h.List)
-	mux.HandleFunc("/photos/", h.ListGQL)
-
-	mux.HandleFunc("/api/v1/photos/list", h.ListAPI)
-	mux.HandleFunc("/api/v1/photos/upload", h.UploadAPI)
-	mux.HandleFunc("/api/v1/photos/rate", h.RateAPI)
-
-	mux.HandleFunc("/user/login", u.Login)
-	mux.HandleFunc("/user/login_oauth", u.LoginOauth)
-	mux.HandleFunc("/user/logout", u.Logout)
-	mux.HandleFunc("/user/reg", u.Reg)
-	mux.HandleFunc("/user/change_pass", u.ChangePassword)
-
-	mux.HandleFunc("/api/v1/user/follow", u.FollowAPI)
-	mux.HandleFunc("/api/v1/user/following", u.FollowingAPI)
-	mux.HandleFunc("/api/v1/user/recomends", u.RecomendsAPI)
-
-	mux.HandleFunc("/", index.Index)
-
-	{ // START gqlgen part
-		resolver := &graphql.Resolver{
-			PhotosRepo:  photosRepo,
-			UsersRepo:   usersRepo,
-			BlobStorage: storage,
-		}
-		gqlCfg := graphql.Config{
-			Resolvers: resolver,
-		}
-		gqlHandler := gqlgenHandler.GraphQL(
-			graphql.NewExecutableSchema(gqlCfg),
-			gqlgenHandler.ComplexityLimit(500),
-			gqlgenHandler.RequestMiddleware(graphql.RequestMiddleware),   // каждый запрос после парсинга
-			gqlgenHandler.ResolverMiddleware(graphql.ResolverMiddleware), // каждый вызлв ресолвера
-			gqlgenHandler.Tracer(graphql.NewTracer()),
-		)
-		myGqlHandler := graphql.UserLoaderMiddleware(resolver, gqlHandler)
-
-		mux.Handle("/graphql", myGqlHandler)
-		mux.Handle("/graphql/", myGqlHandler)
-		// TODO enable csrf for graphql after playground done
-		mux.HandleFunc("/playground", gqlgenHandler.Playground("GraphQL playground", "/graphql"))
-	} // END gqlgen part
-
-	// отрабатывают в обратном добавлению порядке, те AuthMiddleware будет 1-м
-	handlers := token.CsrfTokenMiddleware(tokens, mux)
-	handlers = session.AuthMiddleware(sm, handlers)
-	handlers = middleware.AccessLog(handlers)
-	handlers = middleware.RequestIDMiddleware(handlers)
-
-	http.Handle("/", handlers)
-
-	http.HandleFunc("/api/v1/internal/images/auth", u.InternalImagesAuth)
-
-	imagesHandler := http.StripPrefix(
-		"/images/",
-		http.FileServer(http.Dir("./images")),
+// ts returns current timestamp in RFC3339 with milliseconds
+func ts() string {
+	/*
+		https://pkg.go.dev/time#pkg-constants
+		https://stackoverflow.com/questions/35479041/how-to-convert-iso-8601-time-in-golang
+	*/
+	const (
+		RFC3339      = "2006-01-02T15:04:05Z07:00"
+		RFC3339Milli = "2006-01-02T15:04:05.000Z07:00"
 	)
-	http.Handle("/images/", imagesHandler)
+	return time.Now().UTC().Format(RFC3339Milli)
+}
 
-	http.Handle("/static/", http.FileServer(assets.Assets))
+// show writes message to standard output. Message combined from prefix msg and slice of arbitrary arguments
+func show(msg string, xs ...any) {
+	var line = ts() + ": " + msg
 
-	f, _ := assets.Assets.Open("/static/favicon.ico")
-	defer f.Close()
-	favicon, _ := ioutil.ReadAll(f)
-	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(favicon)
-	})
-
-	listenAddr := ":" + v1.GetString("http.port")
-	log.Printf("[startup] listening server at %s", listenAddr)
-	http.ListenAndServe(listenAddr, nil)
+	for _, x := range xs {
+		// https://pkg.go.dev/fmt
+		// line += fmt.Sprintf("%T(%v); ", x, x) // type(value)
+		line += fmt.Sprintf("%#v; ", x) // repr
+	}
+	fmt.Println(line)
 }

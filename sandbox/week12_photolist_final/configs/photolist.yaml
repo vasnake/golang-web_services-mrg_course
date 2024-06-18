@@ -1,9 +1,9 @@
 http: 
-  port: 8080
+  port: ":8080"
 db:
   host:     dbMysql:3306
   username: root
-  password: love
+  password:
   database: photolist
 s3: 
   host:   http://minio:9000
@@ -17,4 +17,4 @@ token:
   type:   jwt
   secret: qsRY2e4hcM5T7X984E9WQ5uZ8Nty7fxB
 example:
-  yaml: "yaml config value"
+  yaml: "yaml config value example"

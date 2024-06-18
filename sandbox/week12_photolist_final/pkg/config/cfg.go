@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -8,7 +9,7 @@ import (
 
 type Config struct {
 	HTTP struct {
-		Port int
+		Port string
 	}
 	DB struct {
 		Host     string
@@ -65,23 +66,33 @@ var Defaults = map[string]interface{}{
 }
 
 func Read(appName string, defaults map[string]interface{}, cfg interface{}) (*viper.Viper, error) {
-	v := viper.New()
+	vpr := viper.New()
 	for key, value := range defaults {
-		v.SetDefault(key, value)
+		vpr.SetDefault(key, value)
 	}
-	v.SetConfigName(appName)
-	v.AddConfigPath("/etc/")
-	v.AutomaticEnv()
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	err := v.ReadInConfig()
+
+	vpr.SetConfigName(appName)
+
+	vpr.AddConfigPath("/etc/")
+	vpr.AddConfigPath("./configs/")
+	vpr.AddConfigPath("./")
+
+	vpr.AutomaticEnv()
+	vpr.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	err := vpr.ReadInConfig()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("viper ReadInConfig failed, %w", err)
 	}
-	if cfg != nil {
-		err := v.Unmarshal(cfg)
-		if err != nil {
-			return nil, err
-		}
+
+	if cfg == nil {
+		return vpr, nil
 	}
-	return v, nil
+
+	err = vpr.Unmarshal(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("can't write to given cfg, viper Unmarshal failed, %w", err)
+	}
+	// cfg written successfully
+	return vpr, nil
 }

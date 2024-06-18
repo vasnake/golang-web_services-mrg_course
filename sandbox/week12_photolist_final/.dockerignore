@@ -5,3 +5,4 @@ tmp/*
 .DS_Store
 .gitignore
 minio_data
+secrets.env

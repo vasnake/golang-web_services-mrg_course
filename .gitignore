@@ -30,3 +30,7 @@ sandbox/images
 sandbox/week12/s3_demo/minio_data/
 sandbox/week12/s3_demo/minio_data/
 sandbox/week12/s3_photolist/minio_data/
+
+# secrets
+secrets.env
+sandbox/week12_photolist_final/secrets.env

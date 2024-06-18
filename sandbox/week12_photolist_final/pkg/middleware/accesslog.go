@@ -8,19 +8,21 @@ import (
 	"github.com/opentracing/opentracing-go"
 )
 
-func AccessLog(next http.Handler) http.Handler {
+func AccessLog(httpHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
 		ctx := r.Context()
-		span, newCtx := opentracing.StartSpanFromContext(ctx, r.URL.Path)
+		span, spanCtx := opentracing.StartSpanFromContext(ctx, r.URL.Path)
 		defer span.Finish()
 
 		requestID := RequestIDFromContext(ctx)
 		span.SetTag("myrequestid", requestID)
 
-		start := time.Now()
-		r = r.WithContext(newCtx)
-		next.ServeHTTP(w, r)
+		req := r.WithContext(spanCtx)
 
-		log.Printf("[access] %s %s %s %s %s", requestID, time.Since(start), r.RemoteAddr, r.Method, r.URL.Path)
+		httpHandler.ServeHTTP(w, req)
+
+		log.Printf("[access] %s %s %s %s %s", requestID, time.Since(start), req.RemoteAddr, req.Method, req.URL.Path)
 	})
 }

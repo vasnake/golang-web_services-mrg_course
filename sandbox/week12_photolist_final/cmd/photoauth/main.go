@@ -4,9 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
-	"time"
 
 	"photolist/pkg/config"
 	"photolist/pkg/middleware"
@@ -24,35 +22,45 @@ import (
 
 var (
 	appName   string = "photoauth"
-	buildHash string = "_dev"
-	buildTime string = "_dev"
+	buildHash string = "unknown"
+	buildTime string = "unknown"
 )
 
 func main() {
 	log.Printf("[startup] %s, commit %s, build %s", appName, buildHash, buildTime)
-	rand.Seed(time.Now().UnixNano())
 
 	cfg := &config.Config{}
-	v1, err := config.Read(appName, config.Defaults, cfg)
+	viperSvc, err := config.Read(appName, config.Defaults, cfg)
 	if err != nil {
-		log.Fatalf("cant read config, err: %v\n", err)
+		log.Fatalf("can't read config: %v\n", err)
 	}
 
-	env1 := v1.GetString("example.env1")
-	env2 := v1.GetString("example.env2")
-	log.Printf("[startup] cfg: %#v, env1 %#v, env2 %#v", cfg.HTTP.Port, env1, env2)
+	log.Printf("[startup] http.port: '%#v', example.env1 '%#v', example.env2 '%#v'",
+		cfg.HTTP.Port,
+		viperSvc.GetString("example.env1"),
+		viperSvc.GetString("example.env2"),
+	)
+
+	grpcServerAddr := viperSvc.GetString("session.grpc_addr")
+	log.Println("grpc server addr:", grpcServerAddr)
+
+	listenAddr := viperSvc.GetString("http.port")
+	log.Printf("listen addr (config http.port): '%s'", listenAddr)
 
 	// основные настройки к базе
-	// dsn := "root:love@tcp(host.docker.internal:3306)/photolist?charset=utf8&interpolateParams=true"
-	dsn := "%s:%s@tcp(%s)/%s?charset=utf8&interpolateParams=true"
-	dsn = fmt.Sprintf(dsn, cfg.DB.Username, cfg.DB.Password, cfg.DB.Host, cfg.DB.Database)
-	db, err := sql.Open("mysql", dsn)
+	// mysqlDsn := "root:love@tcp(host.docker.internal:3306)/photolist?charset=utf8&interpolateParams=true"
+	mysqlDsn := "%s:%s@tcp(%s)/%s?charset=utf8&interpolateParams=true"
+	mysqlDsn = fmt.Sprintf(mysqlDsn, cfg.DB.Username, cfg.DB.Password, cfg.DB.Host, cfg.DB.Database)
+	log.Printf("mysql DSN: %s", mysqlDsn)
+
+	db, err := sql.Open("mysql", mysqlDsn)
 	err = db.Ping() // вот тут будет первое подключение к базе
 	if err != nil {
-		log.Fatalf("[startup] cant connect to db, err: %v\n", err)
+		log.Fatalf("[startup] can't connect to db: %v\n", err)
 	}
+	defer db.Close()
 
-	// start tracing cfg
+	// start tracing cfg --------------------------------------------------------------------------
 	jaegerCfgInstance := jaegercfg.Configuration{
 		ServiceName: appName,
 		Sampler: &jaegercfg.SamplerConfig{
@@ -61,7 +69,7 @@ func main() {
 		},
 		Reporter: &jaegercfg.ReporterConfig{
 			LogSpans:           true,
-			LocalAgentHostPort: v1.GetString("JAEGER_AGENT_ADDR"),
+			LocalAgentHostPort: viperSvc.GetString("JAEGER_AGENT_ADDR"),
 		},
 		Tags: []opentracing.Tag{
 			{Key: "buildHash", Value: buildHash},
@@ -75,27 +83,26 @@ func main() {
 	)
 	opentracing.SetGlobalTracer(tracer)
 	defer closer.Close()
-	// end tracing cfg
+	// end tracing cfg ----------------------------------------------------------------------------
 
-	usersRepo := user.NewUsersRepository(db)
-	log.Println("sess grpc addr:", v1.GetString("session.grpc_addr"))
-	sm, err := session.NewSessionsGRPC(v1.GetString("session.grpc_addr"))
+	grpcSessions, err := session.NewSessionsGRPC(grpcServerAddr)
 	if err != nil {
-		log.Fatalf("[startup] cant connect to session grpc, err: %v\n", err)
+		log.Fatalf("[startup] can't connect to grpc svc: %v\n", err)
 	}
 
-	u := &user.UserHandler{
+	usersRepo := user.NewUsersRepository(db)
+
+	userSvc := &user.UserHandler{
 		Tmpl:      nil,
-		Sessions:  sm,
+		Sessions:  grpcSessions,
 		UsersRepo: usersRepo,
 	}
 
-	handlers := middleware.AccessLog(http.HandlerFunc(u.InternalImagesAuth))
-	handlers = middleware.RequestIDMiddleware(handlers)
+	httpHandler := middleware.AccessLog(http.HandlerFunc(userSvc.InternalImagesAuth))
+	httpHandler = middleware.RequestIDMiddleware(httpHandler)
 
-	http.Handle("/api/v1/internal/images/auth", handlers)
+	http.Handle("/api/v1/internal/images/auth", httpHandler)
 
-	listenAddr := ":" + v1.GetString("http.port")
 	log.Printf("[startup] listening server at %s", listenAddr)
 	http.ListenAndServe(listenAddr, nil)
 }

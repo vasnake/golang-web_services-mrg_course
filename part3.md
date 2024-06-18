@@ -2745,6 +2745,7 @@ func AccessLogInterceptor( ctx context.Context, req interface{}, info *grpc.Unar
 grpc-server
 
 # I_AM_HERE
+[sandbox](./sandbox/week12/main.go)
 ```go
 func demo_104_acl() {
 	// config: viper

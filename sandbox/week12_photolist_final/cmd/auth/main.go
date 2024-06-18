@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"math/rand"
 	"net"
 	"time"
 
@@ -27,52 +26,24 @@ import (
 
 var (
 	appName   string = "auth"
-	buildHash string = "_dev"
-	buildTime string = "_dev"
+	buildHash string = "unknown"
+	buildTime string = "unknown"
 )
-
-func AccessLogInterceptor(
-	ctx context.Context,
-	req interface{},
-	info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler,
-) (interface{}, error) {
-	start := time.Now()
-	var requestID string
-	md, mdExists := metadata.FromIncomingContext(ctx)
-	if mdExists {
-		requestID = md["x-request-id"][0]
-	} else {
-		requestID = "-"
-	}
-
-	clientContext, err := opentracing.GlobalTracer().Extract(opentracing.HTTPHeaders, traceutils.MetadataReaderWriter{md})
-	var serverSpan opentracing.Span
-	if err == nil {
-		serverSpan = opentracing.StartSpan(info.FullMethod, ext.RPCServerOption(clientContext))
-	} else {
-		serverSpan = opentracing.StartSpan(info.FullMethod)
-	}
-	defer serverSpan.Finish()
-
-	reply, err := handler(ctx, req)
-
-	log.Printf("[access] %s %s %s '%v'", requestID, time.Since(start), info.FullMethod, err)
-	return reply, err
-}
 
 func main() {
 	log.Printf("[startup] %s, commit %s, build %s", appName, buildHash, buildTime)
-	rand.Seed(time.Now().UnixNano())
 
 	cfg := &config.Config{}
-	v1, err := config.Read(appName, config.Defaults, cfg)
+	viperSvc, err := config.Read(appName, config.Defaults, cfg)
 	if err != nil {
-		log.Fatalf("[startup] cant read config, err: %v\n", err)
+		log.Fatalf("[startup] can't read config: %v\n", err)
 	}
 
-	// start tracing cfg
-	jaegerCfgInstance := jaegercfg.Configuration{
+	listenAddr := viperSvc.GetString("service.port")
+	log.Printf("tcp listen addr (config service.port): %s", listenAddr)
+
+	// start tracing cfg -----------------------------------------------------
+	jaegerCfg := jaegercfg.Configuration{
 		ServiceName: appName,
 		Sampler: &jaegercfg.SamplerConfig{
 			Type:  jaeger.SamplerTypeConst,
@@ -80,7 +51,7 @@ func main() {
 		},
 		Reporter: &jaegercfg.ReporterConfig{
 			LogSpans:           true,
-			LocalAgentHostPort: v1.GetString("JAEGER_AGENT_ADDR"),
+			LocalAgentHostPort: viperSvc.GetString("JAEGER_AGENT_ADDR"),
 		},
 		Tags: []opentracing.Tag{
 			{Key: "buildHash", Value: buildHash},
@@ -88,36 +59,74 @@ func main() {
 		},
 	}
 
-	tracer, closer, err := jaegerCfgInstance.NewTracer(
+	tracer, closer, err := jaegerCfg.NewTracer(
 		// jaegercfg.Logger(jaegerlog.StdLogger),
 		jaegercfg.Metrics(metrics.NullFactory),
 	)
 	opentracing.SetGlobalTracer(tracer)
 	defer closer.Close()
-	// end tracing cfg
+	// end tracing cfg -------------------------------------------------------
 
 	// основные настройки к базе
 	dsn := "%s:%s@tcp(%s)/%s?charset=utf8&interpolateParams=true"
 	dsn = fmt.Sprintf(dsn, cfg.DB.Username, cfg.DB.Password, cfg.DB.Host, cfg.DB.Database)
+	log.Printf("mysql DSN: %s", dsn)
 	db, err := sql.Open("mysql", dsn)
 	err = db.Ping() // вот тут будет первое подключение к базе
 	if err != nil {
-		log.Fatalf("[startup] cant connect to db, err: %v\n", err)
+		log.Fatalf("[startup] can't connect to db, err: %v\n", err)
 	}
+	defer db.Close()
 
-	server := grpc.NewServer(
-		grpc.UnaryInterceptor(AccessLogInterceptor),
-	)
-	svc := &session.AuthService{
+	authSvc := &session.AuthService{
 		DB: db,
 	}
-	session.RegisterAuthServer(server, svc)
 
-	listenAddr := v1.GetString("service.port")
-	lis, err := net.Listen("tcp", ":"+listenAddr)
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(LoggingInterceptor),
+	)
+
+	session.RegisterAuthServer(grpcServer, authSvc)
+
+	lstnr, err := net.Listen("tcp", listenAddr)
 	if err != nil {
-		log.Fatalln("[startup] cant listen port", err)
+		log.Fatalln("[startup] can't listen port", err)
 	}
+
 	log.Printf("[startup] listening server at %s", listenAddr)
-	server.Serve(lis)
+	grpcServer.Serve(lstnr)
+}
+
+func LoggingInterceptor(
+	ctx context.Context,
+	req interface{},
+	info *grpc.UnaryServerInfo,
+	reqHandlerFunc grpc.UnaryHandler,
+) (interface{}, error) {
+
+	start := time.Now()
+
+	var requestID string
+	md, mdExists := metadata.FromIncomingContext(ctx)
+	if mdExists {
+		requestID = md["x-request-id"][0]
+	} else {
+		requestID = "unknown"
+	}
+
+	var span opentracing.Span
+	spanCtx, err := opentracing.GlobalTracer().
+		Extract(opentracing.HTTPHeaders, traceutils.MetadataReaderWriter{MD: md})
+	if err == nil {
+		span = opentracing.StartSpan(info.FullMethod, ext.RPCServerOption(spanCtx))
+	} else {
+		span = opentracing.StartSpan(info.FullMethod)
+	}
+	defer span.Finish()
+
+	// do some useful work already
+	reply, err := reqHandlerFunc(ctx, req)
+
+	log.Printf("[access] %s %s %s '%v'", requestID, time.Since(start), info.FullMethod, err)
+	return reply, err
 }

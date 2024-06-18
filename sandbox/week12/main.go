@@ -239,8 +239,10 @@ func demo_106_tracing_jaeger() {
 См. sandbox\week12_photolist_final\Makefile
 
 pushd sandbox/week12_photolist_final/
+export GOWORK=off
 go mod tidy
-
+...
+make up
 `
 	show(msg)
 }

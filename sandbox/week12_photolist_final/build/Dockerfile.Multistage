@@ -1,25 +1,34 @@
-# шаг 0 - скачка зависимостей
+# шаг 0 - зависимости
 # https://github.com/proxeter/go-service-template/blob/master/deployments/docker/Dockerfile
-# FROM golang:1.13 AS dependencies
-# WORKDIR /go/src/photolist
-# COPY go.mod .
-# COPY go.sum .
-# RUN go mod download
+FROM golang:1.22.2 AS dependencies
+WORKDIR /go/src/photolist
+COPY go.mod .
+COPY go.sum .
+COPY ./local ./local
+RUN go mod download
 
-# # 1 шаг - сборка пакета
-# FROM dependencies AS build
-# если у вас завендорены зависимости
-FROM golang:1.21 AS build
+# 1 шаг - сборка
+# если у вас завендорены зависимости то шаг 0 не нужен
+# FROM golang:1.22.2 AS build
+FROM dependencies AS build
 COPY . /go/src/photolist
 WORKDIR /go/src/photolist
-RUN make build
 
-# 2 шаг - создание контейнера для запуска
+# this works (you have to create build.env file before calling 'docker build ...')
+# SHELL ["/bin/bash", "-c"]
+# RUN source ./build.env && make build BUILD_TIME=${BUILD_TIME} BUILD_HASH=${BUILD_HASH}
+
+# this works also
+ARG BUILD_TIME
+ARG BUILD_HASH
+RUN make build BUILD_TIME=${BUILD_TIME} BUILD_HASH=${BUILD_HASH}
+
+# шаг 2 - создание легкого образа с результатом
 FROM debian:bookworm-slim
 WORKDIR /app
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=build /go/src/photolist/bin/* /app/
 COPY --from=build /go/src/photolist/scripts/wait-for-it.sh /app/
+COPY --from=build /tmp/photolist/bin/* /app/
 RUN chmod +x /app/*
 EXPOSE 8080/tcp
 CMD /app/photolist

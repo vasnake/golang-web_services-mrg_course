@@ -1,13 +1,19 @@
 #!/bin/bash
 # alias gr='bash -vxe /mnt/c/Users/valik/data/github/golang-web_services-mrg_course/run.sh'
+
 PRJ_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+pushd ${PRJ_DIR}
 
 APP_SELECTOR=${GO_APP_SELECTOR:-week12} # GO_APP_SELECTOR=week12 gr
 
-pushd ${PRJ_DIR}
 APP_COMMIT=foo # $(git rev-parse --short HEAD)
 APP_BUILD_TIME=bar # $(date -u '+%Y-%m-%d_%H:%M:%S')
-# PATH=${PATH}:/mnt/c/bin/protoc-26.1-linux-x86_64/bin:${HOME}/go/bin
+
+PATH=/mnt/c/bin/protoc-26.1-linux-x86_64/bin:${HOME}/go/bin:${PATH}
+
+# docker's shit
+# vim ~/.docker/config.json  
+# sudo chown -R $(id -u):$(id -g) /tmp/photolist
 
 go_run() {
     local selector="${1}"
@@ -44,7 +50,7 @@ go_run() {
 
 go_run_module() {
     echo "####################################################################################################"
-    # modern way: https://blog.carlana.net/post/2023/golang-git-hash-how-to/
+    # version embedding, modern way: https://blog.carlana.net/post/2023/golang-git-hash-how-to/
     # go run -ldflags="-X 'main.Version=$(git rev-parse HEAD)' -X 'main.Branch=$(git rev-parse --abbrev-ref HEAD)'" ${1} -appid ${OAUTH_APP_ID:-foo} -appsecret ${OAUTH_APP_SECRET:-bar} --comments=true --servers="127.0.0.1:8081,127.0.0.1:8082"
     # go run -ldflags "-X 'week11/photolist_pkglayout/cmd/photolist.buildHash=${APP_COMMIT}' -X 'week11/photolist_pkglayout/cmd/photolist.buildTime=${APP_BUILD_TIME}'" \
     # go run -ldflags "-X 'main.buildHash=${APP_COMMIT}' -X 'main.buildTime=${APP_BUILD_TIME}'" ./week12/s3_images_nginx_acl_photolist/cmd/auth/main.go
