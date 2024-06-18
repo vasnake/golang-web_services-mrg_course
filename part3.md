@@ -2785,16 +2785,27 @@ proxy_pass http://host.docker.internal:8082/;
 tcp
 https://docs.docker.com/desktop/windows/permission-requirements/
 
+[Финальная дема фотолиста](./sandbox/week12_photolist_final/Makefile), в директории выполнить `make up`
+(WSL2 убунту под виндой 11 работает ОК). Работает так, как задумано автором, с моими косметическими поправками.
+
 ### week12 homework
 
 # I_AM_HERE
 
-???
+MUD на основе асинхрона https://stepik.org/lesson/1200650/step/1?unit=1213859
 
-многопользовательская MUD на основе асинхрона https://stepik.org/lesson/1200650/step/1?unit=1213859
+> текстовая игра в жанре MUD
+... существовали многопользовательские игры. Они имели текстовый интерфейс и назывались MUD, Multi User Dungeon.
+... (игра) реагирует на команды игрока. В домашке будет асинхрон и работа с состоянием сервиса.
+Это полезно, когда вы пишете не stateless веб сервисы. А, например, движок чата
+...
+Некоторые вещи в игре сознательно сделаны нелогичными. Это направлено на то чтобы пописать побольше кода
 
 - `handouts\golang_web_services_2023-12-28.zip\12\99_hw\mud\`
 - `handouts\golang_web_services_2024-04-26.zip\12\99_hw\mud\`
 
-- Василий Романов, Как Стать Синьером https://youtu.be/gqJfANPrNm4?feature=shared
-- Василий Романов, Уроки Проекта с Коммитом 2001 г. https://youtu.be/bK775SnBA-I?feature=shared
+Файлы
+- sandbox\week12_homework\mud\game.go: заглушка, здесь должен быть мой код
+- sandbox\week12_homework\mud\game_test.go: набор тестов для проверки моего кода
+
+Задание выполнено, когда тесты зеленые: `go test -v -race`

@@ -126,6 +126,10 @@ bash
 
 ## extra homework
 
+Относится ко всем "домашкам": реализован только необходимый минимум.
+Тесты зеленые и ладно. Надо бы сделать "правильно":
+> make it work, make it right, make it fast.
+
 ### float numbers
 
 > Numeric constants represent exact values of arbitrary precision and do not overflow.
@@ -187,6 +191,25 @@ Consequently, there are no constants denoting the IEEE-754 negative zero, infini
 - Practical Go: Real world advice for writing maintainable Go programs / Dave Cheney https://www.google.com/search?q=Practical+Go%3A+Real+world+advice+for+writing+maintainable+Go+programs+%2F+Dave+Cheney
 - http routing benchmark https://github.com/julienschmidt/go-http-routing-benchmark
 - grpc, фреймворк использующий protobuf https://grpc.io/
+- https://blog.carlana.net/post/2016-11-27-how-to-use-go-generate/
+- How to include Git version information in Go https://blog.carlana.net/post/2023/golang-git-hash-how-to/
+- Василий Романов, Как Стать Синьером https://youtu.be/gqJfANPrNm4?feature=shared
+- Василий Романов, Уроки Проекта с Коммитом 2001 г. https://youtu.be/bK775SnBA-I?feature=shared
+
+docker
+- https://docs.docker.com/compose/environment-variables/variable-interpolation/#substitute-with---env-file
+- https://docs.docker.com/compose/environment-variables/variable-interpolation/#env-file-syntax
+- https://stackoverflow.com/questions/20635472/using-the-run-instruction-in-a-dockerfile-with-source-does-not-work
+- https://docs.docker.com/compose/use-secrets/
+- https://docs.docker.com/compose/compose-file/09-secrets/
+- https://docs.docker.com/reference/dockerfile/
+- https://docs.docker.com/reference/cli/docker/image/build/
+- https://dev.to/mjnaderi/accessing-host-services-from-docker-containers-1a97
+- https://stackoverflow.com/questions/24319662/from-inside-of-a-docker-container-how-do-i-connect-to-the-localhost-of-the-mach
+
+make
+- https://www.gnu.org/software/make/manual/html_node/Using-Variables.html
+- https://gist.github.com/mihow/9c7f559807069a03e302605691f85572
 
 ### vscode hints
 

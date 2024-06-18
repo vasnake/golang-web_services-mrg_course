@@ -44,6 +44,7 @@ go_run() {
         week11)                     go_run_sandbox week11;;
         week11_homework)            go_run_sandbox_week11_shop_gql_test;;
         week12)                     go_run_sandbox week12;;
+        week12_photolist_final)     go_run_sandbox_week12_photolist_final;;
         *)                          errorExit "Unknown program: ${selector}";;
     esac
 }
@@ -71,6 +72,11 @@ go_test_module() {
     exit_code=$?
     echo "####################################################################################################"
     return $exit_code
+}
+
+go_run_sandbox_week12_photolist_final(){
+    pushd ${PRJ_DIR}/sandbox/week12_photolist_final/
+    make up
 }
 
 go_run_sandbox_week11_shop_gql_test(){
