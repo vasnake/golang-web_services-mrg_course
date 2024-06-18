@@ -37,4 +37,5 @@ use (
 	./week11
 	./week11_homework/shop_gql
 	./week12
+	./week12_homework/mud
 )

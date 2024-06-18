@@ -30,7 +30,7 @@ var game0cases = [][]game0Case{
 		{8, "идти коридор", "ничего интересного. можно пройти - кухня, комната, улица"},
 		{9, "применить ключи дверь", "дверь открыта"}, // действие применить
 		{11, "идти улица", "на улице весна. можно пройти - домой"},
-	},
+	}, // 0
 	[]game0Case{
 		{1, "осмотреться", "ты находишься на кухне, на столе чай, надо собрать рюкзак и идти в универ. можно пройти - коридор"},
 		{2, "завтракать", "неизвестная команда"},  // придёт топать в универ голодным :(
@@ -57,7 +57,7 @@ var game0cases = [][]game0Case{
 		{23, "применить телефон шкаф", "нет предмета в инвентаре - телефон"}, // нет предмета
 		{24, "применить ключи шкаф", "не к чему применить"},                  // предмет есть, но применить его к этому нельзя
 		{25, "идти улица", "на улице весна. можно пройти - домой"},
-	},
+	}, // 1
 }
 
 func TestGameSingleplayer(t *testing.T) {
@@ -85,7 +85,7 @@ func TestGameSingleplayer(t *testing.T) {
 		initGame()
 		addPlayer(players["Tristan"])
 
-		for _, item := range commands {
+		for cmdNum, item := range commands {
 			players["Tristan"].HandleInput(item.command)
 			time.Sleep(time.Millisecond)
 			runtime.Gosched() // дадим считать ответ
@@ -93,7 +93,7 @@ func TestGameSingleplayer(t *testing.T) {
 			answer := lastOutput["Tristan"]
 			mu.Unlock()
 			if answer != item.answer {
-				t.Error("case:", caseNum, item.step,
+				t.Error("case:", caseNum, item.step, ", cmdNum:", cmdNum,
 					"\n\tcmd:", item.command,
 					"\n\tresult:  ", answer,
 					"\n\texpected:", item.answer)
