@@ -245,4 +245,59 @@ go mod tidy
 make up
 `
 	show(msg)
+
+	_ = `
+http://localhost:16686/trace/31f6e9aae6e3f173
+
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 1.031347ms [user]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 510ns [user id]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 344ns [user name]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 261ns [user avatar]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 2.411975ms [me]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 443ns [me id]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 256ns [me name]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 375ns [me avatar]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 715.526µs [me followedUsers]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 446ns [me followedUsers 0 id]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 350ns [me followedUsers 0 name]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 191ns [me followedUsers 0 avatar]
+deployments-photolist-1  | 2024/06/18 13:57:09 call UserRepository.IsFollowed - maybe user dataloader? 1 2
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 2.938979ms [user photos]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 613ns [user photos 0 id]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 456ns [user photos 0 url]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 318ns [user photos 0 comment]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 7.479µs [user photos 0 rating]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 141ns [user photos 0 liked]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 1.073278ms [me followedUsers 0 followed]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 743ns [user photos 1 id]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 2.05996ms [me recomendedUsers]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 394ns [user photos 1 url]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 273ns [user photos 1 comment]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 190ns [user photos 1 rating]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 221ns [user photos 1 liked]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 2.362413ms [user photos 0 user]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 649ns [user photos 0 user id]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 364ns [user photos 0 user name]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 308ns [user photos 0 user avatar]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 1.179µs [user photos 0 user followed]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 1.929607ms [user photos 1 user]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 243ns [user photos 1 user id]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 307ns [user photos 1 user name]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 209ns [user photos 1 user avatar]
+deployments-photolist-1  | 2024/06/18 13:57:09 [ResolverMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 429ns [user photos 1 user followed]
+deployments-photolist-1  | 2024/06/18 13:57:09 [RequestMiddleware] 0f6ffeb2624f5337b0150640c6d809e9 7.720422ms renderUserPage 29
+deployments-photolist-1  | 2024/06/18 13:57:09 [access] 0f6ffeb2624f5337b0150640c6d809e9 16.795492ms 172.28.0.8:36970 POST /graphql
+deployments-nginx-1      | 172.28.0.1 [18/Jun/2024:13:57:09 +0000] "POST /graphql HTTP/1.1" 200 922 "http://localhost:8080/photos/foo" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36" 0.018 0f6ffeb2624f5337b0150640c6d809e9
+deployments-photoauth-1  | 2024/06/18 13:57:09 ----- ctxWithTrace md map[uber-trace-id:[2f69a00ecf2abc36:184d5aea5b0369f9:2f69a00ecf2abc36:1] x-request-id:[9f61b266683364099cda683d6d239648]]
+deployments-photoauth-1  | 2024/06/18 13:57:09 ----- ctxWithTrace md map[uber-trace-id:[47de956689554a8f:537d0aafc2333036:47de956689554a8f:1] x-request-id:[e6300aaf058782ab134622dfa8103638]]
+deployments-auth-1       | 2024/06/18 13:57:09 [access] 9f61b266683364099cda683d6d239648 3.75123ms /session.Auth/Check '<nil>'
+deployments-photoauth-1  | 2024/06/18 13:57:09 call UserRepository.IsFollowed - maybe user dataloader? 1 2
+deployments-photoauth-1  | 2024/06/18 13:57:09 [access] 9f61b266683364099cda683d6d239648 53.627883ms 172.28.0.8:53622 GET /api/v1/internal/images/auth
+deployments-auth-1       | 2024/06/18 13:57:09 [access] e6300aaf058782ab134622dfa8103638 34.239565ms /session.Auth/Check '<nil>'
+deployments-photoauth-1  | 2024/06/18 13:57:09 call UserRepository.IsFollowed - maybe user dataloader? 1 2
+deployments-photoauth-1  | 2024/06/18 13:57:09 [access] e6300aaf058782ab134622dfa8103638 80.008068ms 172.28.0.8:53628 GET /api/v1/internal/images/auth
+deployments-nginx-1      | 172.28.0.1 [18/Jun/2024:13:57:09 +0000] "GET /images/1/cf140d24-6984-4489-a53f-3a71fa623754_600.jpg HTTP/1.1" 304 560 "http://localhost:8080/photos/foo" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36" 0.084 9f61b266683364099cda683d6d239648
+deployments-nginx-1      | 172.28.0.1 [18/Jun/2024:13:57:09 +0000] "GET /images/1/ed896dec-c886-4623-b645-c600a3288012_600.jpg HTTP/1.1" 304 560 "http://localhost:8080/photos/foo" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36" 0.089 e6300aaf058782ab134622dfa8103638
+
+	`
 }
