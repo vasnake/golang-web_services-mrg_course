@@ -63,21 +63,21 @@ var game0cases = [][]game0Case{
 func TestGameSingleplayer(t *testing.T) {
 	for caseNum, commands := range game0cases {
 
-		lastOutput := map[string]string{
-			"Tristan": "",
-		}
-
 		players := map[string]*Player{
 			"Tristan": NewPlayer("Tristan"),
 		}
 
-		mu := &sync.Mutex{}
+		playersOutput := map[string]string{
+			"Tristan": "",
+		}
 
+		// async, read player chan, write to buf
+		mu := &sync.Mutex{}
 		go func() {
 			output := players["Tristan"].GetOutput()
 			for msg := range output {
 				mu.Lock()
-				lastOutput["Tristan"] = msg
+				playersOutput["Tristan"] = msg
 				mu.Unlock()
 			}
 		}()
@@ -85,18 +85,25 @@ func TestGameSingleplayer(t *testing.T) {
 		initGame()
 		addPlayer(players["Tristan"])
 
-		for cmdNum, item := range commands {
+		for _, item := range commands {
+			// send inp message
 			players["Tristan"].HandleInput(item.command)
+
+			// collect out message
 			time.Sleep(time.Millisecond)
 			runtime.Gosched() // дадим считать ответ
 			mu.Lock()
-			answer := lastOutput["Tristan"]
+			answer := playersOutput["Tristan"]
 			mu.Unlock()
+
+			// check message
 			if answer != item.answer {
-				t.Error("case:", caseNum, item.step, ", cmdNum:", cmdNum,
+				// t.Error vs t.Fatal
+				t.Fatal("case:", caseNum, item.step,
 					"\n\tcmd:", item.command,
-					"\n\tresult:  ", answer,
-					"\n\texpected:", item.answer)
+					"\n\texpected:", item.answer,
+					"\n\tactual  :  ", answer,
+				)
 			}
 		}
 	}
@@ -212,15 +219,16 @@ func TestGameMiltiplayer(t *testing.T) {
 		addPlayer(players["Izolda"])
 
 		for _, item := range commands {
-			lastOutput = map[string]string{}
-			players[item.player].HandleInput(item.command)
+			lastOutput = map[string]string{}               // clear
+			players[item.player].HandleInput(item.command) // player write to chan, goroutine pipe from chan to lastOutput
 			time.Sleep(time.Millisecond)
 			runtime.Gosched() // дадим считать ответ
 			if !reflect.DeepEqual(lastOutput, item.answers) {
-				t.Error("case:", caseNum, item.step,
+				t.Fatal("case:", caseNum, item.step,
 					"\n\tcmd:", item.command,
-					"\n\tresult:  ", lastOutput,
-					"\n\texpected:", item.answers)
+					"\n\texpected:", item.answers,
+					"\n\tactual  :  ", lastOutput,
+				)
 			}
 		}
 	}
