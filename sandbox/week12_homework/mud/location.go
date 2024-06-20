@@ -7,10 +7,20 @@ import (
 
 // Location: elements of game state
 type Location struct {
-	name              string
-	gotoDescription   string
-	lookupDescription string
-	objects           []*ObjectInLocation
+	name               string
+	gotoDescription    string
+	lookupDescription  string
+	connectedLocations []string
+	objects            []*ObjectInLocation
+	items              []*ItemInLocation
+
+	// lookupDescription: "на столе: ключи, конспекты, на стуле - рюкзак. можно пройти - коридор",
+	// после надевания рюкзака:
+	// на столе: ключи, конспекты. можно пройти - коридор
+}
+
+func (from *Location) isLocationsConnected(to *Location) bool {
+	return slices.Contains(from.connectedLocations, to.name)
 }
 
 func (loc *Location) getGoToDescription() string {
@@ -18,7 +28,21 @@ func (loc *Location) getGoToDescription() string {
 }
 
 func (loc *Location) getLookupDescription() string {
-	return loc.lookupDescription
+	var _ = `
+		lookupDescription:  
+			"на столе: ключи, конспекты, на стуле - рюкзак. можно пройти - коридор",
+			"на столе: ключи, конспекты. можно пройти - коридор"
+
+		connectedLocations: []string{"коридор"},
+		objects:            []*ObjectInLocation{},
+		items: []*ItemInLocation{
+			{name: "ключи", prefix: "на столе: "},
+			{name: "конспекты", prefix: "на столе: "},
+			{name: "рюкзак", prefix: "на стуле - "},
+		},
+	`
+	// return loc.lookupDescription
+	panic("TODO: func (loc *Location) getLookupDescription() string")
 }
 
 func (loc *Location) getName() string {
@@ -34,6 +58,18 @@ func (loc *Location) getObject(name string) (*ObjectInLocation, error) {
 	}
 
 	return loc.objects[idx], nil
+}
+
+type ItemInLocation struct {
+	// lookupDescription: "на столе: ключи, конспекты, на стуле - рюкзак. можно пройти - коридор",
+	// после надевания рюкзака:
+	// на столе: ключи, конспекты. можно пройти - коридор
+
+	// ключи, рюкзак, ...
+	name string
+
+	// `на столе: `, `на стуле - `, ...
+	prefix string
 }
 
 type ObjectInLocation struct {

@@ -64,10 +64,12 @@ func initGame() {
 	// {18, "идти кухня", "кухня, ничего интересного. можно пройти - коридор"},
 	// {1, "осмотреться", "ты находишься на кухне, на столе чай, надо собрать рюкзак и идти в универ. можно пройти - коридор"},
 	loc := &Location{
-		name:              "кухня",
-		gotoDescription:   "кухня, ничего интересного. можно пройти - коридор",
-		lookupDescription: "ты находишься на кухне, на столе чай, надо собрать рюкзак и идти в универ. можно пройти - коридор",
-		objects:           make([]*ObjectInLocation, 0, 16),
+		name:               "кухня",
+		gotoDescription:    "кухня, ничего интересного. можно пройти - коридор",
+		lookupDescription:  "ты находишься на кухне, на столе чай, надо собрать рюкзак и идти в универ. можно пройти - коридор",
+		connectedLocations: []string{"коридор"},
+		objects:            make([]*ObjectInLocation, 0, 16),
+		items:              []*ItemInLocation{},
 	}
 	g.addLocation(loc)
 
@@ -76,34 +78,58 @@ func initGame() {
 		name:              "коридор",
 		gotoDescription:   "ничего интересного. можно пройти - кухня, комната, улица",
 		lookupDescription: "ты находишься в коридоре. можно пройти - кухня, комната, улица",
-		objects:           make([]*ObjectInLocation, 0, 16),
+		connectedLocations: []string{
+			"кухня", "комната", "улица",
+		},
+		objects: []*ObjectInLocation{
+			{
+				name:           "дверь",
+				compatibleWith: []string{"ключи"},
+				currentState:   "дверь закрыта",
+				activatedState: "дверь открыта", // {9, "применить ключи дверь", "дверь открыта"}
+			},
+		},
+		items: []*ItemInLocation{},
 	}
-	door := ObjectInLocation{
-		name:           "дверь",
-		compatibleWith: []string{"ключи"},
-		currentState:   "дверь закрыта",
-		activatedState: "дверь открыта", // {9, "применить ключи дверь", "дверь открыта"}
-	}
-	loc.objects = append(loc.objects, &door)
 	g.addLocation(loc)
 
 	// {3, "идти комната", "ты в своей комнате. можно пройти - коридор"},
 	// {4, "осмотреться", "на столе: ключи, конспекты, на стуле - рюкзак. можно пройти - коридор"},
 	loc = &Location{
-		name:              "комната",
-		gotoDescription:   "ты в своей комнате. можно пройти - коридор",
-		lookupDescription: "на столе: ключи, конспекты, на стуле - рюкзак. можно пройти - коридор",
-		objects:           make([]*ObjectInLocation, 0, 16),
+		name:               "комната",
+		gotoDescription:    "ты в своей комнате. можно пройти - коридор",
+		lookupDescription:  "на столе: ключи, конспекты, на стуле - рюкзак. можно пройти - коридор",
+		connectedLocations: []string{"коридор"},
+		objects:            []*ObjectInLocation{},
+		items: []*ItemInLocation{
+			{name: "ключи", prefix: "на столе: "},
+			{name: "конспекты", prefix: "на столе: "},
+			{name: "рюкзак", prefix: "на стуле - "},
+		},
 	}
 	g.addLocation(loc)
 
-	var I_AM_HERE = `
-024-06-19T17:55:44.232Z: Player.HandleInput, cmd: "идти улица";
-2024-06-19T17:55:44.232Z: Game.getLocationObj, search for loc: "улица";
---- FAIL: TestGameSingleplayer (0.01s)
-panic: game getLocationObj failed: g.locations doesn't have location with name 'улица'
+	// {11, "идти улица", "на улице весна. можно пройти - домой"}
+	loc = &Location{
+		name:               "улица",
+		gotoDescription:    "на улице весна. можно пройти - домой",
+		lookupDescription:  "на улице весна. можно пройти - домой",
+		connectedLocations: []string{"домой"},
+		objects:            make([]*ObjectInLocation, 0, 16),
+		items:              []*ItemInLocation{},
+	}
+	g.addLocation(loc)
 
-{11, "идти улица", "на улице весна. можно пройти - домой"}
+	var _ = `
+
+2024-06-20T18:14:03.082Z: Player.HandleInput, cmd: "одеть рюкзак";
+2024-06-20T18:14:03.083Z: Player.HandleInput, cmd: "осмотреться";
+2024-06-20T18:14:03.083Z: Game.getLocationObj, search for loc: "комната";
+    game_test.go:102: case: 1 10 
+                cmd: осмотреться
+                expected: на столе: ключи, конспекты. можно пройти - коридор
+                actual  :   на столе: ключи, конспекты, на стуле - рюкзак. можно пройти - коридор
+
 	`
 
 	game = g
@@ -153,7 +179,9 @@ func (g *Game) getLocationObj(locName string) (*Location, error) {
 
 // isLocationsConnected implements IGame.
 func (g *Game) isLocationsConnected(currLoc string, targetLoc string) bool {
-	return true
+	cLoc := g.getLocation(currLoc)
+	tLoc := g.getLocation(targetLoc)
+	return cLoc.isLocationsConnected(tLoc)
 }
 
 var game IGame = &Game{}
@@ -196,6 +224,8 @@ type IPlayer interface {
 	hasItem(item string) bool
 
 	collectItem(item string)
+
+	hasBag() bool
 }
 
 type EmptyStruct struct{}

@@ -16,6 +16,7 @@ func NewPlayer(name string) *Player {
 		cmdResponses:        make(chan string),
 		currentLocationName: "unknown",
 		collectedItems:      make(map[string]EmptyStruct, 16),
+		isBagReady:          false,
 	}
 }
 
@@ -24,10 +25,19 @@ type Player struct {
 	cmdResponses        chan string
 	currentLocationName string
 	collectedItems      map[string]EmptyStruct
+	isBagReady          bool // inventory
+}
+
+// hasBag implements IPlayer.
+func (p *Player) hasBag() bool {
+	return p.isBagReady
 }
 
 func (p *Player) collectItem(item string) {
 	p.collectedItems[item] = EmptyStruct{}
+	if item == "рюкзак" {
+		p.isBagReady = true
+	}
 }
 
 // hasItem implements IPlayer.

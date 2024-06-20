@@ -5,20 +5,6 @@ import (
 	"strings"
 )
 
-var _ = `
-cmd: осмотреться
-expected: ты находишься на кухне, на столе чай, надо собрать рюкзак и идти в универ. можно пройти - коридор
-
-cmd: идти коридор
-expected: ничего интересного. можно пройти - кухня, комната, улица
-
-{5, "одеть рюкзак", "вы одели: рюкзак"}
-
-{6, "взять ключи", "предмет добавлен в инвентарь: ключи"}
-
-{9, "применить ключи дверь", "дверь открыта"}
-`
-
 func parseCommand(cmd string) ICommand {
 	switch {
 
@@ -51,9 +37,19 @@ func parseCommand(cmd string) ICommand {
 		}
 
 	default:
-		return nil
+		return &UnknownCmd{}
 
 	}
+}
+
+var _ ICommand = &UnknownCmd{} // type check
+// {2, "завтракать", "неизвестная команда"}
+type UnknownCmd struct{}
+
+// execute implements ICommand.
+func (u *UnknownCmd) execute(game IGame, player IPlayer) error {
+	player.commandReaction("неизвестная команда")
+	return nil
 }
 
 var _ ICommand = &LookAroundCmd{} // type check
@@ -89,25 +85,19 @@ func (g *GotoCmd) execute(game IGame, player IPlayer) error {
 текущая локация содержит список связанных (куда можно пройти) локаций;
 целевая локация содержит описание, которое надо выдать (реакция);
 	`
-	var targetLocatoin string = g.locationName
+	var targetLocation string = g.locationName
 	var currLocation string = player.getLocation()
-	if currLocation == targetLocatoin {
+	if currLocation == targetLocation {
 		return fmt.Errorf("GotoCmd failed, target == current: %s", currLocation)
 	}
 
-	if game.isLocationsConnected(currLocation, targetLocatoin) {
-		player.setLocation(targetLocatoin)
-		player.commandReaction(game.getGoToLocationDescription(targetLocatoin))
+	if game.isLocationsConnected(currLocation, targetLocation) {
+		player.setLocation(targetLocation)
+		player.commandReaction(game.getGoToLocationDescription(targetLocation))
 	} else {
-		return fmt.Errorf("GotoCmd failed, locations are not connected, curr %s, target %s", currLocation, targetLocatoin)
+		// return fmt.Errorf("GotoCmd failed, locations are not connected, curr %s, target %s", currLocation, targetLocatoin)
+		player.commandReaction(fmt.Sprintf("нет пути в %s", targetLocation))
 	}
-
-	// cmd: идти коридор
-	// var targetLocationDescr string = "ничего интересного. можно пройти - кухня, комната, улица"
-	// player.commandReaction(targetLocationDescr)
-
-	// cmd: идти комната
-	// expected: ты в своей комнате. можно пройти - коридор
 
 	return nil
 }
@@ -124,7 +114,13 @@ type PutOnCmd struct {
 // execute implements ICommand.
 func (p *PutOnCmd) execute(game IGame, player IPlayer) error {
 	// {5, "одеть рюкзак", "вы одели: рюкзак"}
-	// TODO: add item to inventory (player's bag), remove from location's bag
+	var _ = `
+айтем (если есть в локации)
+добавить в инвентарь плеера;
+если взял успешно, убрать айтем из локации;
+	`
+	player.collectItem(p.item)
+	// location.removeItem(p.item)
 	player.commandReaction(fmt.Sprintf("вы одели: %s", p.item))
 	return nil
 }
@@ -140,11 +136,20 @@ type TakeCmd struct {
 // execute implements ICommand.
 func (t *TakeCmd) execute(game IGame, player IPlayer) error {
 	// {6, "взять ключи", "предмет добавлен в инвентарь: ключи"}
-	// add item to inventory (player's bag)
-	player.collectItem(t.item)
-	// TODO: remove item from location's bag
+	// {8, "взять ключи", "некуда класть"}
+	var _ = `
+айтем (если есть в локации)
+добавить в инвентарь плеера (если есть бэг);
+если взял успешно, убрать айтем из локации;
+	`
+	if player.hasBag() {
+		player.collectItem(t.item)
+		// location.removeItem(t.item)
+		player.commandReaction(fmt.Sprintf("предмет добавлен в инвентарь: %s", t.item))
+	} else {
+		player.commandReaction("некуда класть")
+	}
 
-	player.commandReaction(fmt.Sprintf("предмет добавлен в инвентарь: %s", t.item))
 	return nil
 }
 
@@ -170,6 +175,7 @@ func (a *ApplyCmd) execute(game IGame, player IPlayer) error {
 в локации (где плеер находится) есть обьект;
 обьект может быть "активирован" айтемом;
 реакция: состояние обьекта после "активации"
+
 	`
 	if player.hasItem(a.applyItem) {
 		locName := player.getLocation()
@@ -186,7 +192,7 @@ func (a *ApplyCmd) execute(game IGame, player IPlayer) error {
 			return fmt.Errorf("no such object (%s) in location: '%s'; %w", a.toObject, loc.name, err)
 		}
 	} else {
-		return fmt.Errorf("no such item in player's bag: '%s'", a.applyItem)
+		player.commandReaction(fmt.Sprintf("нет предмета в инвентаре - %s", a.applyItem))
 	}
 
 	return nil
