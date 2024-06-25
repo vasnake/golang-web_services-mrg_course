@@ -2790,8 +2790,6 @@ https://docs.docker.com/desktop/windows/permission-requirements/
 
 ### week12 homework
 
-# I_AM_HERE
-
 MUD на основе асинхрона https://stepik.org/lesson/1200650/step/1?unit=1213859
 
 > текстовая игра в жанре MUD
@@ -2809,3 +2807,7 @@ MUD на основе асинхрона https://stepik.org/lesson/1200650/step/
 - sandbox\week12_homework\mud\game_test.go: набор тестов для проверки моего кода
 
 Задание выполнено, когда тесты зеленые: `go test -v -race`
+
+Done.
+Сделана минималка из минималки, чтобы тесты были зеленые.
+Под конец уже забил болт и допустил дубляж стейта и расхождение логики. Пох, надоело, слишком трудоемко и не даёт ничего нового по языку.

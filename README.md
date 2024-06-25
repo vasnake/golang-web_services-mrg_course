@@ -116,7 +116,7 @@ https://stepik.org/course/187490/syllabus
 - [handouts/golang_web_services_2023-12-28.zip](./handouts/golang_web_services_2023-12-28.zip)
 - [handouts/golang_web_services_2024-04-26.zip](./handouts/golang_web_services_2024-04-26.zip)
 
-У меня винда и WSL, поэтому я себе сделал такой раннер для кода:
+У меня винда11 и WSL, поэтому я себе сделал такой раннер для кода:
 ```hs
 pushd /mnt/c/Users/${LOGNAME}/data/github/golang-web_services-mrg_course/sandbox
 alias gr='bash -vxe /mnt/c/Users/${LOGNAME}/data/github/golang-web_services-mrg_course/run.sh'
@@ -174,6 +174,10 @@ Consequently, there are no constants denoting the IEEE-754 negative zero, infini
 ### week 9, rwa
 
 [week 9, homework](./part3.md#week9-homework)
+Сделан только необходимый минимум. Надо бы сделать "правильно" и с прицелом на масштабируемость.
+
+### цуулы 10 .. 12
+
 Сделан только необходимый минимум. Надо бы сделать "правильно" и с прицелом на масштабируемость.
 
 ## Info, links
