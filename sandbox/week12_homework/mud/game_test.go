@@ -102,7 +102,7 @@ func TestGameSingleplayer(t *testing.T) {
 				t.Fatal("case:", caseNum, item.step,
 					"\n\tcmd:", item.command,
 					"\n\texpected:", item.answer,
-					"\n\tactual  :  ", answer,
+					"\n\tactual  :", answer,
 				)
 			}
 		}
@@ -227,7 +227,7 @@ func TestGameMiltiplayer(t *testing.T) {
 				t.Fatal("case:", caseNum, item.step,
 					"\n\tcmd:", item.command,
 					"\n\texpected:", item.answers,
-					"\n\tactual  :  ", lastOutput,
+					"\n\tactual  :", lastOutput,
 				)
 			}
 		}

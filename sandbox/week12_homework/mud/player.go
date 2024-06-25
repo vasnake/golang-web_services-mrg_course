@@ -1,31 +1,48 @@
 package main
 
+import "fmt"
+
 var _ IPlayer = &Player{} // type check
 
 // NewPlayer: create new named player
 func NewPlayer(name string) *Player {
-	// GetOutput could be `GetOutput() map[string]any`
-	// var foo = make(map[string]EmptyStruct, 16)
-	// for bar := range foo {
-	// 	var _ string = bar
-	// }
-
-	show("new Player ...")
+	show("new Player ", name)
 
 	return &Player{
+		name:                name,
 		cmdResponses:        make(chan string),
 		currentLocationName: "unknown",
-		collectedItems:      make(map[string]EmptyStruct, 16),
 		isBagReady:          false,
+		collectedItems:      make(map[string]EmptyStruct, 16),
+		locationsStates:     make(map[string]EmptyStruct, 16),
 	}
 }
 
 // Player: IPlayer implementation
 type Player struct {
+	name                string
 	cmdResponses        chan string
 	currentLocationName string
-	collectedItems      map[string]EmptyStruct
 	isBagReady          bool // inventory
+	collectedItems      map[string]EmptyStruct
+	locationsStates     map[string]EmptyStruct
+}
+
+// getName implements IPlayer.
+func (p *Player) getName() string {
+	return p.name
+}
+
+// isStateInLocationState implements IPlayer.
+func (p *Player) isStateInLocationState(locName string, state string) bool {
+	// if player.isStateInLocationState("коридор", "дверь открыта")
+	_, isIn := p.locationsStates[fmt.Sprintf("%s : %s", locName, state)] // коридор : дверь открыта
+	return isIn
+}
+
+func (p *Player) setStateInLocationState(locName string, state string) {
+	// player.setStateInLocationState("коридор", "дверь открыта")
+	p.locationsStates[fmt.Sprintf("%s : %s", locName, state)] = EmptyStruct{} // коридор : дверь открыта
 }
 
 // hasBag implements IPlayer.
@@ -64,7 +81,7 @@ func (p *Player) commandReaction(msg string) {
 // HandleInput implements IPlayer.
 // Process command and generate output message
 func (p *Player) HandleInput(cmd string) {
-	show("Player.HandleInput, cmd: ", cmd)
+	show("Player.HandleInput: ", p.getName(), p.getLocation(), cmd)
 
 	typedCmd := parseCommand(cmd)
 	if typedCmd == nil {

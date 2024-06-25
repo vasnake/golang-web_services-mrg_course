@@ -36,6 +36,16 @@ func parseCommand(cmd string) ICommand {
 			return nil
 		}
 
+	// broadcast: сказать Пора топать в универ
+	case strings.HasPrefix(cmd, "сказать "):
+		phrase := strings.TrimPrefix(cmd, "сказать ")
+		return &ShoutCmd{phrase: phrase}
+
+	// personal: сказать_игроку Izolda Может ещё по чаю лучше?
+	case strings.HasPrefix(cmd, "сказать_игроку "):
+		name_phrase := strings.TrimPrefix(cmd, "сказать_игроку ")
+		name, phrase, _ := strings.Cut(name_phrase, " ")
+		return &SayToPlayerCmd{to: name, body: phrase}
 	default:
 		return &UnknownCmd{}
 
@@ -60,12 +70,24 @@ type LookAroundCmd struct{}
 // execute implements ICommand.
 func (l *LookAroundCmd) execute(game IGame, player IPlayer) error {
 	var currLocation string = player.getLocation()
-	player.commandReaction(game.getLookupLocationDescription(currLocation))
+	descr := game.getLookupLocationDescription(currLocation, player)
 
-	// player.commandReaction("ты находишься на кухне, на столе чай, надо собрать рюкзак и идти в универ. можно пройти - коридор")
-	// case: 0 4
-	// cmd: осмотреться
-	// expected: на столе: ключи, конспекты, на стуле - рюкзак. можно пройти - коридор
+	// I'm alone?
+	players := game.getPlayersInLocation(currLocation)
+	if len(players) > 1 {
+		// other players
+		for _, p := range players {
+			if p.getName() != player.getName() {
+				descr = descr + fmt.Sprintf(". Кроме вас тут ещё %s", p.getName())
+			} else {
+				// it's me
+			}
+		}
+	} else {
+		// only one
+	}
+
+	player.commandReaction(descr)
 
 	return nil
 }
@@ -84,18 +106,62 @@ func (g *GotoCmd) execute(game IGame, player IPlayer) error {
 игрок находится в текущей $location (при переходе она меняется на целевую);
 текущая локация содержит список связанных (куда можно пройти) локаций;
 целевая локация содержит описание, которое надо выдать (реакция);
+
+переход на новую локацию может быть под условием.
+что порождает два варианта: условие выполнено, не выполнено.
+
+пример, условие:
+{22, "применить ключи дверь", "дверь открыта"}
+
+условие проверяет стейт игрока-в-локации,
+пример: ранее игрок открыл дверь (поменял состояние объекта дверь).
+
+игрок может хранить под ключом (локация, объект) состояние обьекта в этой локации,
+после "применить ключи дверь" дверь получает стейт "дверь открыта".
+команда "идти улица" проверяет стейт двери (в данных игрока для данной локации)
+
+идти улица => дверь закрыта
+применить ключи дверь => дверь открыта
+идти улица => на улице весна. можно пройти - домой
+
 	`
+
 	var targetLocation string = g.locationName
 	var currLocation string = player.getLocation()
+	var currLocObj = game.getLocation(currLocation)
+
 	if currLocation == targetLocation {
 		return fmt.Errorf("GotoCmd failed, target == current: %s", currLocation)
 	}
 
 	if game.isLocationsConnected(currLocation, targetLocation) {
-		player.setLocation(targetLocation)
-		player.commandReaction(game.getGoToLocationDescription(targetLocation))
+		canGo := true
+		reaction := game.getGoToLocationDescription(targetLocation)
+
+		// if location have condition and it is not met
+		if currLocObj.isGotoConditionExists(targetLocation) {
+			cond, negativeReaction := currLocObj.getGotoCondition(targetLocation) // дверь открыта, дверь закрыта
+			if player.isStateInLocationState(currLocation, cond) {
+				// дверь открыта
+				canGo = true
+			} else {
+				// дверь закрыта
+				canGo = false
+				reaction = negativeReaction
+			}
+		} else {
+			// no condition
+			canGo = true
+		}
+
+		// if no condition or condition met
+		if canGo {
+			player.setLocation(targetLocation)
+		}
+		player.commandReaction(reaction)
+
 	} else {
-		// return fmt.Errorf("GotoCmd failed, locations are not connected, curr %s, target %s", currLocation, targetLocatoin)
+		// not connected
 		player.commandReaction(fmt.Sprintf("нет пути в %s", targetLocation))
 	}
 
@@ -120,7 +186,11 @@ func (p *PutOnCmd) execute(game IGame, player IPlayer) error {
 если взял успешно, убрать айтем из локации;
 	`
 	player.collectItem(p.item)
-	// location.removeItem(p.item)
+
+	locName := player.getLocation()
+	location := game.getLocation(locName)
+	location.removeItem(p.item)
+
 	player.commandReaction(fmt.Sprintf("вы одели: %s", p.item))
 	return nil
 }
@@ -142,12 +212,20 @@ func (t *TakeCmd) execute(game IGame, player IPlayer) error {
 добавить в инвентарь плеера (если есть бэг);
 если взял успешно, убрать айтем из локации;
 	`
-	if player.hasBag() {
-		player.collectItem(t.item)
-		// location.removeItem(t.item)
-		player.commandReaction(fmt.Sprintf("предмет добавлен в инвентарь: %s", t.item))
+
+	location := game.getLocation(player.getLocation())
+	if location.isItemExists(t.item) {
+		if player.hasBag() {
+			player.collectItem(t.item)
+			location.removeItem(t.item)
+			player.commandReaction(fmt.Sprintf("предмет добавлен в инвентарь: %s", t.item))
+		} else {
+			// no bag
+			player.commandReaction("некуда класть")
+		}
 	} else {
-		player.commandReaction("некуда класть")
+		// no item in location
+		player.commandReaction("нет такого")
 	}
 
 	return nil
@@ -158,10 +236,6 @@ var _ ICommand = &ApplyCmd{} // type check
 //   - применить $item $object => что было сделано
 //     items: ключи, конспекты, телефон
 //     objects: дверь, шкаф
-//     examples:
-//     ключи дверь
-//     телефон шкаф
-//     ключи шкаф
 type ApplyCmd struct {
 	applyItem string
 	toObject  string
@@ -175,21 +249,23 @@ func (a *ApplyCmd) execute(game IGame, player IPlayer) error {
 в локации (где плеер находится) есть обьект;
 обьект может быть "активирован" айтемом;
 реакция: состояние обьекта после "активации"
-
 	`
+
 	if player.hasItem(a.applyItem) {
 		locName := player.getLocation()
-		loc := game.getLocation(locName)
-		obj, err := loc.getObject(a.toObject)
+		locObj := game.getLocation(locName)
+		obj, err := locObj.getObject(a.toObject) // not a good idea if game state is independent for each player
 		if err == nil {
 			if obj.isCompatibleWith(a.applyItem) {
 				obj.activateWith(a.applyItem)
 				player.commandReaction(obj.getState())
+				player.setStateInLocationState(locName, obj.getState())
 			} else {
 				return fmt.Errorf("item '%s' can't be applied to object '%s'", a.applyItem, a.toObject)
 			}
 		} else {
-			return fmt.Errorf("no such object (%s) in location: '%s'; %w", a.toObject, loc.name, err)
+			// show("ApplyCmd.execute: ", fmt.Errorf("no such object (%s) in location: '%s'; %w", a.toObject, locObj.name, err))
+			player.commandReaction("не к чему применить")
 		}
 	} else {
 		player.commandReaction(fmt.Sprintf("нет предмета в инвентаре - %s", a.applyItem))
@@ -198,26 +274,51 @@ func (a *ApplyCmd) execute(game IGame, player IPlayer) error {
 	return nil
 }
 
-//   - сказать $phrase => широковещание всем игрокам в локации, цитирование сказанного
-//     examples: Пора топать в универ
-type ShoutCmd struct{}
+// - сказать $phrase => широковещание всем игрокам в локации, цитирование сказанного
+type ShoutCmd struct {
+	phrase string
+}
 
 // execute implements ICommand.
 func (s *ShoutCmd) execute(game IGame, player IPlayer) error {
-	panic("unimplemented")
+	// "Izolda говорит: Пора топать в универ",
+	locName := player.getLocation()
+	players := game.getPlayersInLocation(locName)
+	for _, p := range players {
+		p.commandReaction(fmt.Sprintf("%s говорит: %s", player.getName(), s.phrase))
+	}
+	return nil
 }
 
 var _ ICommand = &ShoutCmd{} // type check
 
-//   - сказать_игроку $player $phrase_option => адресное обращение к игроку в локации, цитирование
-//     examples:
-//     Izolda Может ещё по чаю лучше?
-//     Tristan
-type SayToPlayerCmd struct{}
+// - сказать_игроку $player $phrase_option => адресное обращение к игроку в локации, цитирование
+type SayToPlayerCmd struct {
+	to   string
+	body string
+}
 
 // execute implements ICommand.
 func (s *SayToPlayerCmd) execute(game IGame, player IPlayer) error {
-	panic("unimplemented")
+	locName := player.getLocation()
+	players := game.getPlayersInLocation(locName)
+	for _, p := range players {
+		if p.getName() == s.to {
+
+			if s.body == "" {
+				// nothing to say
+				p.commandReaction(fmt.Sprintf("%s выразительно молчит, смотря на вас", player.getName()))
+			} else {
+				// have phrase
+				p.commandReaction(fmt.Sprintf("%s говорит вам: %s", player.getName(), s.body))
+			}
+
+			return nil
+		}
+	}
+
+	player.commandReaction(fmt.Sprintf("тут нет такого игрока"))
+	return nil
 }
 
 var _ ICommand = &SayToPlayerCmd{} // type check
